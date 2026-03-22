@@ -1,0 +1,254 @@
+import express from "express";
+
+import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
+import { validateBody, validateParams } from "../middleware/validate.middleware.js";
+import Event from "../models/Event.js";
+import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
+
+const router = express.Router();
+
+function inferEventType(event) {
+  const text = `${event.title || ""} ${event.description || ""} ${event.location || ""}`.toLowerCase();
+  if (text.includes("webinar") || text.includes("zoom") || text.includes("virtual")) return "Webinar";
+  if (text.includes("workshop")) return "Workshop";
+  if (text.includes("career") || text.includes("fair")) return "Career Fair";
+  if (text.includes("network")) return "Networking";
+  if (text.includes("gala") || text.includes("social") || text.includes("reunion")) return "Social";
+  return "Event";
+}
+
+function deriveDateRange(eventDate) {
+  const date = new Date(eventDate);
+  const now = new Date();
+  const diffDays = Math.round((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 7) return "This Week";
+  if (diffDays <= 30) return "This Month";
+  return "Later";
+}
+
+function deriveStatus(event) {
+  const now = new Date();
+  const eventDate = new Date(event.eventDate);
+  if (event.registrations?.length === 0 && eventDate > now) return "Draft";
+  return eventDate >= now ? "Upcoming" : "Completed";
+}
+
+function formatEvent(event, user) {
+  const isRegistered = event.registrations?.some(
+    (entry) => entry.userId?._id?.toString?.() === user._id.toString() || entry.userId?.toString?.() === user._id.toString()
+  );
+
+  return {
+    _id: event._id,
+    instituteId: event.instituteId,
+    title: event.title,
+    description: event.description,
+    eventDate: event.eventDate,
+    location: event.location,
+    createdBy: event.createdBy,
+    createdAt: event.createdAt,
+    updatedAt: event.updatedAt,
+    eventType: inferEventType(event),
+    dateRange: deriveDateRange(event.eventDate),
+    status: deriveStatus(event),
+    registrationCap: Number.isFinite(Number(event.registrationCap)) ? Number(event.registrationCap) : null,
+    attendeeCount: event.registrations?.length || 0,
+    isRegistered: Boolean(isRegistered),
+    attendees:
+      user.role === "institute_admin"
+        ? (event.registrations || []).map((entry) => ({
+            userId: entry.userId?._id || entry.userId,
+            name: entry.userId?.name || "Unknown User",
+            email: entry.userId?.email || "",
+            registeredAt: entry.registeredAt
+          }))
+        : []
+  };
+}
+
+function validateEventBody(body) {
+  const issues = [];
+  if (!isNonEmptyString(body.title)) issues.push("Event title is required");
+  if (!body.eventDate) issues.push("Event date is required");
+  if (body.registrationCap !== undefined && (!Number.isFinite(Number(body.registrationCap)) || Number(body.registrationCap) < 0)) {
+    issues.push("Registration cap must be a non-negative number");
+  }
+  return issues;
+}
+
+function validateEventId(params) {
+  return isObjectIdLike(params.id) ? [] : ["Invalid event id"];
+}
+
+router.get("/", protect, requireTenantAccess, async (req, res, next) => {
+  try {
+    const events = await Event.find({ instituteId: req.tenant?._id })
+      .populate("registrations.userId", "name email")
+      .sort({ eventDate: 1 });
+    res.json(events.map((event) => formatEvent(event, req.user)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  "/",
+  protect,
+  requireTenantAccess,
+  validateBody(validateEventBody),
+  async (req, res, next) => {
+    try {
+      const event = await Event.create({
+        ...req.body,
+        registrationCap:
+          req.body.registrationCap !== undefined ? Number(req.body.registrationCap) : undefined,
+        instituteId: req.tenant._id,
+        createdBy: req.user._id
+      });
+
+      await event.populate("registrations.userId", "name email");
+      res.status(201).json(formatEvent(event, req.user));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/register",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const event = await Event.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!event) {
+        const error = new Error("Event not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const alreadyRegistered = event.registrations.some(
+        (entry) => entry.userId.toString() === req.user._id.toString()
+      );
+
+      if (alreadyRegistered) {
+        const error = new Error("You have already registered for this event");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      event.registrations.push({
+        userId: req.user._id,
+        registeredAt: new Date()
+      });
+
+      await event.save();
+      await event.populate("registrations.userId", "name email");
+
+      res.json(formatEvent(event, req.user));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.delete(
+  "/:id/register",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const event = await Event.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!event) {
+        const error = new Error("Event not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      event.registrations = event.registrations.filter(
+        (entry) => entry.userId.toString() !== req.user._id.toString()
+      );
+
+      await event.save();
+      await event.populate("registrations.userId", "name email");
+
+      res.json(formatEvent(event, req.user));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/:id",
+  protect,
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const event = await Event.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          instituteId: req.tenant._id
+        },
+        {
+          ...req.body,
+          ...(req.body.registrationCap !== undefined
+            ? { registrationCap: Number(req.body.registrationCap) }
+            : {})
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!event) {
+        const error = new Error("Event not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      await event.populate("registrations.userId", "name email");
+      res.json(formatEvent(event, req.user));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.delete(
+  "/:id",
+  protect,
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const event = await Event.findOneAndDelete({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!event) {
+        const error = new Error("Event not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      res.json({ message: "Event deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+export default router;
