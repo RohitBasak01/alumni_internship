@@ -1,8 +1,8 @@
 import express from "express";
 
+import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
-import Announcement from "../models/Announcement.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 
 const router = express.Router();
@@ -20,6 +20,7 @@ function validateAnnouncementId(params) {
 
 router.get("/", protect, requireTenantAccess, async (req, res, next) => {
   try {
+    const { Announcement } = getTenantModels(req);
     const filter =
       req.user.role === "institute_admin"
         ? { instituteId: req.tenant._id }
@@ -40,6 +41,7 @@ router.post(
   validateBody(validateAnnouncementBody),
   async (req, res, next) => {
   try {
+    const { Announcement } = getTenantModels(req);
     const announcement = await Announcement.create({
       ...req.body,
       instituteId: req.tenant._id,
@@ -61,6 +63,7 @@ router.patch(
   validateParams(validateAnnouncementId),
   async (req, res, next) => {
   try {
+    const { Announcement } = getTenantModels(req);
     const announcement = await Announcement.findOneAndUpdate(
       {
         _id: req.params.id,
@@ -91,6 +94,7 @@ router.delete(
   validateParams(validateAnnouncementId),
   async (req, res, next) => {
   try {
+    const { Announcement } = getTenantModels(req);
     const announcement = await Announcement.findOneAndDelete({
       _id: req.params.id,
       instituteId: req.tenant._id

@@ -181,12 +181,12 @@ function EventsPage() {
               onClick={() => setShowComposer((current) => !current)}
               type="button"
             >
-              {showComposer ? "Close Composer" : "+ Create New Event"}
+              {showComposer ? "Close Composer" : "+ Post Association Event"}
             </button>
           }
           className="admin-events-header"
-          subtitle="Create, edit and track alumni engagement through events."
-          title="Manage Events"
+          subtitle="Publish official Alumni Association events and manage alumni participation."
+          title="Manage Alumni Association Events"
         />
 
         <PortalMetricGrid className="admin-events-metrics">
@@ -220,7 +220,10 @@ function EventsPage() {
         </PortalMetricGrid>
 
         {showComposer ? (
-          <SectionCard title={editingId ? "Edit Event" : "Create Event"} subtitle="Institute Admin">
+          <SectionCard
+            title={editingId ? "Edit Association Event" : "Create Association Event"}
+            subtitle="SPIT Alumni Association Committee"
+          >
             <form className="form-grid" onSubmit={handleSubmit}>
               <input name="title" onChange={handleChange} placeholder="Event title" value={form.title} />
               <textarea
@@ -371,22 +374,25 @@ function EventsPage() {
     <div className="events-board-page">
       <header className="events-board-header">
         <div>
-          <h1>Events</h1>
-          <p>Discover and join upcoming alumni gatherings.</p>
+          <h1>Alumni Association Events</h1>
+          <p>Official events posted by the SPIT Alumni Association Committee.</p>
         </div>
-        {auth.user ? (
+        {isAdmin ? (
           <button
             className="button primary events-board-create"
             onClick={() => setShowComposer((current) => !current)}
             type="button"
           >
-            {showComposer ? "Close" : "+ Create Event"}
+            {showComposer ? "Close" : "+ Post Association Event"}
           </button>
         ) : null}
       </header>
 
       {showComposer ? (
-        <SectionCard title={editingId ? "Edit Event" : "Create Event"} subtitle={isAdmin ? "Institute Admin" : "Host Event"}>
+        <SectionCard
+          title={editingId ? "Edit Association Event" : "Create Association Event"}
+          subtitle="SPIT Alumni Association Committee"
+        >
           <form className="form-grid" onSubmit={handleSubmit}>
             <input name="title" onChange={handleChange} placeholder="Event title" value={form.title} />
             <textarea
@@ -490,6 +496,7 @@ function EventsPage() {
                 </span>
                 <span>{item.location || "Alumni House"}</span>
               </div>
+              <p className="events-board-publisher">{item.publishedByLabel || "SPIT Alumni Association Committee"}</p>
               <p>{item.description}</p>
 
               <div className="events-board-actions">

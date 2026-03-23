@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 
+import { attachTenantDatabaseContext, getTenantModels } from "../db/tenantConnectionManager.js";
 import Institute from "../models/Institute.js";
 import User from "../models/User.js";
 import { AUTH_COOKIE_NAME } from "../utils/auth.js";
@@ -20,9 +21,38 @@ export async function protect(req, _res, next) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "change-me");
-    const user = await User.findById(decoded.userId)
-      .select("-passwordHash")
-      .populate("instituteId", "name status subdomain domain");
+    let institute = req.tenant || null;
+
+    if (!institute && decoded.instituteId) {
+      institute = await Institute.findById(decoded.instituteId);
+      if (institute) {
+        req.tenant = institute;
+        await attachTenantDatabaseContext(req, institute);
+      }
+    }
+
+    let user;
+
+    if (decoded.role === "super_admin") {
+      user = await User.findById(decoded.userId)
+        .select("-passwordHash")
+        .populate("instituteId", "name status subdomain domain");
+    } else {
+      const TenantUser = getTenantModels(req).User;
+      user = await TenantUser.findById(decoded.userId).select("-passwordHash");
+
+      if (user && institute) {
+        user.instituteId = institute;
+      } else if (user?.instituteId) {
+        const hydratedInstitute = await Institute.findById(user.instituteId);
+        if (hydratedInstitute) {
+          req.tenant = hydratedInstitute;
+          await attachTenantDatabaseContext(req, hydratedInstitute);
+          user.instituteId = hydratedInstitute;
+          institute = hydratedInstitute;
+        }
+      }
+    }
 
     if (!user) {
       const error = new Error("User not found");
@@ -81,6 +111,7 @@ export async function requireTenantAccess(req, _res, next) {
 
       if (institute) {
         req.tenant = institute;
+        await attachTenantDatabaseContext(req, institute);
       }
     }
 

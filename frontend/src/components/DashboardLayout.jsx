@@ -5,24 +5,54 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import { fetchNotificationSummary } from "../lib/api.js";
 
-const adminLinks = [
-  { to: "/portal", label: "Dashboard", icon: "DS", end: true },
-  { to: "/portal/alumni", label: "Alumni Management", icon: "AM" },
-  { to: "/portal/events", label: "Events Management", icon: "EV" },
-  { to: "/portal/jobs", label: "Jobs Management", icon: "JB" },
-  { to: "/portal/announcements", label: "Settings", icon: "ST" }
-];
+function buildAdminLinks(tenant) {
+  const links = [
+    { to: "/portal", label: "Dashboard", icon: "DS", end: true },
+    { to: "/portal/alumni", label: `${tenant.communityLabels.memberPlural} Management`, icon: "AM" }
+  ];
 
-const alumniLinks = [
-  { to: "/portal", label: "Dashboard", icon: "DS", end: true },
-  { to: "/portal/alumni", label: "Directory", icon: "DR" },
-  { to: "/portal/jobs", label: "Jobs", icon: "JB" },
-  { to: "/portal/events", label: "Events", icon: "EV" },
-  { to: "/portal/mentorship", label: "Messages", icon: "MS" },
-  { to: "/portal/connections", label: "Connection Requests", icon: "CR" },
-  { to: "/portal/announcements", label: "Notifications", icon: "NT" },
-  { to: "/portal/profile", label: "Profile", icon: "PR" }
-];
+  if (tenant.featureFlags.enableEvents) {
+    links.push({ to: "/portal/events", label: "Events Management", icon: "EV" });
+  }
+
+  if (tenant.featureFlags.enableJobs) {
+    links.push({ to: "/portal/jobs", label: "Jobs Management", icon: "JB" });
+  }
+
+  if (tenant.featureFlags.enableAnnouncements) {
+    links.push({ to: "/portal/announcements", label: "Settings", icon: "ST" });
+  }
+
+  return links;
+}
+
+function buildMemberLinks(tenant) {
+  const links = [{ to: "/portal", label: "Dashboard", icon: "DS", end: true }];
+
+  if (tenant.featureFlags.enableDirectory) {
+    links.push({ to: "/portal/alumni", label: "Directory", icon: "DR" });
+  }
+
+  if (tenant.featureFlags.enableJobs) {
+    links.push({ to: "/portal/jobs", label: "Jobs", icon: "JB" });
+  }
+
+  if (tenant.featureFlags.enableEvents) {
+    links.push({ to: "/portal/events", label: "Events", icon: "EV" });
+  }
+
+  if (tenant.featureFlags.enableMentorship) {
+    links.push({ to: "/portal/mentorship", label: "Messages", icon: "MS" });
+    links.push({ to: "/portal/connections", label: "Connection Requests", icon: "CR" });
+  }
+
+  if (tenant.featureFlags.enableAnnouncements) {
+    links.push({ to: "/portal/announcements", label: "Notifications", icon: "NT" });
+  }
+
+  links.push({ to: "/portal/profile", label: "Profile", icon: "PR" });
+  return links;
+}
 
 function DashboardLayout() {
   const tenant = useTenantContext();
@@ -35,6 +65,8 @@ function DashboardLayout() {
     queryFn: fetchNotificationSummary,
     enabled: Boolean(auth.user)
   });
+  const adminLinks = buildAdminLinks(tenant);
+  const alumniLinks = buildMemberLinks(tenant);
 
   function getBadgeCount(linkTo) {
     if (linkTo === "/portal/mentorship" && auth.user?.role === "alumni") {
@@ -82,11 +114,20 @@ function DashboardLayout() {
                 <span aria-hidden="true">S</span>
                 <input placeholder="Search alumni..." type="search" />
               </label>
-              <button className="alumni-profile-action-icon" type="button">
-                N
-              </button>
+              <NavLink className="alumni-profile-action-button" to="/portal/announcements">
+                <span className="alumni-profile-action-icon" aria-hidden="true">
+                  N
+                </span>
+                <span>Notifications</span>
+                {getBadgeCount("/portal/announcements") ? (
+                  <span className="alumni-profile-action-badge">
+                    {getBadgeCount("/portal/announcements")}
+                  </span>
+                ) : null}
+              </NavLink>
               <button className="alumni-profile-avatar-chip" onClick={() => void auth.logout()} type="button">
-                {auth.user?.name?.slice(0, 1) || "A"}
+                <span className="alumni-profile-avatar-initial">{auth.user?.name?.slice(0, 1) || "A"}</span>
+                <span>Logout</span>
               </button>
             </div>
           </header>
@@ -115,11 +156,11 @@ function DashboardLayout() {
         <aside className="alumni-sidebar">
           <div className="alumni-sidebar-brand">
             <div className="alumni-sidebar-mark">AN</div>
-            <div>
-              <strong>AlumNet</strong>
-              <small>Alumni Network</small>
+              <div>
+                <strong>AlumNet</strong>
+                <small>{tenant.communityLabels.memberPlural} Network</small>
+              </div>
             </div>
-          </div>
 
           <nav className="alumni-sidebar-nav" aria-label="Alumni navigation">
             {alumniLinks.map((link) => (
@@ -168,7 +209,7 @@ function DashboardLayout() {
           <div className="admin-sidebar-mark">AN</div>
           <div>
             <strong>AlumNet</strong>
-            <small>Institute Admin</small>
+            <small>{tenant.communityLabels.adminLabel}</small>
           </div>
         </div>
 
@@ -202,7 +243,7 @@ function DashboardLayout() {
             <div className="admin-sidebar-avatar">{auth.user?.name?.slice(0, 1) || "A"}</div>
             <div>
               <strong>{auth.user?.name || "Institute Admin"}</strong>
-              <small>Administrator</small>
+              <small>{tenant.communityLabels.adminLabel}</small>
             </div>
           </div>
           <button className="admin-sidebar-menu" onClick={() => void auth.logout()} type="button">
@@ -222,11 +263,15 @@ function DashboardLayout() {
             <button className="button primary compact" type="button">
               + Add New
             </button>
-            <button className="admin-topbar-icon" type="button">
-              N
-            </button>
-            <button className="admin-topbar-avatar" type="button">
-              {auth.user?.name?.slice(0, 1) || "A"}
+            <NavLink className="admin-topbar-action" to="/portal/announcements">
+              <span className="admin-topbar-icon" aria-hidden="true">
+                N
+              </span>
+              <span>Notifications</span>
+            </NavLink>
+            <button className="admin-topbar-avatar" onClick={() => void auth.logout()} type="button">
+              <span className="admin-topbar-avatar-initial">{auth.user?.name?.slice(0, 1) || "A"}</span>
+              <span>Logout</span>
             </button>
           </div>
         </header>

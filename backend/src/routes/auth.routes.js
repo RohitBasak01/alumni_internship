@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import express from "express";
 
+import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect } from "../middleware/auth.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import User from "../models/User.js";
@@ -11,6 +12,7 @@ import {
   hashPassword,
   setAuthCookie
 } from "../utils/auth.js";
+import { buildTenantConfigSnapshot } from "../utils/tenantConfig.js";
 import { hasMinLength, isNonEmptyString } from "../utils/validation.js";
 
 const router = express.Router();
@@ -70,17 +72,38 @@ function formatUserSession(user) {
           name: user.instituteId.name,
           status: user.instituteId.status,
           subdomain: user.instituteId.subdomain || null,
-          domain: user.instituteId.domain || null
+          domain: user.instituteId.domain || null,
+          ...buildTenantConfigSnapshot(user.instituteId)
         }
       : null
   };
 }
 
+function getRequestUserModel(req) {
+  if (req.tenantPersistence?.isolationMode === "dedicated") {
+    return getTenantModels(req).User;
+  }
+
+  return User;
+}
+
 router.post("/login", validateBody(validateLoginBody), async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = email?.trim().toLowerCase();
 
-    const user = await User.findOne({ email: email?.trim().toLowerCase() }).populate("instituteId");
+    let user = await User.findOne({ email: normalizedEmail, role: "super_admin" }).populate("instituteId");
+
+    if (!user) {
+      const RequestUser = getRequestUserModel(req);
+      user = await RequestUser.findOne({ email: normalizedEmail });
+
+      if (user && req.tenant) {
+        user.instituteId = req.tenant;
+      } else if (!user) {
+        user = await User.findOne({ email: normalizedEmail }).populate("instituteId");
+      }
+    }
 
     if (!user) {
       const error = new Error("Invalid credentials");
@@ -132,11 +155,12 @@ router.post("/login", validateBody(validateLoginBody), async (req, res, next) =>
 router.get("/invite/:token", validateParams(validateInviteParams), async (req, res, next) => {
   try {
     const inviteTokenHash = hashInviteToken(req.params.token);
+    const RequestUser = getRequestUserModel(req);
 
-    const user = await User.findOne({
+    const user = await RequestUser.findOne({
       inviteTokenHash,
       inviteTokenExpiresAt: { $gt: new Date() }
-    }).populate("instituteId", "name subdomain domain status");
+    });
 
     if (!user) {
       const error = new Error("This invite link is invalid or has expired");
@@ -148,7 +172,7 @@ router.get("/invite/:token", validateParams(validateInviteParams), async (req, r
       email: user.email,
       name: user.name,
       role: user.role,
-      institute: user.instituteId
+      institute: req.tenant || user.instituteId || null
     });
   } catch (error) {
     next(error);
@@ -158,6 +182,7 @@ router.get("/invite/:token", validateParams(validateInviteParams), async (req, r
 router.post("/setup-password", validateBody(validateSetupPasswordBody), async (req, res, next) => {
   try {
     const { token: inviteToken, password } = req.body;
+    const RequestUser = getRequestUserModel(req);
 
     if (!inviteToken || !password || password.length < 8) {
       const error = new Error("A valid invite token and password of at least 8 characters are required");
@@ -166,10 +191,10 @@ router.post("/setup-password", validateBody(validateSetupPasswordBody), async (r
     }
 
     const inviteTokenHash = hashInviteToken(inviteToken);
-    const user = await User.findOne({
+    const user = await RequestUser.findOne({
       inviteTokenHash,
       inviteTokenExpiresAt: { $gt: new Date() }
-    }).populate("instituteId");
+    });
 
     if (!user) {
       const error = new Error("This invite link is invalid or has expired");
@@ -185,7 +210,11 @@ router.post("/setup-password", validateBody(validateSetupPasswordBody), async (r
 
     await user.save();
 
-    const canLogin = user.role === "super_admin" || user.instituteId?.status === "active";
+    if (req.tenant) {
+      user.instituteId = req.tenant;
+    }
+
+    const canLogin = user.role === "super_admin" || req.tenant?.status === "active" || user.instituteId?.status === "active";
     const sessionToken = canLogin ? generateToken(user) : null;
 
     if (sessionToken) {
@@ -214,17 +243,7 @@ router.post("/logout", (_req, res) => {
 
 router.get("/me", protect, async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id)
-      .select("-passwordHash")
-      .populate("instituteId", "name status subdomain domain");
-
-    if (!user) {
-      const error = new Error("User not found");
-      error.statusCode = 404;
-      throw error;
-    }
-
-    res.json(formatUserSession(user));
+    res.json(formatUserSession(req.user));
   } catch (error) {
     next(error);
   }

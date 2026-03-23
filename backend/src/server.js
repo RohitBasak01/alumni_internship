@@ -6,17 +6,20 @@ import app from "./app.js";
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/alumni-network";
+const CENTRAL_MONGODB_URI =
+  process.env.CENTRAL_MONGODB_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb://127.0.0.1:27017/alumni-network";
 const ENABLE_DEV_MOCK_MODE = process.env.ENABLE_DEV_MOCK_MODE === "true";
 
 async function startServer() {
   try {
-    await mongoose.connect(MONGODB_URI, {
+    await mongoose.connect(CENTRAL_MONGODB_URI, {
       serverSelectionTimeoutMS: 10000
     });
     app.locals.mockMode = false;
-    console.log("MongoDB connected");
+    app.locals.centralDatabaseUri = CENTRAL_MONGODB_URI;
+    console.log("Central MongoDB connected");
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

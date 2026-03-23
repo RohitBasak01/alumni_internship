@@ -1,5 +1,61 @@
 import mongoose from "mongoose";
 
+const communityLabelsSchema = new mongoose.Schema(
+  {
+    memberPlural: {
+      type: String,
+      trim: true
+    },
+    memberSingular: {
+      type: String,
+      trim: true
+    },
+    adminLabel: {
+      type: String,
+      trim: true
+    }
+  },
+  {
+    _id: false
+  }
+);
+
+const featureFlagsSchema = new mongoose.Schema(
+  {
+    enableJobs: {
+      type: Boolean,
+      default: true
+    },
+    enableMentorship: {
+      type: Boolean,
+      default: true
+    },
+    enableDirectory: {
+      type: Boolean,
+      default: true
+    },
+    enableEvents: {
+      type: Boolean,
+      default: true
+    },
+    enableAnnouncements: {
+      type: Boolean,
+      default: true
+    },
+    enableSocialLinks: {
+      type: Boolean,
+      default: true
+    },
+    enableCareerFields: {
+      type: Boolean,
+      default: true
+    }
+  },
+  {
+    _id: false
+  }
+);
+
 const instituteSchema = new mongoose.Schema(
   {
     name: {
@@ -19,6 +75,49 @@ const instituteSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       unique: true
+    },
+    institutionType: {
+      type: String,
+      enum: ["college", "school"],
+      default: "college"
+    },
+    educationLevel: {
+      type: String,
+      enum: ["k10", "k12", "higher_ed"],
+      default: "higher_ed"
+    },
+    communityLabels: {
+      type: communityLabelsSchema,
+      default: () => ({
+        memberPlural: "Alumni",
+        memberSingular: "Alumnus/Alumna",
+        adminLabel: "Institute Admin"
+      })
+    },
+    featureFlags: {
+      type: featureFlagsSchema,
+      default: () => ({
+        enableJobs: true,
+        enableMentorship: true,
+        enableDirectory: true,
+        enableEvents: true,
+        enableAnnouncements: true,
+        enableSocialLinks: true,
+        enableCareerFields: true
+      })
+    },
+    dataIsolationMode: {
+      type: String,
+      enum: ["shared", "dedicated"],
+      default: "shared"
+    },
+    tenantDatabaseName: {
+      type: String,
+      trim: true
+    },
+    tenantDatabaseUri: {
+      type: String,
+      trim: true
     },
     status: {
       type: String,

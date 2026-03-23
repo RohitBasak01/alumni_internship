@@ -13,6 +13,7 @@ import MentorshipRequest from "../models/MentorshipRequest.js";
 import User from "../models/User.js";
 import { logAuditEvent } from "../utils/audit.js";
 import { sendInviteEmail } from "../utils/email.js";
+import { getInstituteTenantModels, getInstituteTenantSummary, getPlatformTenantSummaries } from "../utils/tenantAdminData.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 
 const router = express.Router();
@@ -87,47 +88,10 @@ async function buildInstituteDetail(instituteId) {
     throw error;
   }
 
-  const [adminUsers, alumniProfilesCount, activeAlumniUsersCount, eventsCount, jobsCount, announcementsCount, pendingMentorshipRequests, recentEvents, recentJobs, recentAnnouncements] =
-    await Promise.all([
-      User.find({ instituteId, role: "institute_admin" })
-        .select("name email isActive passwordSetupCompleted inviteTokenHash inviteTokenExpiresAt createdAt")
-        .sort({ createdAt: -1 }),
-      AlumniProfile.countDocuments({ instituteId }),
-      User.countDocuments({ instituteId, role: "alumni", isActive: true }),
-      Event.countDocuments({ instituteId }),
-      Job.countDocuments({ instituteId }),
-      Announcement.countDocuments({ instituteId }),
-      MentorshipRequest.countDocuments({ instituteId, status: "pending" }),
-      Event.find({ instituteId }).select("title eventDate location createdAt").sort({ createdAt: -1 }).limit(3),
-      Job.find({ instituteId }).select("title company status createdAt").sort({ createdAt: -1 }).limit(3),
-      Announcement.find({ instituteId }).select("title status createdAt").sort({ createdAt: -1 }).limit(3)
-    ]);
-
-  const recentActivity = [
-    ...recentAnnouncements.map((item) => ({
-      id: item._id,
-      type: "announcement",
-      title: item.title,
-      meta: item.status,
-      createdAt: item.createdAt
-    })),
-    ...recentEvents.map((item) => ({
-      id: item._id,
-      type: "event",
-      title: item.title,
-      meta: item.location || item.eventDate?.toISOString?.() || "",
-      createdAt: item.createdAt
-    })),
-    ...recentJobs.map((item) => ({
-      id: item._id,
-      type: "job",
-      title: item.title,
-      meta: `${item.company} | ${item.status}`,
-      createdAt: item.createdAt
-    }))
-  ]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 8);
+  const { admins: adminUsers, metrics, support, recentActivity } = await getInstituteTenantSummary(institute, {
+    includeAdmins: true,
+    includeRecentActivity: true
+  });
 
   return {
     institute: {
@@ -146,17 +110,17 @@ async function buildInstituteDetail(instituteId) {
     })),
     metrics: {
       adminsCount: adminUsers.length,
-      alumniProfilesCount,
-      activeAlumniUsersCount,
-      eventsCount,
-      jobsCount,
-      announcementsCount,
-      pendingMentorshipRequests
+      alumniProfilesCount: metrics.alumniProfilesCount,
+      activeAlumniUsersCount: metrics.activeAlumniUsersCount,
+      eventsCount: metrics.eventsCount,
+      jobsCount: metrics.jobsCount,
+      announcementsCount: metrics.announcementsCount,
+      pendingMentorshipRequests: metrics.pendingMentorshipRequests
     },
     support: {
-      hasPendingAdminSetup: adminUsers.some((user) => !user.passwordSetupCompleted),
-      inactiveAdminCount: adminUsers.filter((user) => !user.isActive).length,
-      pendingMentorshipRequests
+      hasPendingAdminSetup: support.hasPendingAdminSetup,
+      inactiveAdminCount: support.inactiveAdminCount,
+      pendingMentorshipRequests: metrics.pendingMentorshipRequests
     },
     recentActivity
   };
@@ -164,24 +128,7 @@ async function buildInstituteDetail(instituteId) {
 
 router.get("/analytics", protect, authorize("super_admin"), async (_req, res, next) => {
   try {
-    const totalRsvpsPromise = Event.aggregate([
-      {
-        $project: {
-          registrationCount: {
-            $size: {
-              $ifNull: ["$registrations", []]
-            }
-          }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$registrationCount" }
-        }
-      }
-    ]).then((result) => result[0]?.total || 0);
-
+    const institutes = await Institute.find().sort({ createdAt: -1 });
     const institutesByPlanPromise = Institute.aggregate([
       {
         $group: {
@@ -194,50 +141,46 @@ router.get("/analytics", protect, authorize("super_admin"), async (_req, res, ne
     ]);
 
     const [
-      totalInstitutes,
-      activeInstitutes,
-      pendingInstitutes,
-      suspendedInstitutes,
-      totalAlumniProfiles,
-      activeAlumniUsers,
-      totalEvents,
-      totalJobs,
-      publishedJobs,
-      totalRsvps,
-      totalMentorshipRequests,
-      pendingMentorshipRequests,
+      totals,
       institutesByPlan
     ] = await Promise.all([
-      Institute.countDocuments(),
-      Institute.countDocuments({ status: "active" }),
-      Institute.countDocuments({ status: "pending" }),
-      Institute.countDocuments({ status: "suspended" }),
-      AlumniProfile.countDocuments(),
-      User.countDocuments({ role: "alumni", isActive: true }),
-      Event.countDocuments(),
-      Job.countDocuments(),
-      Job.countDocuments({ status: "published" }),
-      totalRsvpsPromise,
-      MentorshipRequest.countDocuments(),
-      MentorshipRequest.countDocuments({ status: "pending" }),
+      getPlatformTenantSummaries(institutes).then((items) =>
+        items.reduce(
+          (accumulator, item) => ({
+            totalInstitutes: accumulator.totalInstitutes + 1,
+            activeInstitutes: accumulator.activeInstitutes + (item.institute.status === "active" ? 1 : 0),
+            pendingInstitutes: accumulator.pendingInstitutes + (item.institute.status === "pending" ? 1 : 0),
+            suspendedInstitutes: accumulator.suspendedInstitutes + (item.institute.status === "suspended" ? 1 : 0),
+            totalAlumniProfiles: accumulator.totalAlumniProfiles + item.summary.metrics.alumniProfilesCount,
+            activeAlumniUsers: accumulator.activeAlumniUsers + item.summary.metrics.activeAlumniUsersCount,
+            totalEvents: accumulator.totalEvents + item.summary.metrics.eventsCount,
+            totalJobs: accumulator.totalJobs + item.summary.metrics.jobsCount,
+            publishedJobs: accumulator.publishedJobs + item.summary.metrics.publishedJobsCount,
+            totalRsvps: accumulator.totalRsvps + item.summary.metrics.totalRsvps,
+            totalMentorshipRequests: accumulator.totalMentorshipRequests + item.summary.metrics.mentorshipRequestsCount,
+            pendingMentorshipRequests: accumulator.pendingMentorshipRequests + item.summary.metrics.pendingMentorshipRequests
+          }),
+          {
+            totalInstitutes: 0,
+            activeInstitutes: 0,
+            pendingInstitutes: 0,
+            suspendedInstitutes: 0,
+            totalAlumniProfiles: 0,
+            activeAlumniUsers: 0,
+            totalEvents: 0,
+            totalJobs: 0,
+            publishedJobs: 0,
+            totalRsvps: 0,
+            totalMentorshipRequests: 0,
+            pendingMentorshipRequests: 0
+          }
+        )
+      ),
       institutesByPlanPromise
     ]);
 
     res.json({
-      totals: {
-        totalInstitutes,
-        activeInstitutes,
-        pendingInstitutes,
-        suspendedInstitutes,
-        totalAlumniProfiles,
-        activeAlumniUsers,
-        totalEvents,
-        totalJobs,
-        publishedJobs,
-        totalRsvps,
-        totalMentorshipRequests,
-        pendingMentorshipRequests
-      },
+      totals,
       institutesByPlan: institutesByPlan.map((item) => ({
         plan: item._id || "unknown",
         count: item.count
@@ -250,23 +193,63 @@ router.get("/analytics", protect, authorize("super_admin"), async (_req, res, ne
 
 router.get("/support-overview", protect, authorize("super_admin"), async (_req, res, next) => {
   try {
-    const [pendingInstituteRequests, suspendedInstitutes, pendingInstituteAdminSetup, inactiveInstituteAdmins, pendingAlumniInvites, expiredInvites] =
-      await Promise.all([
-        Institute.countDocuments({ status: "pending" }),
-        Institute.countDocuments({ status: "suspended" }),
-        User.countDocuments({ role: "institute_admin", passwordSetupCompleted: false }),
-        User.countDocuments({ role: "institute_admin", isActive: false }),
-        User.countDocuments({ role: "alumni", passwordSetupCompleted: false, inviteTokenHash: { $ne: null } }),
-        User.countDocuments({ inviteTokenExpiresAt: { $lt: new Date() }, passwordSetupCompleted: false })
-      ]);
+    const now = new Date();
+    const institutes = await Institute.find().sort({ createdAt: -1 });
+    const [pendingInstituteRequests, suspendedInstitutes, instituteSupportCounts] = await Promise.all([
+      Institute.countDocuments({ status: "pending" }),
+      Institute.countDocuments({ status: "suspended" }),
+      Promise.all(
+        institutes.map(async (institute) => {
+          const { User: TenantUser } = await getInstituteTenantModels(institute);
+
+          const [pendingInstituteAdminSetup, inactiveInstituteAdmins, pendingAlumniInvites, expiredInvites] = await Promise.all([
+            TenantUser.countDocuments({ instituteId: institute._id, role: "institute_admin", passwordSetupCompleted: false }),
+            TenantUser.countDocuments({ instituteId: institute._id, role: "institute_admin", isActive: false }),
+            TenantUser.countDocuments({
+              instituteId: institute._id,
+              role: "alumni",
+              passwordSetupCompleted: false,
+              inviteTokenHash: { $ne: null }
+            }),
+            TenantUser.countDocuments({
+              instituteId: institute._id,
+              inviteTokenExpiresAt: { $lt: now },
+              passwordSetupCompleted: false
+            })
+          ]);
+
+          return {
+            pendingInstituteAdminSetup,
+            inactiveInstituteAdmins,
+            pendingAlumniInvites,
+            expiredInvites
+          };
+        })
+      )
+    ]);
+
+    const totals = instituteSupportCounts.reduce(
+      (accumulator, item) => ({
+        pendingInstituteAdminSetup: accumulator.pendingInstituteAdminSetup + item.pendingInstituteAdminSetup,
+        inactiveInstituteAdmins: accumulator.inactiveInstituteAdmins + item.inactiveInstituteAdmins,
+        pendingAlumniInvites: accumulator.pendingAlumniInvites + item.pendingAlumniInvites,
+        expiredInvites: accumulator.expiredInvites + item.expiredInvites
+      }),
+      {
+        pendingInstituteAdminSetup: 0,
+        inactiveInstituteAdmins: 0,
+        pendingAlumniInvites: 0,
+        expiredInvites: 0
+      }
+    );
 
     res.json({
       pendingInstituteRequests,
       suspendedInstitutes,
-      pendingInstituteAdminSetup,
-      inactiveInstituteAdmins,
-      pendingAlumniInvites,
-      expiredInvites
+      pendingInstituteAdminSetup: totals.pendingInstituteAdminSetup,
+      inactiveInstituteAdmins: totals.inactiveInstituteAdmins,
+      pendingAlumniInvites: totals.pendingAlumniInvites,
+      expiredInvites: totals.expiredInvites
     });
   } catch (error) {
     next(error);
@@ -373,7 +356,8 @@ router.patch(
       await institute.save();
 
       if (institute.status === "active") {
-        await User.updateMany(
+        const { User: TenantUser } = await getInstituteTenantModels(institute);
+        await TenantUser.updateMany(
           {
             instituteId: institute._id,
             passwordSetupCompleted: true
@@ -385,7 +369,8 @@ router.patch(
       }
 
       if (institute.status === "suspended") {
-        await User.updateMany(
+        const { User: TenantUser } = await getInstituteTenantModels(institute);
+        await TenantUser.updateMany(
           {
             instituteId: institute._id
           },
@@ -425,7 +410,8 @@ router.post("/institutes/:id/resend-admin-invite", protect, authorize("super_adm
       throw error;
     }
 
-    const adminUser = await User.findOne({
+    const { User: TenantUser } = await getInstituteTenantModels(institute);
+    const adminUser = await TenantUser.findOne({
       instituteId: institute._id,
       role: "institute_admin"
     });

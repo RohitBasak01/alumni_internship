@@ -2,6 +2,7 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SectionCard from "../components/SectionCard.jsx";
+import { useTenantContext } from "../hooks/useTenantContext.js";
 import {
   approveAlumniRegistration,
   fetchAlumni,
@@ -14,6 +15,12 @@ const initialInviteForm = {
   email: "",
   batch: "",
   department: "",
+  leavingYear: "",
+  lastClassAttended: "",
+  section: "",
+  currentEducation: "",
+  currentInstitution: "",
+  occupation: "",
   company: "",
   designation: "",
   location: ""
@@ -22,10 +29,31 @@ const initialInviteForm = {
 const initialFilters = {
   q: "",
   batch: "",
-  department: ""
+  department: "",
+  leavingYear: "",
+  lastClassAttended: ""
 };
 
+function getRegistrationConfig(tenant) {
+  const isSchool = tenant.institutionType === "school";
+
+  return {
+    isSchool,
+    memberPlural: tenant.communityLabels.memberPlural || "Alumni",
+    memberSingular: tenant.communityLabels.memberSingular || "Member",
+    adminLabel: tenant.communityLabels.adminLabel || "Institute Admin",
+    yearFieldLabel: isSchool ? "Leaving Year" : "Batch Year",
+    educationFieldLabel: isSchool ? "Last Class Attended" : "Course",
+    inviteTitle: isSchool ? "Add Former Student Manually" : "Add Alumni Manually",
+    verificationLabel: isSchool ? "Student Record" : "LinkedIn Profile",
+    subtitle: isSchool
+      ? "Verify and approve former students joining your school community."
+      : "Verify and approve new alumni joining your institution's network."
+  };
+}
+
 function ApproveRegistrationsPage() {
+  const tenant = useTenantContext();
   const queryClient = useQueryClient();
   const [inviteForm, setInviteForm] = useState(initialInviteForm);
   const [filters, setFilters] = useState(initialFilters);
@@ -84,15 +112,22 @@ function ApproveRegistrationsPage() {
     () => data.filter((item) => (item.registrationReviewStatus || "pending") === "pending"),
     [data]
   );
+  const config = getRegistrationConfig(tenant);
+  const isSchool = config.isSchool;
   const isInviteFormValid = useMemo(
     () =>
       Boolean(inviteForm.name.trim()) &&
       Boolean(inviteForm.email.trim()) &&
-      Boolean(inviteForm.department.trim()) &&
-      Number.isInteger(Number(inviteForm.batch)) &&
-      Number(inviteForm.batch) >= 1900 &&
-      Number(inviteForm.batch) <= 2100,
-    [inviteForm]
+      (isSchool
+        ? Boolean(inviteForm.lastClassAttended.trim()) &&
+          /^\d{4}$/.test(inviteForm.leavingYear) &&
+          Number(inviteForm.leavingYear) >= 1900 &&
+          Number(inviteForm.leavingYear) <= 2100
+        : Boolean(inviteForm.department.trim()) &&
+          /^\d{4}$/.test(inviteForm.batch) &&
+          Number(inviteForm.batch) >= 1900 &&
+          Number(inviteForm.batch) <= 2100),
+    [inviteForm, isSchool]
   );
 
   function handleInviteChange(event) {
@@ -124,13 +159,28 @@ function ApproveRegistrationsPage() {
     } else if (!/^\S+@\S+\.\S+$/.test(inviteForm.email.trim())) {
       errors.email = "Enter a valid email address";
     }
-    if (!inviteForm.batch) {
-      errors.batch = "Batch year is required";
-    } else if (!/^\d{4}$/.test(inviteForm.batch) || inviteForm.batch < 1900 || inviteForm.batch > 2100) {
-      errors.batch = "Enter a year between 1900 and 2100";
-    }
-    if (!inviteForm.department.trim()) {
-      errors.department = "Department is required";
+    if (isSchool) {
+      if (!inviteForm.leavingYear) {
+        errors.leavingYear = "Leaving year is required";
+      } else if (
+        !/^\d{4}$/.test(inviteForm.leavingYear) ||
+        inviteForm.leavingYear < 1900 ||
+        inviteForm.leavingYear > 2100
+      ) {
+        errors.leavingYear = "Enter a year between 1900 and 2100";
+      }
+      if (!inviteForm.lastClassAttended.trim()) {
+        errors.lastClassAttended = "Last class attended is required";
+      }
+    } else {
+      if (!inviteForm.batch) {
+        errors.batch = "Batch year is required";
+      } else if (!/^\d{4}$/.test(inviteForm.batch) || inviteForm.batch < 1900 || inviteForm.batch > 2100) {
+        errors.batch = "Enter a year between 1900 and 2100";
+      }
+      if (!inviteForm.department.trim()) {
+        errors.department = "Department is required";
+      }
     }
     return errors;
   }
@@ -142,7 +192,7 @@ function ApproveRegistrationsPage() {
       <header className="admin-approvals-header">
         <div>
           <h1>Approve Registrations</h1>
-          <p>Verify and approve new alumni joining your institution&apos;s network.</p>
+          <p>{config.subtitle}</p>
         </div>
       </header>
 
@@ -177,18 +227,26 @@ function ApproveRegistrationsPage() {
           />
         </label>
 
-        <select name="batch" onChange={handleFilterChange} value={filters.batch}>
-          <option value="">Batch Year</option>
-          {[...new Set(pendingApprovals.map((item) => item.batch).filter(Boolean))].map((option) => (
+        <select
+          name={isSchool ? "leavingYear" : "batch"}
+          onChange={handleFilterChange}
+          value={isSchool ? filters.leavingYear : filters.batch}
+        >
+          <option value="">{config.yearFieldLabel}</option>
+          {[...new Set(pendingApprovals.map((item) => (isSchool ? item.leavingYear : item.batch)).filter(Boolean))].map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
           ))}
         </select>
 
-        <select name="department" onChange={handleFilterChange} value={filters.department}>
-          <option value="">Course</option>
-          {[...new Set(pendingApprovals.map((item) => item.department).filter(Boolean))].map((option) => (
+        <select
+          name={isSchool ? "lastClassAttended" : "department"}
+          onChange={handleFilterChange}
+          value={isSchool ? filters.lastClassAttended : filters.department}
+        >
+          <option value="">{config.educationFieldLabel}</option>
+          {[...new Set(pendingApprovals.map((item) => (isSchool ? item.lastClassAttended : item.department)).filter(Boolean))].map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -202,7 +260,7 @@ function ApproveRegistrationsPage() {
 
       <section className="admin-approvals-table-card">
         <div className="admin-approvals-table-head">
-          <span>Alumni Details</span>
+          <span>{config.memberSingular} Details</span>
           <span>Education</span>
           <span>Verification</span>
           <span>Actions</span>
@@ -232,16 +290,26 @@ function ApproveRegistrationsPage() {
               </div>
 
               <div className="admin-approvals-education">
-                <strong>{alumni.department}</strong>
-                <p>Batch of {alumni.batch}</p>
+                <strong>{isSchool ? alumni.lastClassAttended || "-" : alumni.department}</strong>
+                <p>{isSchool ? `Leaving year ${alumni.leavingYear || "-"}` : `Batch of ${alumni.batch}`}</p>
               </div>
 
               <div className="admin-approvals-verification">
                 <button className="admin-approvals-link" type="button">
-                  LinkedIn Profile
+                  {config.verificationLabel}
                 </button>
                 <span className="admin-approvals-doc">
-                  {index === 0 ? "ID Card.pdf" : index === 1 ? "Degree.pdf" : "Provisional.pdf"}
+                  {isSchool
+                    ? index === 0
+                      ? "School Record.pdf"
+                      : index === 1
+                        ? "Transfer Certificate.pdf"
+                        : "Guardian Note.pdf"
+                    : index === 0
+                      ? "ID Card.pdf"
+                      : index === 1
+                        ? "Degree.pdf"
+                        : "Provisional.pdf"}
                 </span>
               </div>
 
@@ -283,8 +351,10 @@ function ApproveRegistrationsPage() {
       </section>
 
       {showInvitePanel(inviteMutation, inviteForm) ? (
-        <SectionCard title="Add Alumni Manually" subtitle="Institute Admin">
-          <p className="muted">Create a secure onboarding link so alumni can set their own password.</p>
+        <SectionCard title={config.inviteTitle} subtitle={config.adminLabel}>
+          <p className="muted">
+            Create a secure onboarding link so {config.memberPlural.toLowerCase()} can set their own password.
+          </p>
 
           <form className="form-grid two-column" onSubmit={handleInviteSubmit}>
             <div>
@@ -302,36 +372,85 @@ function ApproveRegistrationsPage() {
               />
               {inviteFormErrors.email ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.email}</p> : null}
             </div>
-            <div>
-              <input
-                max="2100"
-                min="1900"
-                name="batch"
-                onChange={handleInviteChange}
-                placeholder="Batch year (1900-2100)"
-                required
-                type="number"
-                value={inviteForm.batch}
-              />
-              {inviteFormErrors.batch ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.batch}</p> : null}
-            </div>
-            <div>
-              <input
-                name="department"
-                onChange={handleInviteChange}
-                placeholder="Department"
-                required
-                value={inviteForm.department}
-              />
-              {inviteFormErrors.department ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.department}</p> : null}
-            </div>
-            <input name="company" onChange={handleInviteChange} placeholder="Company" value={inviteForm.company} />
-            <input
-              name="designation"
-              onChange={handleInviteChange}
-              placeholder="Designation"
-              value={inviteForm.designation}
-            />
+            {isSchool ? (
+              <>
+                <div>
+                  <input
+                    max="2100"
+                    min="1900"
+                    name="leavingYear"
+                    onChange={handleInviteChange}
+                    placeholder="Leaving year (1900-2100)"
+                    required
+                    type="number"
+                    value={inviteForm.leavingYear}
+                  />
+                  {inviteFormErrors.leavingYear ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.leavingYear}</p> : null}
+                </div>
+                <div>
+                  <input
+                    name="lastClassAttended"
+                    onChange={handleInviteChange}
+                    placeholder="Last class attended"
+                    required
+                    value={inviteForm.lastClassAttended}
+                  />
+                  {inviteFormErrors.lastClassAttended ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.lastClassAttended}</p> : null}
+                </div>
+                <input name="section" onChange={handleInviteChange} placeholder="Section / House" value={inviteForm.section} />
+                <input
+                  name="currentEducation"
+                  onChange={handleInviteChange}
+                  placeholder="Current education"
+                  value={inviteForm.currentEducation}
+                />
+                <input
+                  name="currentInstitution"
+                  onChange={handleInviteChange}
+                  placeholder="Current institution"
+                  value={inviteForm.currentInstitution}
+                />
+                <input
+                  name="occupation"
+                  onChange={handleInviteChange}
+                  placeholder="Occupation"
+                  value={inviteForm.occupation}
+                />
+              </>
+            ) : (
+              <>
+                <div>
+                  <input
+                    max="2100"
+                    min="1900"
+                    name="batch"
+                    onChange={handleInviteChange}
+                    placeholder="Batch year (1900-2100)"
+                    required
+                    type="number"
+                    value={inviteForm.batch}
+                  />
+                  {inviteFormErrors.batch ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.batch}</p> : null}
+                </div>
+                <div>
+                  <input
+                    name="department"
+                    onChange={handleInviteChange}
+                    placeholder="Department"
+                    required
+                    value={inviteForm.department}
+                  />
+                  {inviteFormErrors.department ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.department}</p> : null}
+                </div>
+                <input name="company" onChange={handleInviteChange} placeholder="Company" value={inviteForm.company} />
+                <input
+                  name="designation"
+                  onChange={handleInviteChange}
+                  placeholder="Designation"
+                  value={inviteForm.designation}
+                />
+              </>
+            )}
             <input name="location" onChange={handleInviteChange} placeholder="Location" value={inviteForm.location} />
             <div style={{ gridColumn: "1 / -1" }}>
               <button className="button primary" disabled={inviteMutation.isPending || !isInviteFormValid} style={{ width: "100%" }} type="submit">

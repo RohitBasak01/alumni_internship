@@ -24,6 +24,11 @@ const mentorshipMessageSchema = new mongoose.Schema(
 
 const mentorshipRequestSchema = new mongoose.Schema(
   {
+    conversationType: {
+      type: String,
+      enum: ["direct", "group"],
+      default: "direct"
+    },
     instituteId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Institute",
@@ -32,22 +37,41 @@ const mentorshipRequestSchema = new mongoose.Schema(
     },
     requesterId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
+      ref: "User"
     },
     mentorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
+      ref: "User"
+    },
+    groupName: {
+      type: String,
+      trim: true
+    },
+    memberIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User"
+        }
+      ],
+      default: []
+    },
+    adminIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User"
+        }
+      ],
+      default: []
     },
     message: {
       type: String,
-      required: true,
       trim: true
     },
     status: {
       type: String,
-      enum: ["pending", "accepted", "declined"],
+      enum: ["pending", "accepted", "declined", "active"],
       default: "pending"
     },
     messages: {

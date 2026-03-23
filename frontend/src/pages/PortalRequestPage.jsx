@@ -6,6 +6,8 @@ import { requestPortal } from "../lib/api.js";
 
 const initialState = {
   name: "",
+  institutionType: "college",
+  educationLevel: "higher_ed",
   subdomain: "",
   domain: "",
   primaryContactName: "",
@@ -31,13 +33,15 @@ function PortalRequestPage() {
     setForm(initialState);
   }
 
+  const isSchool = form.institutionType === "school";
+
   return (
     <div className="request-page">
       <section className="request-hero">
         <p className="request-eyebrow">Institution onboarding</p>
         <h1>Register Your Institution</h1>
         <p>
-          Set up a dedicated networking portal for your alumni and students.
+          Set up a dedicated community portal for your {isSchool ? "former students, families, and staff" : "alumni and students"}.
         </p>
       </section>
 
@@ -55,7 +59,7 @@ function PortalRequestPage() {
                 <input
                   name="name"
                   onChange={handleChange}
-                  placeholder="e.g. Stanford University"
+                  placeholder={isSchool ? "e.g. Greenwood High School" : "e.g. Stanford University"}
                   value={form.name}
                 />
               </label>
@@ -72,7 +76,7 @@ function PortalRequestPage() {
                 <input
                   name="primaryContactEmail"
                   onChange={handleChange}
-                  placeholder="admin@university.edu"
+                  placeholder={isSchool ? "admin@school.edu" : "admin@university.edu"}
                   type="email"
                   value={form.primaryContactEmail}
                 />
@@ -89,13 +93,32 @@ function PortalRequestPage() {
               </label>
             </div>
 
+            <div className="request-grid two-column">
+              <label className="request-field">
+                <span>Institution Type</span>
+                <select name="institutionType" onChange={handleChange} value={form.institutionType}>
+                  <option value="college">College / University</option>
+                  <option value="school">School</option>
+                </select>
+              </label>
+
+              <label className="request-field">
+                <span>Education Level</span>
+                <select name="educationLevel" onChange={handleChange} value={form.educationLevel}>
+                  <option value="higher_ed">Higher Education</option>
+                  <option value="k12">School (K-12)</option>
+                  <option value="k10">School (Till Class 10)</option>
+                </select>
+              </label>
+            </div>
+
             <label className="request-field">
               <span>Institution Domain / Slug</span>
               <div className="request-slug-row">
                 <input
                   name="subdomain"
                   onChange={handleChange}
-                  placeholder="university-name"
+                  placeholder={isSchool ? "greenwood-school" : "university-name"}
                   value={form.subdomain}
                 />
                 <span className="request-slug-suffix">.alumnet.com</span>
@@ -153,6 +176,9 @@ function PortalRequestPage() {
               <strong>Institution request submitted</strong>
               <p className="muted">{mutation.data.onboarding.message}</p>
               <p className="muted">
+                Tenant type: {mutation.data.tenantConfig?.institutionType || form.institutionType}
+              </p>
+              <p className="muted">
                 Invite delivery: {mutation.data.emailDelivery.delivered ? "email sent" : "manual share"}
               </p>
               {mutation.data.emailDelivery.delivered ? null : (
@@ -176,18 +202,18 @@ function PortalRequestPage() {
         <div className="request-benefits">
           <article>
             <span className="request-benefit-icon">EA</span>
-            <h3>Engage Alumni</h3>
-            <p>Automated networking and mentoring programs.</p>
+            <h3>{isSchool ? "Strengthen Community" : "Engage Alumni"}</h3>
+            <p>{isSchool ? "Run reunions, updates, and community outreach from one place." : "Automated networking and mentoring programs."}</p>
           </article>
           <article>
             <span className="request-benefit-icon">DD</span>
-            <h3>Drive Donations</h3>
-            <p>Integrated fundraising and donation management.</p>
+            <h3>{isSchool ? "Keep Generations Connected" : "Drive Donations"}</h3>
+            <p>{isSchool ? "Reconnect former students, celebrate milestones, and share institutional news." : "Integrated fundraising and donation management."}</p>
           </article>
           <article>
             <span className="request-benefit-icon">DA</span>
-            <h3>Deep Analytics</h3>
-            <p>Track engagement metrics and career outcomes.</p>
+            <h3>{isSchool ? "Flexible Administration" : "Deep Analytics"}</h3>
+            <p>{isSchool ? "Choose the right feature set for schools, from directory and events to announcements." : "Track engagement metrics and career outcomes."}</p>
           </article>
         </div>
       </section>

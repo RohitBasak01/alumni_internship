@@ -5,6 +5,27 @@ const api = axios.create({
   withCredentials: true
 });
 
+api.interceptors.request.use((config) => {
+  const configuredSubdomain = String(import.meta.env.VITE_TENANT_SUBDOMAIN || "").trim().toLowerCase();
+  const configuredDomain = String(import.meta.env.VITE_TENANT_DOMAIN || "").trim().toLowerCase();
+  const baseUrl = String(config.baseURL || api.defaults.baseURL || "");
+  const isLocalApi = /localhost|127\.0\.0\.1/i.test(baseUrl);
+
+  if (!config.headers) {
+    config.headers = {};
+  }
+
+  if (isLocalApi && configuredSubdomain) {
+    config.headers["x-tenant-subdomain"] = configuredSubdomain;
+  }
+
+  if (isLocalApi && configuredDomain) {
+    config.headers["x-tenant-domain"] = configuredDomain;
+  }
+
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -234,6 +255,11 @@ export async function createMentorshipRequest(payload) {
   return data;
 }
 
+export async function createGroupConversation(payload) {
+  const { data } = await api.post("/mentorship/groups", payload);
+  return data;
+}
+
 export async function updateMentorshipRequest(id, payload) {
   const { data } = await api.patch(`/mentorship/${id}`, payload);
   return data;
@@ -241,6 +267,11 @@ export async function updateMentorshipRequest(id, payload) {
 
 export async function sendMentorshipMessage(id, payload) {
   const { data } = await api.post(`/mentorship/${id}/messages`, payload);
+  return data;
+}
+
+export async function leaveGroupConversation(id) {
+  const { data } = await api.post(`/mentorship/${id}/leave`);
   return data;
 }
 

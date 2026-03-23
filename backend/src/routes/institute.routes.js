@@ -8,7 +8,10 @@ import Institute from "../models/Institute.js";
 import User from "../models/User.js";
 import { logAuditEvent } from "../utils/audit.js";
 import { hashPassword } from "../utils/auth.js";
+import { attachTenantDatabaseContext, buildTenantPersistenceConfig, getTenantModels } from "../db/tenantConnectionManager.js";
 import { sendInviteEmail } from "../utils/email.js";
+import { getPlatformTenantSummaries } from "../utils/tenantAdminData.js";
+import { getDefaultCommunityLabels, getDefaultFeatureFlags } from "../utils/tenantConfig.js";
 import { isEmail, isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 
 const router = express.Router();
@@ -20,6 +23,8 @@ function validateInstituteRequestBody(body) {
   if (!isNonEmptyString(body.subdomain)) issues.push("Subdomain is required");
   if (!isNonEmptyString(body.primaryContactName)) issues.push("Primary contact name is required");
   if (!isEmail(body.primaryContactEmail)) issues.push("A valid primary contact email is required");
+  if (body.institutionType && !["college", "school"].includes(body.institutionType)) issues.push("Institution type must be college or school");
+  if (body.educationLevel && !["k10", "k12", "higher_ed"].includes(body.educationLevel)) issues.push("Education level must be k10, k12, or higher_ed");
 
   return issues;
 }
@@ -49,12 +54,22 @@ function issueInviteToken(user) {
   };
 }
 
+function buildDefaultTenantConfig({ name, subdomain }) {
+  return buildTenantPersistenceConfig({
+    name,
+    subdomain,
+    dataIsolationMode: process.env.DEFAULT_TENANT_ISOLATION_MODE || "shared"
+  });
+}
+
 router.post("/request", validateBody(validateInstituteRequestBody), async (req, res, next) => {
   try {
     const {
       name,
       subdomain,
       domain,
+      institutionType,
+      educationLevel,
       primaryContactName,
       primaryContactEmail,
       primaryContactPhone
@@ -69,6 +84,9 @@ router.post("/request", validateBody(validateInstituteRequestBody), async (req, 
     const normalizedSubdomain = subdomain.trim().toLowerCase();
     const normalizedDomain = domain?.trim().toLowerCase();
     const normalizedEmail = primaryContactEmail.trim().toLowerCase();
+    const normalizedInstitutionType = institutionType === "school" ? "school" : "college";
+    const normalizedEducationLevel =
+      educationLevel || (normalizedInstitutionType === "school" ? "k10" : "higher_ed");
 
     const [existingInstitute, existingUser] = await Promise.all([
       Institute.findOne({
@@ -96,12 +114,25 @@ router.post("/request", validateBody(validateInstituteRequestBody), async (req, 
       name: name.trim(),
       subdomain: normalizedSubdomain,
       domain: normalizedDomain,
+      institutionType: normalizedInstitutionType,
+      educationLevel: normalizedEducationLevel,
+      communityLabels: getDefaultCommunityLabels(normalizedInstitutionType),
+      featureFlags: getDefaultFeatureFlags(normalizedInstitutionType),
+      dataIsolationMode: process.env.DEFAULT_TENANT_ISOLATION_MODE || "shared",
+      tenantDatabaseName: buildDefaultTenantConfig({
+        name: name.trim(),
+        subdomain: normalizedSubdomain
+      }).databaseName,
       primaryContactName: primaryContactName.trim(),
       primaryContactEmail: normalizedEmail,
       primaryContactPhone: primaryContactPhone?.trim() || ""
     });
 
-    const instituteAdmin = await User.create({
+    const tenantContext = {};
+    await attachTenantDatabaseContext(tenantContext, institute);
+    const TenantUser = getTenantModels(tenantContext).User;
+
+    const instituteAdmin = await TenantUser.create({
       instituteId: institute._id,
       name: primaryContactName.trim(),
       email: normalizedEmail,
@@ -126,6 +157,17 @@ router.post("/request", validateBody(validateInstituteRequestBody), async (req, 
 
     res.status(201).json({
       institute,
+      tenantProvisioning: {
+        isolationMode: institute.dataIsolationMode,
+        databaseName: institute.tenantDatabaseName,
+        databaseUriConfigured: Boolean(institute.tenantDatabaseUri)
+      },
+      tenantConfig: {
+        institutionType: institute.institutionType,
+        educationLevel: institute.educationLevel,
+        communityLabels: institute.communityLabels,
+        featureFlags: institute.featureFlags
+      },
       onboarding: {
         contactEmail: normalizedEmail,
         status: "pending_approval",
@@ -147,45 +189,15 @@ router.post("/request", validateBody(validateInstituteRequestBody), async (req, 
 router.get("/", protect, authorize("super_admin"), async (_req, res, next) => {
   try {
     const institutes = await Institute.find().sort({ createdAt: -1 });
-
-    const instituteIds = institutes.map((institute) => institute._id);
-
-    const [profileCounts, activeAlumniCounts, adminCounts] = await Promise.all([
-      AlumniProfile.aggregate([
-        { $match: { instituteId: { $in: instituteIds } } },
-        { $group: { _id: "$instituteId", count: { $sum: 1 } } }
-      ]),
-      User.aggregate([
-        {
-          $match: {
-            instituteId: { $in: instituteIds },
-            role: "alumni",
-            isActive: true
-          }
-        },
-        { $group: { _id: "$instituteId", count: { $sum: 1 } } }
-      ]),
-      User.aggregate([
-        {
-          $match: {
-            instituteId: { $in: instituteIds },
-            role: "institute_admin"
-          }
-        },
-        { $group: { _id: "$instituteId", count: { $sum: 1 } } }
-      ])
-    ]);
-
-    const profileCountMap = new Map(profileCounts.map((item) => [item._id.toString(), item.count]));
-    const activeAlumniCountMap = new Map(activeAlumniCounts.map((item) => [item._id.toString(), item.count]));
-    const adminCountMap = new Map(adminCounts.map((item) => [item._id.toString(), item.count]));
+    const summaries = await getPlatformTenantSummaries(institutes, { includeAdmins: true });
+    const summaryMap = new Map(summaries.map((item) => [item.institute._id.toString(), item.summary]));
 
     res.json(
       institutes.map((institute) => ({
         ...institute.toObject(),
-        memberCount: profileCountMap.get(institute._id.toString()) || 0,
-        activeUsers: activeAlumniCountMap.get(institute._id.toString()) || 0,
-        adminCount: adminCountMap.get(institute._id.toString()) || 0
+        memberCount: summaryMap.get(institute._id.toString())?.metrics.alumniProfilesCount || 0,
+        activeUsers: summaryMap.get(institute._id.toString())?.metrics.activeAlumniUsersCount || 0,
+        adminCount: summaryMap.get(institute._id.toString())?.metrics.adminsCount || 0
       }))
     );
   } catch (error) {
@@ -211,10 +223,23 @@ router.patch(
     institute.status = "active";
     institute.subscriptionStatus = "active";
     institute.subscriptionPlan = req.body.subscriptionPlan || institute.subscriptionPlan;
+    institute.dataIsolationMode =
+      req.body.dataIsolationMode || institute.dataIsolationMode || process.env.DEFAULT_TENANT_ISOLATION_MODE || "shared";
+
+    if (!institute.tenantDatabaseName) {
+      institute.tenantDatabaseName = buildDefaultTenantConfig({
+        name: institute.name,
+        subdomain: institute.subdomain
+      }).databaseName;
+    }
 
     await institute.save();
 
-    await User.updateMany(
+    const tenantContext = {};
+    await attachTenantDatabaseContext(tenantContext, institute);
+    const TenantUser = getTenantModels(tenantContext).User;
+
+    await TenantUser.updateMany(
       {
         instituteId: institute._id,
         role: "institute_admin",
@@ -268,7 +293,11 @@ router.patch(
 
     await institute.save();
 
-    await User.updateMany(
+    const tenantContext = {};
+    await attachTenantDatabaseContext(tenantContext, institute);
+    const TenantUser = getTenantModels(tenantContext).User;
+
+    await TenantUser.updateMany(
       {
         instituteId: institute._id,
         role: { $in: ["institute_admin", "alumni"] }

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PortalPageHeader, PortalSearchField, PortalSegmentedTabs } from "../components/PortalPrimitives.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useTenantContext } from "../hooks/useTenantContext.js";
 import {
   approveAlumniRegistration,
   copyAlumniInviteLink,
@@ -19,6 +20,12 @@ const initialInviteForm = {
   email: "",
   batch: "",
   department: "",
+  leavingYear: "",
+  lastClassAttended: "",
+  section: "",
+  currentEducation: "",
+  currentInstitution: "",
+  occupation: "",
   company: "",
   designation: "",
   location: ""
@@ -28,12 +35,46 @@ const initialFilters = {
   q: "",
   batch: "",
   department: "",
+  leavingYear: "",
+  lastClassAttended: "",
+  section: "",
   company: "",
   skill: ""
 };
 
+function getDirectoryConfig(tenant) {
+  const isSchool = tenant.institutionType === "school";
+
+  return {
+    isSchool,
+    memberPlural: tenant.communityLabels.memberPlural || "Alumni",
+    memberSingular: tenant.communityLabels.memberSingular || "Member",
+    adminLabel: tenant.communityLabels.adminLabel || "Institute Admin",
+    educationFieldLabel: isSchool ? "Last Class Attended" : "Course",
+    yearFieldLabel: isSchool ? "Leaving Year" : "Batch Year",
+    yearShortLabel: isSchool ? "Leaving Year" : "Batch",
+    featuredSecondaryLabel: isSchool ? "Current Path" : "Major",
+    roleFallback: isSchool ? "Community Member" : "Alumni Member",
+    inviteTitle: isSchool ? "Invite Former Student" : "Invite Alumni",
+    inviteButtonLabel: isSchool ? "+ Add Former Student" : "+ Add Alumni",
+    directoryTitle: isSchool ? "Former Students Directory" : "Alumni Directory",
+    directorySubtitle: isSchool ? "Community Search" : "Networking Search",
+    filterPlaceholder: isSchool
+      ? "Filter by name, email, current institution or location..."
+      : "Filter by name, email or company...",
+    publicSearchPlaceholder: isSchool
+      ? "Search name, current institution, location..."
+      : "Search name, company, skill...",
+    approvalTitle: isSchool ? "Approve Registrations" : "Approve Registrations",
+    approvalDescription: isSchool
+      ? "Verify and approve former students joining your school community."
+      : "Verify and approve new alumni joining your institution's network."
+  };
+}
+
 function TenantAlumniPage() {
   const auth = useAuth();
+  const tenant = useTenantContext();
   const queryClient = useQueryClient();
   const [inviteForm, setInviteForm] = useState(initialInviteForm);
   const [filters, setFilters] = useState(initialFilters);
@@ -109,10 +150,19 @@ function TenantAlumniPage() {
     }
   });
 
-  const featuredAlumni = data[0];
-  const totalConnections = data.length;
-  const alumniCards = useMemo(() => data.slice(featuredAlumni ? 1 : 0), [data, featuredAlumni]);
   const isAdmin = auth.user?.role === "institute_admin";
+  const directoryConfig = getDirectoryConfig(tenant);
+  const isSchool = directoryConfig.isSchool;
+  const directoryEntries = useMemo(
+    () => (isAdmin ? data : data.filter((item) => item.userId !== auth.user?.id)),
+    [auth.user?.id, data, isAdmin]
+  );
+  const featuredAlumni = !isAdmin && directoryEntries.length > 1 ? directoryEntries[0] : null;
+  const totalConnections = directoryEntries.length;
+  const alumniCards = useMemo(
+    () => (featuredAlumni ? directoryEntries.slice(1) : directoryEntries),
+    [directoryEntries, featuredAlumni]
+  );
   const pendingApprovals = useMemo(
     () => data.filter((item) => (item.registrationReviewStatus || "pending") === "pending"),
     [data]
@@ -121,11 +171,16 @@ function TenantAlumniPage() {
     () =>
       Boolean(inviteForm.name.trim()) &&
       Boolean(inviteForm.email.trim()) &&
-      Boolean(inviteForm.department.trim()) &&
-      Number.isInteger(Number(inviteForm.batch)) &&
-      Number(inviteForm.batch) >= 1900 &&
-      Number(inviteForm.batch) <= 2100,
-    [inviteForm]
+      (isSchool
+        ? Boolean(inviteForm.lastClassAttended.trim()) &&
+          /^\d{4}$/.test(inviteForm.leavingYear) &&
+          Number(inviteForm.leavingYear) >= 1900 &&
+          Number(inviteForm.leavingYear) <= 2100
+        : Boolean(inviteForm.department.trim()) &&
+          /^\d{4}$/.test(inviteForm.batch) &&
+          Number(inviteForm.batch) >= 1900 &&
+          Number(inviteForm.batch) <= 2100),
+    [inviteForm, isSchool]
   );
 
   function handleInviteChange(event) {
@@ -157,13 +212,28 @@ function TenantAlumniPage() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteForm.email.trim())) {
       errors.email = "Enter a valid email address";
     }
-    if (!inviteForm.batch) {
-      errors.batch = "Batch year is required";
-    } else if (!/^\d{4}$/.test(inviteForm.batch) || inviteForm.batch < 1900 || inviteForm.batch > 2100) {
-      errors.batch = "Enter a year between 1900 and 2100";
-    }
-    if (!inviteForm.department.trim()) {
-      errors.department = "Department is required";
+    if (isSchool) {
+      if (!inviteForm.leavingYear) {
+        errors.leavingYear = "Leaving year is required";
+      } else if (
+        !/^\d{4}$/.test(inviteForm.leavingYear) ||
+        inviteForm.leavingYear < 1900 ||
+        inviteForm.leavingYear > 2100
+      ) {
+        errors.leavingYear = "Enter a year between 1900 and 2100";
+      }
+      if (!inviteForm.lastClassAttended.trim()) {
+        errors.lastClassAttended = "Last class attended is required";
+      }
+    } else {
+      if (!inviteForm.batch) {
+        errors.batch = "Batch year is required";
+      } else if (!/^\d{4}$/.test(inviteForm.batch) || inviteForm.batch < 1900 || inviteForm.batch > 2100) {
+        errors.batch = "Enter a year between 1900 and 2100";
+      }
+      if (!inviteForm.department.trim()) {
+        errors.department = "Department is required";
+      }
     }
     return errors;
   }
@@ -199,10 +269,10 @@ function TenantAlumniPage() {
     const columns = [
       "Name",
       "Email",
-      "Batch",
-      "Department",
-      "Company",
-      "Designation",
+      isSchool ? "Leaving Year" : "Batch",
+      isSchool ? "Last Class Attended" : "Department",
+      isSchool ? "Current Institution" : "Company",
+      isSchool ? "Occupation" : "Designation",
       "Location",
       "Invitation Status"
     ];
@@ -210,10 +280,10 @@ function TenantAlumniPage() {
     const rows = data.map((alumni) => [
       alumni.name,
       alumni.email,
-      alumni.batch,
-      alumni.department,
-      alumni.company,
-      alumni.designation,
+      isSchool ? alumni.leavingYear : alumni.batch,
+      isSchool ? alumni.lastClassAttended : alumni.department,
+      isSchool ? alumni.currentInstitution : alumni.company,
+      isSchool ? alumni.occupation : alumni.designation,
       alumni.location,
       alumni.invitationStatus || "active"
     ]);
@@ -225,7 +295,7 @@ function TenantAlumniPage() {
     const link = document.createElement("a");
 
     link.href = downloadUrl;
-    link.setAttribute("download", `alumni-export-${timestamp}.csv`);
+    link.setAttribute("download", `${directoryConfig.memberPlural.toLowerCase().replace(/\s+/g, "-")}-export-${timestamp}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -254,13 +324,17 @@ function TenantAlumniPage() {
                 }}
                 type="button"
               >
-                + Add Alumni
+                {directoryConfig.inviteButtonLabel}
               </button>
             </div>
           }
           className="admin-alumni-header"
-          subtitle="View, filter, and moderate the university&apos;s registered alumni base, including pending approvals."
-          title="Manage Alumni"
+          subtitle={
+            isSchool
+              ? "View, filter, and moderate the school's former student community, including pending approvals."
+              : "View, filter, and moderate the university's registered alumni base, including pending approvals."
+          }
+          title={`Manage ${directoryConfig.memberPlural}`}
         />
 
         <PortalSegmentedTabs
@@ -268,10 +342,10 @@ function TenantAlumniPage() {
           ariaLabel="Alumni management sections"
           className="admin-alumni-tabs"
           items={[
-            { value: "manage", label: "Alumni Directory" },
+            { value: "manage", label: directoryConfig.directoryTitle },
             {
               value: "approvals",
-              label: "Approve Registrations",
+              label: directoryConfig.approvalTitle,
               badge: pendingApprovals.length || null
             }
           ]}
@@ -286,22 +360,30 @@ function TenantAlumniPage() {
                 icon="F"
                 name="q"
                 onChange={handleFilterChange}
-                placeholder="Filter by name, email or company..."
+                placeholder={directoryConfig.filterPlaceholder}
                 value={filters.q}
               />
 
-              <select name="batch" onChange={handleFilterChange} value={filters.batch}>
-                <option value="">Batch Year: All</option>
-                {[...new Set(data.map((item) => item.batch).filter(Boolean))].map((option) => (
+              <select
+                name={isSchool ? "leavingYear" : "batch"}
+                onChange={handleFilterChange}
+                value={isSchool ? filters.leavingYear : filters.batch}
+              >
+                <option value="">{directoryConfig.yearFieldLabel}: All</option>
+                {[...new Set(data.map((item) => (isSchool ? item.leavingYear : item.batch)).filter(Boolean))].map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
               </select>
 
-              <select name="department" onChange={handleFilterChange} value={filters.department}>
-                <option value="">Course: All</option>
-                {[...new Set(data.map((item) => item.department).filter(Boolean))].map((option) => (
+              <select
+                name={isSchool ? "lastClassAttended" : "department"}
+                onChange={handleFilterChange}
+                value={isSchool ? filters.lastClassAttended : filters.department}
+              >
+                <option value="">{directoryConfig.educationFieldLabel}: All</option>
+                {[...new Set(data.map((item) => (isSchool ? item.lastClassAttended : item.department)).filter(Boolean))].map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
@@ -314,8 +396,10 @@ function TenantAlumniPage() {
             </section>
 
             {showInvitePanel(isInvitePanelOpen, inviteMutation, inviteForm) ? (
-              <SectionCard title="Invite Alumni" subtitle="Institute Admin">
-                <p className="muted">Create a secure onboarding link so alumni can set their own password.</p>
+              <SectionCard title={directoryConfig.inviteTitle} subtitle={directoryConfig.adminLabel}>
+                <p className="muted">
+                  Create a secure onboarding link so {directoryConfig.memberPlural.toLowerCase()} can set their own password.
+                </p>
 
                 <form className="form-grid two-column" onSubmit={handleInviteSubmit}>
                   <div>
@@ -333,41 +417,95 @@ function TenantAlumniPage() {
                     />
                     {inviteFormErrors.email ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.email}</p> : null}
                   </div>
-                  <div>
-                    <input
-                      name="batch"
-                      max="2100"
-                      min="1900"
-                      onChange={handleInviteChange}
-                      placeholder="Batch year (1900-2100)"
-                      required
-                      type="number"
-                      value={inviteForm.batch}
-                    />
-                    {inviteFormErrors.batch ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.batch}</p> : null}
-                  </div>
-                  <div>
-                    <input
-                      name="department"
-                      onChange={handleInviteChange}
-                      placeholder="Department"
-                      required
-                      value={inviteForm.department}
-                    />
-                    {inviteFormErrors.department ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.department}</p> : null}
-                  </div>
-                  <input
-                    name="company"
-                    onChange={handleInviteChange}
-                    placeholder="Company"
-                    value={inviteForm.company}
-                  />
-                  <input
-                    name="designation"
-                    onChange={handleInviteChange}
-                    placeholder="Designation"
-                    value={inviteForm.designation}
-                  />
+                  {isSchool ? (
+                    <>
+                      <div>
+                        <input
+                          name="leavingYear"
+                          max="2100"
+                          min="1900"
+                          onChange={handleInviteChange}
+                          placeholder="Leaving year (1900-2100)"
+                          required
+                          type="number"
+                          value={inviteForm.leavingYear}
+                        />
+                        {inviteFormErrors.leavingYear ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.leavingYear}</p> : null}
+                      </div>
+                      <div>
+                        <input
+                          name="lastClassAttended"
+                          onChange={handleInviteChange}
+                          placeholder="Last class attended"
+                          required
+                          value={inviteForm.lastClassAttended}
+                        />
+                        {inviteFormErrors.lastClassAttended ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.lastClassAttended}</p> : null}
+                      </div>
+                      <input
+                        name="section"
+                        onChange={handleInviteChange}
+                        placeholder="Section / House"
+                        value={inviteForm.section}
+                      />
+                      <input
+                        name="currentEducation"
+                        onChange={handleInviteChange}
+                        placeholder="Current education"
+                        value={inviteForm.currentEducation}
+                      />
+                      <input
+                        name="currentInstitution"
+                        onChange={handleInviteChange}
+                        placeholder="Current institution"
+                        value={inviteForm.currentInstitution}
+                      />
+                      <input
+                        name="occupation"
+                        onChange={handleInviteChange}
+                        placeholder="Occupation"
+                        value={inviteForm.occupation}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <input
+                          name="batch"
+                          max="2100"
+                          min="1900"
+                          onChange={handleInviteChange}
+                          placeholder="Batch year (1900-2100)"
+                          required
+                          type="number"
+                          value={inviteForm.batch}
+                        />
+                        {inviteFormErrors.batch ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.batch}</p> : null}
+                      </div>
+                      <div>
+                        <input
+                          name="department"
+                          onChange={handleInviteChange}
+                          placeholder="Department"
+                          required
+                          value={inviteForm.department}
+                        />
+                        {inviteFormErrors.department ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.department}</p> : null}
+                      </div>
+                      <input
+                        name="company"
+                        onChange={handleInviteChange}
+                        placeholder="Company"
+                        value={inviteForm.company}
+                      />
+                      <input
+                        name="designation"
+                        onChange={handleInviteChange}
+                        placeholder="Designation"
+                        value={inviteForm.designation}
+                      />
+                    </>
+                  )}
                   <input
                     name="location"
                     onChange={handleInviteChange}
@@ -401,15 +539,17 @@ function TenantAlumniPage() {
             <section className="admin-alumni-table-card">
               <div className="admin-alumni-table-head">
                 <span>Name & Contact</span>
-                <span>Batch Year</span>
-                <span>Course</span>
-                <span>Company</span>
+                <span>{directoryConfig.yearFieldLabel}</span>
+                <span>{directoryConfig.educationFieldLabel}</span>
+                <span>{isSchool ? "Current Path" : "Company"}</span>
                 <span>Actions</span>
               </div>
 
               {isLoading ? <p>Loading alumni...</p> : null}
               {isError ? <p className="error-text">{error.message}</p> : null}
-              {!isLoading && !data.length ? <p className="muted">No alumni profiles match these filters yet.</p> : null}
+              {!isLoading && !data.length ? (
+                <p className="muted">No {directoryConfig.memberPlural.toLowerCase()} match these filters yet.</p>
+              ) : null}
 
               <div className="admin-alumni-table-body">
                 {data.map((alumni) => (
@@ -422,9 +562,15 @@ function TenantAlumniPage() {
                       </div>
                     </div>
 
-                    <span>{alumni.batch}</span>
-                    <span className="admin-alumni-course">{alumni.department}</span>
-                    <span>{alumni.company || "Independent"}</span>
+                    <span>{isSchool ? alumni.leavingYear || "-" : alumni.batch}</span>
+                    <span className="admin-alumni-course">
+                      {isSchool ? alumni.lastClassAttended || "-" : alumni.department}
+                    </span>
+                    <span>
+                      {isSchool
+                        ? alumni.currentEducation || alumni.currentInstitution || alumni.occupation || "Community member"
+                        : alumni.company || "Independent"}
+                    </span>
 
                     <div className="admin-alumni-actions">
                       {alumni.invitationStatus !== "active" ? (
@@ -471,7 +617,8 @@ function TenantAlumniPage() {
 
               <div className="admin-alumni-table-footer">
                 <p>
-                  Showing 1 to {Math.min(data.length, 4)} of <strong>{data.length}</strong> alumni
+                  Showing 1 to {Math.min(data.length, 4)} of <strong>{data.length}</strong>{" "}
+                  {directoryConfig.memberPlural.toLowerCase()}
                 </p>
                 <div className="admin-alumni-pagination">
                   <button disabled type="button">{"<"}</button>
@@ -552,18 +699,26 @@ function TenantAlumniPage() {
                 />
               </label>
 
-              <select name="batch" onChange={handleFilterChange} value={filters.batch}>
-                <option value="">Batch Year</option>
-                {[...new Set(pendingApprovals.map((item) => item.batch).filter(Boolean))].map((option) => (
+              <select
+                name={isSchool ? "leavingYear" : "batch"}
+                onChange={handleFilterChange}
+                value={isSchool ? filters.leavingYear : filters.batch}
+              >
+                <option value="">{directoryConfig.yearFieldLabel}</option>
+                {[...new Set(pendingApprovals.map((item) => (isSchool ? item.leavingYear : item.batch)).filter(Boolean))].map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
               </select>
 
-              <select name="department" onChange={handleFilterChange} value={filters.department}>
-                <option value="">Course</option>
-                {[...new Set(pendingApprovals.map((item) => item.department).filter(Boolean))].map((option) => (
+              <select
+                name={isSchool ? "lastClassAttended" : "department"}
+                onChange={handleFilterChange}
+                value={isSchool ? filters.lastClassAttended : filters.department}
+              >
+                <option value="">{directoryConfig.educationFieldLabel}</option>
+                {[...new Set(pendingApprovals.map((item) => (isSchool ? item.lastClassAttended : item.department)).filter(Boolean))].map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
@@ -577,7 +732,7 @@ function TenantAlumniPage() {
 
             <section className="admin-approvals-table-card">
               <div className="admin-approvals-table-head">
-                <span>Alumni Details</span>
+                <span>{directoryConfig.memberSingular} Details</span>
                 <span>Education</span>
                 <span>Verification</span>
                 <span>Actions</span>
@@ -607,16 +762,30 @@ function TenantAlumniPage() {
                     </div>
 
                     <div className="admin-approvals-education">
-                      <strong>{alumni.department}</strong>
-                      <p>Batch of {alumni.batch}</p>
+                      <strong>{isSchool ? alumni.lastClassAttended || "-" : alumni.department}</strong>
+                      <p>
+                        {isSchool
+                          ? `Leaving year ${alumni.leavingYear || "-"}`
+                          : `Batch of ${alumni.batch}`}
+                      </p>
                     </div>
 
                     <div className="admin-approvals-verification">
                       <button className="admin-approvals-link" type="button">
-                        LinkedIn Profile
+                        {isSchool ? "Student Record" : "LinkedIn Profile"}
                       </button>
                       <span className="admin-approvals-doc">
-                        {index === 0 ? "ID Card.pdf" : index === 1 ? "Degree.pdf" : "Provisional.pdf"}
+                        {isSchool
+                          ? index === 0
+                            ? "School Record.pdf"
+                            : index === 1
+                              ? "Transfer Certificate.pdf"
+                              : "Guardian Note.pdf"
+                          : index === 0
+                            ? "ID Card.pdf"
+                            : index === 1
+                              ? "Degree.pdf"
+                              : "Provisional.pdf"}
                       </span>
                     </div>
 
@@ -693,19 +862,29 @@ function TenantAlumniPage() {
             <article className="alumni-profile-card directory-featured-card">
               <div className="alumni-profile-avatar" />
               <h2>{featuredAlumni.name}</h2>
-              <p className="alumni-profile-role">{featuredAlumni.designation || "Software Engineer"}</p>
+              <p className="alumni-profile-role">
+                {isSchool
+                  ? featuredAlumni.currentEducation || featuredAlumni.occupation || "Community Member"
+                  : featuredAlumni.designation || "Software Engineer"}
+              </p>
               <p className="alumni-profile-meta">
-                {featuredAlumni.company || "Open Systems Labs"} | {featuredAlumni.location || "Mumbai"}
+                {isSchool
+                  ? `${featuredAlumni.currentInstitution || featuredAlumni.lastClassAttended || "Former Student"} | ${featuredAlumni.location || "Mumbai"}`
+                  : `${featuredAlumni.company || "Open Systems Labs"} | ${featuredAlumni.location || "Mumbai"}`}
               </p>
               <div className="alumni-profile-divider" />
               <div className="alumni-profile-stats">
                 <div>
-                  <span>Batch</span>
-                  <strong>{featuredAlumni.batch}</strong>
+                  <span>{directoryConfig.yearShortLabel}</span>
+                  <strong>{isSchool ? featuredAlumni.leavingYear || "-" : featuredAlumni.batch}</strong>
                 </div>
                 <div>
-                  <span>Major</span>
-                  <strong>{featuredAlumni.department}</strong>
+                  <span>{directoryConfig.featuredSecondaryLabel}</span>
+                  <strong>
+                    {isSchool
+                      ? featuredAlumni.lastClassAttended || featuredAlumni.section || "-"
+                      : featuredAlumni.department}
+                  </strong>
                 </div>
               </div>
             </article>
@@ -722,23 +901,35 @@ function TenantAlumniPage() {
         </div>
       </section>
 
-      <SectionCard title="Alumni Directory" subtitle="Networking Search">
+      <SectionCard title={directoryConfig.directoryTitle} subtitle={directoryConfig.directorySubtitle}>
         <div className="filter-grid">
           <input
             name="q"
             onChange={handleFilterChange}
-            placeholder="Search name, company, skill..."
+            placeholder={directoryConfig.publicSearchPlaceholder}
             value={filters.q}
           />
-          <input name="batch" onChange={handleFilterChange} placeholder="Batch year" value={filters.batch} />
           <input
-            name="department"
+            name={isSchool ? "leavingYear" : "batch"}
             onChange={handleFilterChange}
-            placeholder="Department"
-            value={filters.department}
+            placeholder={directoryConfig.yearFieldLabel}
+            value={isSchool ? filters.leavingYear : filters.batch}
           />
-          <input name="company" onChange={handleFilterChange} placeholder="Company" value={filters.company} />
-          <input name="skill" onChange={handleFilterChange} placeholder="Skill" value={filters.skill} />
+          <input
+            name={isSchool ? "lastClassAttended" : "department"}
+            onChange={handleFilterChange}
+            placeholder={directoryConfig.educationFieldLabel}
+            value={isSchool ? filters.lastClassAttended : filters.department}
+          />
+          <input
+            name={isSchool ? "section" : "company"}
+            onChange={handleFilterChange}
+            placeholder={isSchool ? "Section / House" : "Company"}
+            value={isSchool ? filters.section : filters.company}
+          />
+          {!isSchool ? (
+            <input name="skill" onChange={handleFilterChange} placeholder="Skill" value={filters.skill} />
+          ) : null}
           <button className="button secondary" onClick={clearFilters} type="button">
             Clear Filters
           </button>
@@ -748,7 +939,7 @@ function TenantAlumniPage() {
         {isError ? <p className="error-text">{error.message}</p> : null}
 
         {!isLoading && !data.length ? (
-          <p className="muted">No alumni profiles match these filters yet.</p>
+          <p className="muted">No {directoryConfig.memberPlural.toLowerCase()} match these filters yet.</p>
         ) : null}
 
         <div className="directory-card-grid">
@@ -759,18 +950,28 @@ function TenantAlumniPage() {
                 <div>
                   <h4>{alumni.name}</h4>
                   <p className="muted">
-                    {alumni.designation || "Alumni Member"}
-                    {alumni.company ? ` | ${alumni.company}` : ""}
+                    {isSchool
+                      ? alumni.currentEducation || alumni.occupation || directoryConfig.roleFallback
+                      : alumni.designation || directoryConfig.roleFallback}
+                    {isSchool
+                      ? alumni.currentInstitution
+                        ? ` | ${alumni.currentInstitution}`
+                        : ""
+                      : alumni.company
+                        ? ` | ${alumni.company}`
+                        : ""}
                   </p>
                 </div>
               </div>
 
               <p className="muted">
-                Batch {alumni.batch} | {alumni.department}
+                {isSchool
+                  ? `${directoryConfig.yearShortLabel} ${alumni.leavingYear || "-"} | ${alumni.lastClassAttended || "-"}`
+                  : `Batch ${alumni.batch} | ${alumni.department}`}
                 {alumni.location ? ` | ${alumni.location}` : ""}
               </p>
 
-              {alumni.skills?.length ? (
+              {!isSchool && alumni.skills?.length ? (
                 <p className="muted">Skills: {alumni.skills.join(", ")}</p>
               ) : null}
 

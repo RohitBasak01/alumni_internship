@@ -12,7 +12,9 @@ const initialForm = {
   description: "",
   location: "",
   industry: "",
-  status: "published"
+  requestedDeadline: "",
+  applicationDeadline: "",
+  status: "pending_approval"
 };
 
 const initialFilters = {
@@ -32,6 +34,20 @@ function formatRelativeTime(value) {
 
   const days = Math.round(hours / 24);
   return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "Not set";
+  }
+
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 function JobsPage() {
@@ -121,7 +137,26 @@ function JobsPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    saveMutation.mutate({ id: editingId, payload: form });
+    const payload = {
+      title: form.title,
+      company: form.company,
+      description: form.description,
+      location: form.location,
+      industry: form.industry
+    };
+
+    if (form.requestedDeadline) {
+      payload.requestedDeadline = form.requestedDeadline;
+    }
+
+    if (isAdmin) {
+      payload.status = form.status;
+      if (form.applicationDeadline) {
+        payload.applicationDeadline = form.applicationDeadline;
+      }
+    }
+
+    saveMutation.mutate({ id: editingId, payload });
   }
 
   function handleEdit(item) {
@@ -133,7 +168,16 @@ function JobsPage() {
       description: item.description || "",
       location: item.location || item.locationLabel || "",
       industry: item.industry || item.industryLabel || "",
-      status: item.status || "published"
+      requestedDeadline: item.requestedDeadline ? new Date(item.requestedDeadline).toISOString().slice(0, 16) : "",
+      applicationDeadline: item.applicationDeadline ? new Date(item.applicationDeadline).toISOString().slice(0, 16) : "",
+      status:
+        item.adminStatus === "Approved"
+          ? "published"
+          : item.adminStatus === "Rejected"
+            ? "rejected"
+            : item.adminStatus === "Expired"
+              ? "expired"
+              : "pending_approval"
     });
   }
 
@@ -188,7 +232,7 @@ function JobsPage() {
               onClick={() => setShowComposer((current) => !current)}
               type="button"
             >
-              {showComposer ? "Close Composer" : "+ Post New Job"}
+              {showComposer ? "Close Composer" : "+ Review Queue"}
             </button>
           }
           className="admin-jobs-header"
@@ -224,7 +268,7 @@ function JobsPage() {
         </PortalMetricGrid>
 
         {showComposer ? (
-          <SectionCard title={editingId ? "Edit Job" : "Post a New Job"} subtitle="Institute Admin">
+          <SectionCard title="Review Job Posting" subtitle="Institute Admin">
             <form className="form-grid" onSubmit={handleSubmit}>
               <input name="title" onChange={handleChange} placeholder="Job title" value={form.title} />
               <input name="company" onChange={handleChange} placeholder="Company" value={form.company} />
@@ -238,14 +282,27 @@ function JobsPage() {
                 rows="5"
                 value={form.description}
               />
+              <input
+                name="requestedDeadline"
+                onChange={handleChange}
+                type="datetime-local"
+                value={form.requestedDeadline}
+              />
+              <input
+                name="applicationDeadline"
+                onChange={handleChange}
+                type="datetime-local"
+                value={form.applicationDeadline}
+              />
               <select className="select" name="status" onChange={handleChange} value={form.status}>
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-                <option value="closed">Closed</option>
+                <option value="pending_approval">Pending Review</option>
+                <option value="published">Approve</option>
+                <option value="rejected">Reject</option>
+                <option value="expired">Expire</option>
               </select>
               <div className="inline-actions">
                 <button className="button primary" disabled={saveMutation.isPending} type="submit">
-                  {saveMutation.isPending ? "Saving..." : editingId ? "Update Job" : "Publish Job"}
+                  {saveMutation.isPending ? "Saving..." : "Save Review"}
                 </button>
                 <button className="button secondary" onClick={handleCancel} type="button">
                   Cancel
@@ -331,7 +388,11 @@ function JobsPage() {
                       <button className="admin-jobs-icon approve" onClick={() => handleEdit(item)} type="button">
                         AP
                       </button>
-                      <button className="admin-jobs-icon reject" onClick={() => deleteMutation.mutate(item._id)} type="button">
+                      <button
+                        className="admin-jobs-icon reject"
+                        onClick={() => saveMutation.mutate({ id: item._id, payload: { status: "rejected" } })}
+                        type="button"
+                      >
                         RJ
                       </button>
                     </>
@@ -380,7 +441,7 @@ function JobsPage() {
       <header className="jobs-board-header">
         <div>
           <h1>Jobs Board</h1>
-          <p>Find your next opportunity or hire from our alumni network.</p>
+          <p>Find your next opportunity or submit a job for institute admin approval.</p>
         </div>
         {auth.user ? (
           <button
@@ -394,7 +455,7 @@ function JobsPage() {
       </header>
 
       {showComposer ? (
-        <SectionCard title={editingId ? "Edit Job" : "Post a New Job"} subtitle={isAdmin ? "Institute Admin" : "Post Opportunity"}>
+        <SectionCard title={editingId ? "Edit Job" : "Post a New Job"} subtitle={isAdmin ? "Institute Admin" : "Submit for Review"}>
           <form className="form-grid" onSubmit={handleSubmit}>
             <input name="title" onChange={handleChange} placeholder="Job title" value={form.title} />
             <input name="company" onChange={handleChange} placeholder="Company" value={form.company} />
@@ -408,14 +469,15 @@ function JobsPage() {
               rows="5"
               value={form.description}
             />
-            <select className="select" name="status" onChange={handleChange} value={form.status}>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-              <option value="closed">Closed</option>
-            </select>
+            <input
+              name="requestedDeadline"
+              onChange={handleChange}
+              type="datetime-local"
+              value={form.requestedDeadline}
+            />
             <div className="inline-actions">
               <button className="button primary" disabled={saveMutation.isPending} type="submit">
-                {saveMutation.isPending ? "Saving..." : editingId ? "Update Job" : "Publish Job"}
+                {saveMutation.isPending ? "Saving..." : editingId ? "Update Submission" : "Submit for Approval"}
               </button>
               <button className="button secondary" onClick={handleCancel} type="button">
                 Cancel
@@ -491,7 +553,9 @@ function JobsPage() {
                   </div>
                 </div>
                 <span className={`jobs-board-badge ${item.jobType === "Internship" ? "internship" : ""}`}>
-                  {item.jobType}
+                  {item.adminStatus === "Pending" || item.adminStatus === "Rejected" || item.adminStatus === "Expired"
+                    ? item.adminStatus
+                    : item.jobType}
                 </span>
               </div>
 
@@ -500,6 +564,9 @@ function JobsPage() {
               <div className="jobs-board-footer">
                 <p>
                   Posted by <strong>{item.postedByLabel || "Institute Admin"}</strong>
+                </p>
+                <p>
+                  Deadline <strong>{formatDateTime(item.applicationDeadline || item.requestedDeadline)}</strong>
                 </p>
 
                 <div className="jobs-board-actions">
@@ -561,6 +628,14 @@ function JobsPage() {
                     <h4>Industry</h4>
                     <p>{selectedJob.industryLabel}</p>
                   </div>
+                  <div>
+                    <h4>Status</h4>
+                    <p>{selectedJob.adminStatus}</p>
+                  </div>
+                  <div>
+                    <h4>Deadline</h4>
+                    <p>{formatDateTime(selectedJob.applicationDeadline || selectedJob.requestedDeadline)}</p>
+                  </div>
                 </div>
                 <div className="job-detail-description">
                   <h4>Description</h4>
@@ -572,6 +647,18 @@ function JobsPage() {
                 {applicationSuccess ? (
                   <div className="application-success">
                     <p>✓ Your application has been submitted successfully!</p>
+                  </div>
+                ) : !selectedJob.canApply ? (
+                  <div className="application-success">
+                    <p>
+                      {selectedJob.adminStatus === "Pending"
+                        ? "This job is waiting for institute admin approval."
+                        : selectedJob.adminStatus === "Rejected"
+                          ? "This job posting was rejected by the institute admin."
+                          : selectedJob.adminStatus === "Expired"
+                            ? "This job posting has expired."
+                            : "You cannot apply to this job."}
+                    </p>
                   </div>
                 ) : (
                   <>

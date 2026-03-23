@@ -1,33 +1,35 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 
-import AlumniProfile from "../models/AlumniProfile.js";
-import Event from "../models/Event.js";
+import { attachTenantDatabaseContext, buildTenantPersistenceConfig, getTenantModels } from "../db/tenantConnectionManager.js";
 import Institute from "../models/Institute.js";
-import Job from "../models/Job.js";
 import User from "../models/User.js";
 import { hashPassword } from "../utils/auth.js";
 
 dotenv.config();
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/alumni-network";
+const CENTRAL_MONGODB_URI =
+  process.env.CENTRAL_MONGODB_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb://127.0.0.1:27017/alumni-network";
 
 async function seed() {
-  await mongoose.connect(MONGODB_URI);
+  await mongoose.connect(CENTRAL_MONGODB_URI);
 
-  await Promise.all([
-    AlumniProfile.deleteMany({}),
-    Event.deleteMany({}),
-    Job.deleteMany({}),
-    User.deleteMany({}),
-    Institute.deleteMany({})
-  ]);
+  await Promise.all([User.deleteMany({}), Institute.deleteMany({})]);
+
+  const tenantConfig = buildTenantPersistenceConfig({
+    name: "SPIT Demo Institute",
+    subdomain: "spit",
+    dataIsolationMode: process.env.DEFAULT_TENANT_ISOLATION_MODE || "shared"
+  });
 
   const institute = await Institute.create({
     name: "SPIT Demo Institute",
     subdomain: "spit",
     domain: "alumni.spit.ac.in",
+    dataIsolationMode: process.env.DEFAULT_TENANT_ISOLATION_MODE || "shared",
+    tenantDatabaseName: tenantConfig.databaseName,
     status: "active",
     subscriptionPlan: "pro",
     subscriptionStatus: "active",
@@ -63,7 +65,18 @@ async function seed() {
     passwordSetupCompleted: true
   });
 
-  const instituteAdmin = await User.create({
+  const tenantContext = {};
+  await attachTenantDatabaseContext(tenantContext, institute);
+  const { AlumniProfile, Event, Job, User: TenantUser } = getTenantModels(tenantContext);
+
+  await Promise.all([
+    TenantUser.deleteMany({ instituteId: institute._id }),
+    AlumniProfile.deleteMany({ instituteId: institute._id }),
+    Event.deleteMany({ instituteId: institute._id }),
+    Job.deleteMany({ instituteId: institute._id })
+  ]);
+
+  const instituteAdmin = await TenantUser.create({
     instituteId: institute._id,
     name: "SPIT Admin",
     email: "admin@spit.edu",
@@ -73,7 +86,7 @@ async function seed() {
     passwordSetupCompleted: true
   });
 
-  const alumniUser = await User.create({
+  const alumniUser = await TenantUser.create({
     instituteId: institute._id,
     name: "Aarav Shah",
     email: "aarav@spit.edu",

@@ -1,3 +1,5 @@
+import { useAuth } from "../context/AuthContext.jsx";
+
 function detectTenant() {
   const host = window.location.hostname.toLowerCase();
   const reservedHosts = new Set(["localhost", "127.0.0.1"]);
@@ -32,5 +34,51 @@ function detectTenant() {
 }
 
 export function useTenantContext() {
-  return detectTenant();
+  const auth = useAuth();
+  const detectedTenant = detectTenant();
+  const institute = auth.user?.institute;
+
+  if (!institute) {
+    return {
+      ...detectedTenant,
+      institutionType: "college",
+      educationLevel: "higher_ed",
+      communityLabels: {
+        memberPlural: "Alumni",
+        memberSingular: "Alumnus/Alumna",
+        adminLabel: "Institute Admin"
+      },
+      featureFlags: {
+        enableJobs: true,
+        enableMentorship: true,
+        enableDirectory: true,
+        enableEvents: true,
+        enableAnnouncements: true,
+        enableSocialLinks: true,
+        enableCareerFields: true
+      }
+    };
+  }
+
+  return {
+    ...detectedTenant,
+    displayName: institute.name || detectedTenant.displayName,
+    slug: institute.subdomain || detectedTenant.slug,
+    institutionType: institute.institutionType || "college",
+    educationLevel: institute.educationLevel || "higher_ed",
+    communityLabels: institute.communityLabels || {
+      memberPlural: "Alumni",
+      memberSingular: "Alumnus/Alumna",
+      adminLabel: "Institute Admin"
+    },
+    featureFlags: institute.featureFlags || {
+      enableJobs: true,
+      enableMentorship: true,
+      enableDirectory: true,
+      enableEvents: true,
+      enableAnnouncements: true,
+      enableSocialLinks: true,
+      enableCareerFields: true
+    }
+  };
 }

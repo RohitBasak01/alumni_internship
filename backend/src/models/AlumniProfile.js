@@ -15,12 +15,41 @@ const alumniProfileSchema = new mongoose.Schema(
     },
     batch: {
       type: Number,
-      required: true
+      default: null
     },
     department: {
       type: String,
-      required: true,
+      default: "",
       trim: true
+    },
+    leavingYear: {
+      type: Number,
+      default: null
+    },
+    lastClassAttended: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    section: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    currentEducation: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    currentInstitution: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    occupation: {
+      type: String,
+      trim: true,
+      default: ""
     },
     company: {
       type: String,
@@ -54,6 +83,19 @@ const alumniProfileSchema = new mongoose.Schema(
     twitterHandle: {
       type: String,
       trim: true
+    },
+    profileVisibility: {
+      type: String,
+      enum: ["public", "institute_only", "private"],
+      default: "institute_only"
+    },
+    showEmail: {
+      type: Boolean,
+      default: false
+    },
+    allowMentorRequests: {
+      type: Boolean,
+      default: true
     },
     registrationReviewStatus: {
       type: String,

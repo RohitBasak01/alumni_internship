@@ -1,13 +1,13 @@
 import express from "express";
 
+import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, requireTenantAccess } from "../middleware/auth.middleware.js";
-import AlumniProfile from "../models/AlumniProfile.js";
-import MentorshipRequest from "../models/MentorshipRequest.js";
 
 const router = express.Router();
 
 router.get("/summary", protect, requireTenantAccess, async (req, res, next) => {
   try {
+    const { AlumniProfile, MentorshipRequest } = getTenantModels(req);
     const instituteId = req.tenant._id;
 
     const [pendingMentorshipRequests, pendingAlumniInvites] = await Promise.all([

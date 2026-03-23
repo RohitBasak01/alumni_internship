@@ -27,6 +27,62 @@ function getInstitute(req) {
   return getStore(req).institutes[0];
 }
 
+function getMockPerson(req, userId) {
+  const store = getStore(req);
+  const user = store.users.find((item) => item._id === userId);
+  const profile = store.profiles.find((item) => item.userId === userId);
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    batch: profile?.batch,
+    department: profile?.department,
+    company: profile?.company,
+    designation: profile?.designation,
+    location: profile?.location
+  };
+}
+
+function formatMockConversation(req, conversation) {
+  if (conversation.conversationType === "group") {
+    return {
+      _id: conversation._id,
+      conversationType: "group",
+      groupName: conversation.groupName,
+      status: conversation.status,
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+      message: conversation.message || "",
+      messages: (conversation.messages || []).map((message) => ({
+        ...message,
+        sender: getMockPerson(req, message.senderId)
+      })),
+      members: (conversation.memberIds || []).map((memberId) => getMockPerson(req, memberId)).filter(Boolean),
+      admins: (conversation.adminIds || []).map((adminId) => getMockPerson(req, adminId)).filter(Boolean)
+    };
+  }
+
+  return {
+    _id: conversation._id,
+    conversationType: "direct",
+    message: conversation.message,
+    status: conversation.status,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+    messages: (conversation.messages || []).map((message) => ({
+      ...message,
+      sender: getMockPerson(req, message.senderId)
+    })),
+    requester: getMockPerson(req, conversation.requesterId),
+    mentor: getMockPerson(req, conversation.mentorId)
+  };
+}
+
 function getUserFromToken(req) {
   const authHeader = req.headers.authorization;
   const token =
@@ -357,7 +413,7 @@ router.patch("/admin/institutes/:id/subscription", requireMockAuth, requireRole(
 router.post("/admin/institutes/:id/resend-admin-invite", requireMockAuth, requireRole("super_admin"), (_req, res) => {
   res.json({
     invite: {
-      email: "admin@spit.ac.in",
+      email: "admin@spit.edu",
       inviteUrl: "http://localhost:5173/setup-password/mock",
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     },
@@ -440,7 +496,10 @@ router.get("/alumni/me", requireMockAuth, ensureTenant, (req, res) => {
     skills: profile.skills || [],
     linkedinUrl: profile.linkedinUrl || "",
     websiteUrl: profile.websiteUrl || "",
-    twitterHandle: profile.twitterHandle || ""
+    twitterHandle: profile.twitterHandle || "",
+    profileVisibility: profile.profileVisibility || "institute_only",
+    showEmail: profile.showEmail ?? false,
+    allowMentorRequests: profile.allowMentorRequests ?? true
   });
 });
 
@@ -461,6 +520,12 @@ router.patch("/alumni/me", requireMockAuth, requireRole("alumni"), ensureTenant,
   profile.linkedinUrl = req.body?.linkedinUrl?.trim?.() ?? profile.linkedinUrl;
   profile.websiteUrl = req.body?.websiteUrl?.trim?.() ?? profile.websiteUrl;
   profile.twitterHandle = req.body?.twitterHandle?.trim?.() ?? profile.twitterHandle;
+  profile.profileVisibility = req.body?.profileVisibility ?? profile.profileVisibility;
+  profile.showEmail = typeof req.body?.showEmail === "boolean" ? req.body.showEmail : profile.showEmail;
+  profile.allowMentorRequests =
+    typeof req.body?.allowMentorRequests === "boolean"
+      ? req.body.allowMentorRequests
+      : profile.allowMentorRequests;
   profile.updatedAt = new Date().toISOString();
 
   res.json({
@@ -515,7 +580,219 @@ router.get("/feed", requireMockAuth, ensureTenant, (req, res) => {
 });
 
 router.get("/mentorship", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
-  res.json(getStore(req).mentorshipRequests);
+  const conversations = getStore(req).mentorshipRequests
+    .filter((item) => {
+      if (item.conversationType === "group") {
+        return (item.memberIds || []).includes(req.mockUser._id);
+      }
+
+      return item.requesterId === req.mockUser._id || item.mentorId === req.mockUser._id;
+    })
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+    .map((item) => formatMockConversation(req, item));
+
+  res.json(conversations);
+});
+
+router.post("/mentorship", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const recipientUserId = req.body?.recipientUserId || req.body?.mentorUserId;
+  const message = String(req.body?.message || "").trim();
+
+  if (!recipientUserId || !message) {
+    return res.status(400).json({ message: "Recipient and message are required", requestId: req.requestId });
+  }
+
+  if (recipientUserId === req.mockUser._id) {
+    return res.status(400).json({ message: "You cannot start a chat with yourself", requestId: req.requestId });
+  }
+
+  const recipient = getStore(req).users.find(
+    (item) => item._id === recipientUserId && item.role === "alumni" && item.isActive
+  );
+
+  if (!recipient) {
+    return res.status(404).json({ message: "Selected alumni was not found", requestId: req.requestId });
+  }
+
+  const conversation = {
+    _id: crypto.randomUUID(),
+    conversationType: "direct",
+    requesterId: req.mockUser._id,
+    mentorId: recipient._id,
+    message,
+    status: "pending",
+    messages: [
+      {
+        _id: crypto.randomUUID(),
+        senderId: req.mockUser._id,
+        content: message,
+        sentAt: new Date().toISOString()
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  getStore(req).mentorshipRequests.unshift(conversation);
+  res.status(201).json(formatMockConversation(req, conversation));
+});
+
+router.post("/mentorship/groups", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const groupName = String(req.body?.groupName || "").trim();
+  const requestedMemberIds = Array.isArray(req.body?.memberUserIds) ? req.body.memberUserIds.map(String) : [];
+  const initialMessage = String(req.body?.initialMessage || "").trim();
+
+  if (!groupName) {
+    return res.status(400).json({ message: "Group name is required", requestId: req.requestId });
+  }
+
+  if (!requestedMemberIds.length) {
+    return res.status(400).json({ message: "Choose at least one member for the group", requestId: req.requestId });
+  }
+
+  const memberIds = [...new Set([req.mockUser._id, ...requestedMemberIds])];
+  const members = getStore(req).users.filter(
+    (item) => memberIds.includes(item._id) && item.role === "alumni" && item.isActive
+  );
+
+  if (members.length !== memberIds.length) {
+    return res.status(400).json({ message: "One or more selected members are invalid", requestId: req.requestId });
+  }
+
+  const conversation = {
+    _id: crypto.randomUUID(),
+    conversationType: "group",
+    groupName,
+    memberIds,
+    adminIds: [req.mockUser._id],
+    message: initialMessage || `${req.mockUser.name} created the group`,
+    status: "active",
+    messages: initialMessage
+      ? [
+          {
+            _id: crypto.randomUUID(),
+            senderId: req.mockUser._id,
+            content: initialMessage,
+            sentAt: new Date().toISOString()
+          }
+        ]
+      : [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  getStore(req).mentorshipRequests.unshift(conversation);
+  res.status(201).json(formatMockConversation(req, conversation));
+});
+
+router.patch("/mentorship/:id", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const conversation = getStore(req).mentorshipRequests.find(
+    (item) =>
+      item._id === req.params.id &&
+      item.conversationType !== "group" &&
+      item.mentorId === req.mockUser._id
+  );
+
+  if (!conversation) {
+    return res.status(404).json({ message: "Mentorship request not found", requestId: req.requestId });
+  }
+
+  if (!["accepted", "declined"].includes(req.body?.status)) {
+    return res.status(400).json({ message: "Status must be accepted or declined", requestId: req.requestId });
+  }
+
+  conversation.status = req.body.status;
+  conversation.updatedAt = new Date().toISOString();
+  res.json(formatMockConversation(req, conversation));
+});
+
+router.post("/mentorship/:id/messages", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const content = String(req.body?.content || "").trim();
+
+  if (!content) {
+    return res.status(400).json({ message: "Message content is required", requestId: req.requestId });
+  }
+
+  const conversation = getStore(req).mentorshipRequests.find((item) => {
+    if (item._id !== req.params.id) {
+      return false;
+    }
+
+    if (item.conversationType === "group") {
+      return (item.memberIds || []).includes(req.mockUser._id);
+    }
+
+    return item.requesterId === req.mockUser._id || item.mentorId === req.mockUser._id;
+  });
+
+  if (!conversation) {
+    return res.status(404).json({ message: "Mentorship conversation not found", requestId: req.requestId });
+  }
+
+  if (conversation.conversationType !== "group") {
+    if (conversation.status === "declined") {
+      return res.status(400).json({ message: "This mentorship request has been declined", requestId: req.requestId });
+    }
+
+    if (conversation.status === "pending") {
+      return res.status(403).json({
+        message: "Wait for the recipient to accept this chat request before sending more messages",
+        requestId: req.requestId
+      });
+    }
+  }
+
+  const message = {
+    _id: crypto.randomUUID(),
+    senderId: req.mockUser._id,
+    content,
+    sentAt: new Date().toISOString()
+  };
+
+  conversation.messages = [...(conversation.messages || []), message];
+  conversation.message = content;
+  conversation.updatedAt = new Date().toISOString();
+
+  res.status(201).json({
+    requestId: conversation._id,
+    message: {
+      ...message,
+      sender: getMockPerson(req, req.mockUser._id)
+    }
+  });
+});
+
+router.post("/mentorship/:id/leave", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const conversation = getStore(req).mentorshipRequests.find(
+    (item) =>
+      item._id === req.params.id &&
+      item.conversationType === "group" &&
+      (item.memberIds || []).includes(req.mockUser._id)
+  );
+
+  if (!conversation) {
+    return res.status(404).json({ message: "Group conversation not found", requestId: req.requestId });
+  }
+
+  if ((conversation.memberIds || []).length <= 1) {
+    return res.status(400).json({
+      message: "You cannot leave the last remaining member in the group",
+      requestId: req.requestId
+    });
+  }
+
+  conversation.memberIds = (conversation.memberIds || []).filter((id) => id !== req.mockUser._id);
+  conversation.adminIds = (conversation.adminIds || []).filter((id) => id !== req.mockUser._id);
+  if (!conversation.adminIds.length && conversation.memberIds.length) {
+    conversation.adminIds = [conversation.memberIds[0]];
+  }
+  conversation.message = `${req.mockUser.name} left the group`;
+  conversation.updatedAt = new Date().toISOString();
+
+  res.json({
+    message: "You left the group successfully",
+    conversationId: conversation._id
+  });
 });
 
 router.get("/notifications/summary", requireMockAuth, ensureTenant, (req, res) => {

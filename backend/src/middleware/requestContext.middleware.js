@@ -23,6 +23,8 @@ export function structuredRequestLogger(req, res, next) {
       actorId: req.user?._id?.toString?.() || null,
       actorRole: req.user?.role || null,
       tenantId: req.tenant?._id?.toString?.() || null,
+      tenantDb: req.tenantPersistence?.databaseName || null,
+      tenantIsolationMode: req.tenantPersistence?.isolationMode || null,
       ip: req.ip,
       timestamp: new Date().toISOString()
     };

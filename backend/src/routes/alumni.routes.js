@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 import express from "express";
 
+import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.middleware.js";
-import AlumniProfile from "../models/AlumniProfile.js";
-import User from "../models/User.js";
 import { logAuditEvent } from "../utils/audit.js";
 import { sendInviteEmail } from "../utils/email.js";
 import { hashPassword } from "../utils/auth.js";
+import { buildTenantConfigSnapshot } from "../utils/tenantConfig.js";
 import { hasMinLength, isEmail, isNonEmptyString, isObjectIdLike, isPositiveYear } from "../utils/validation.js";
 
 const router = express.Router();
@@ -44,6 +44,10 @@ function validateAlumniQuery(query) {
     issues.push("Batch must be a valid year");
   }
 
+  if (query.leavingYear && !isPositiveYear(query.leavingYear)) {
+    issues.push("Leaving year must be a valid year");
+  }
+
   return issues;
 }
 
@@ -52,8 +56,6 @@ function validateInviteBody(body) {
 
   if (!isNonEmptyString(body.name)) issues.push("Name is required");
   if (!isEmail(body.email)) issues.push("A valid email is required");
-  if (!isPositiveYear(body.batch)) issues.push("Batch must be a valid year");
-  if (!isNonEmptyString(body.department)) issues.push("Department is required");
 
   return issues;
 }
@@ -66,9 +68,29 @@ function validateMentorshipLikeBody(body) {
   return hasMinLength(body.message || body.bio || "", 0) ? [] : [];
 }
 
+function getTenantProfileMode(req) {
+  return buildTenantConfigSnapshot(req.tenant)?.institutionType === "school" ? "school" : "college";
+}
+
+function validateInvitePayloadForTenant(req, body) {
+  const profileMode = getTenantProfileMode(req);
+  const issues = [];
+
+  if (profileMode === "school") {
+    if (!isPositiveYear(body.leavingYear)) issues.push("Leaving year must be a valid year");
+    if (!isNonEmptyString(body.lastClassAttended)) issues.push("Last class attended is required");
+  } else {
+    if (!isPositiveYear(body.batch)) issues.push("Batch must be a valid year");
+    if (!isNonEmptyString(body.department)) issues.push("Department is required");
+  }
+
+  return issues;
+}
+
 router.get("/", protect, requireTenantAccess, validateQuery(validateAlumniQuery), async (req, res, next) => {
   try {
-    const { q, batch, department, company, skill } = req.query;
+    const { AlumniProfile } = getTenantModels(req);
+    const { q, batch, department, company, skill, leavingYear, lastClassAttended, section, location } = req.query;
     const isInstituteAdmin = req.user.role === "institute_admin";
     const profileFilter = {
       instituteId: req.tenant?._id
@@ -82,8 +104,24 @@ router.get("/", protect, requireTenantAccess, validateQuery(validateAlumniQuery)
       profileFilter.department = buildRegex(String(department).trim());
     }
 
+    if (leavingYear) {
+      profileFilter.leavingYear = Number(leavingYear);
+    }
+
+    if (lastClassAttended) {
+      profileFilter.lastClassAttended = buildRegex(String(lastClassAttended).trim());
+    }
+
+    if (section) {
+      profileFilter.section = buildRegex(String(section).trim());
+    }
+
     if (company) {
       profileFilter.company = buildRegex(String(company).trim());
+    }
+
+    if (location) {
+      profileFilter.location = buildRegex(String(location).trim());
     }
 
     if (skill) {
@@ -109,6 +147,12 @@ router.get("/", protect, requireTenantAccess, validateQuery(validateAlumniQuery)
         isActive: profile.userId?.isActive || false,
         batch: profile.batch,
         department: profile.department,
+        leavingYear: profile.leavingYear,
+        lastClassAttended: profile.lastClassAttended,
+        section: profile.section,
+        currentEducation: profile.currentEducation,
+        currentInstitution: profile.currentInstitution,
+        occupation: profile.occupation,
         company: profile.company,
         designation: profile.designation,
         location: profile.location,
@@ -160,6 +204,7 @@ router.get("/", protect, requireTenantAccess, validateQuery(validateAlumniQuery)
 
 router.get("/me", protect, requireTenantAccess, async (req, res, next) => {
   try {
+    const { AlumniProfile } = getTenantModels(req);
     const profile = await AlumniProfile.findOne({
       instituteId: req.tenant._id,
       userId: req.user._id
@@ -178,6 +223,12 @@ router.get("/me", protect, requireTenantAccess, async (req, res, next) => {
       email: profile.userId?.email || req.user.email,
       batch: profile.batch,
       department: profile.department,
+      leavingYear: profile.leavingYear,
+      lastClassAttended: profile.lastClassAttended || "",
+      section: profile.section || "",
+      currentEducation: profile.currentEducation || "",
+      currentInstitution: profile.currentInstitution || "",
+      occupation: profile.occupation || "",
       company: profile.company || "",
       designation: profile.designation || "",
       location: profile.location || "",
@@ -186,7 +237,10 @@ router.get("/me", protect, requireTenantAccess, async (req, res, next) => {
       skills: profile.skills || [],
       linkedinUrl: profile.linkedinUrl || "",
       websiteUrl: profile.websiteUrl || "",
-      twitterHandle: profile.twitterHandle || ""
+      twitterHandle: profile.twitterHandle || "",
+      profileVisibility: profile.profileVisibility || "institute_only",
+      showEmail: profile.showEmail ?? false,
+      allowMentorRequests: profile.allowMentorRequests ?? true
     });
   } catch (error) {
     next(error);
@@ -201,6 +255,7 @@ router.patch(
   validateBody(validateMentorshipLikeBody),
   async (req, res, next) => {
   try {
+    const { AlumniProfile, User } = getTenantModels(req);
     const profile = await AlumniProfile.findOne({
       instituteId: req.tenant._id,
       userId: req.user._id
@@ -229,6 +284,17 @@ router.patch(
         : profile.skills;
 
     user.name = req.body.name?.trim?.() || user.name;
+    profile.batch = req.body.batch !== undefined && req.body.batch !== null && req.body.batch !== "" ? Number(req.body.batch) : profile.batch;
+    profile.department = req.body.department?.trim?.() ?? profile.department;
+    profile.leavingYear =
+      req.body.leavingYear !== undefined && req.body.leavingYear !== null && req.body.leavingYear !== ""
+        ? Number(req.body.leavingYear)
+        : profile.leavingYear;
+    profile.lastClassAttended = req.body.lastClassAttended?.trim?.() ?? profile.lastClassAttended;
+    profile.section = req.body.section?.trim?.() ?? profile.section;
+    profile.currentEducation = req.body.currentEducation?.trim?.() ?? profile.currentEducation;
+    profile.currentInstitution = req.body.currentInstitution?.trim?.() ?? profile.currentInstitution;
+    profile.occupation = req.body.occupation?.trim?.() ?? profile.occupation;
     profile.company = req.body.company?.trim?.() ?? profile.company;
     profile.designation = req.body.designation?.trim?.() ?? profile.designation;
     profile.location = req.body.location?.trim?.() ?? profile.location;
@@ -238,6 +304,13 @@ router.patch(
     profile.linkedinUrl = req.body.linkedinUrl?.trim?.() ?? profile.linkedinUrl;
     profile.websiteUrl = req.body.websiteUrl?.trim?.() ?? profile.websiteUrl;
     profile.twitterHandle = req.body.twitterHandle?.trim?.() ?? profile.twitterHandle;
+    profile.profileVisibility = req.body.profileVisibility ?? profile.profileVisibility;
+    profile.showEmail =
+      typeof req.body.showEmail === "boolean" ? req.body.showEmail : profile.showEmail;
+    profile.allowMentorRequests =
+      typeof req.body.allowMentorRequests === "boolean"
+        ? req.body.allowMentorRequests
+        : profile.allowMentorRequests;
 
     await user.save();
     await profile.save();
@@ -260,10 +333,12 @@ router.post(
   validateBody(validateInviteBody),
   async (req, res, next) => {
     try {
-      const { name, email, batch, department, company, designation, location } = req.body;
+      const { AlumniProfile, User } = getTenantModels(req);
+      const { name, email, batch, department, leavingYear, lastClassAttended, section, currentEducation, currentInstitution, occupation, company, designation, location } = req.body;
+      const tenantIssues = validateInvitePayloadForTenant(req, req.body);
 
-      if (!name || !email || !batch || !department) {
-        const error = new Error("Name, email, batch, and department are required");
+      if (!name || !email || tenantIssues.length) {
+        const error = new Error(tenantIssues[0] || "Name and email are required");
         error.statusCode = 400;
         throw error;
       }
@@ -294,8 +369,14 @@ router.post(
       const profile = await AlumniProfile.create({
         instituteId: req.tenant._id,
         userId: user._id,
-        batch: Number(batch),
-        department: department.trim(),
+        batch: batch ? Number(batch) : null,
+        department: department?.trim?.() || "",
+        leavingYear: leavingYear ? Number(leavingYear) : null,
+        lastClassAttended: lastClassAttended?.trim?.() || "",
+        section: section?.trim?.() || "",
+        currentEducation: currentEducation?.trim?.() || "",
+        currentInstitution: currentInstitution?.trim?.() || "",
+        occupation: occupation?.trim?.() || "",
         company: company?.trim() || "",
         designation: designation?.trim() || "",
         location: location?.trim() || "",
@@ -349,6 +430,7 @@ router.post(
   validateParams(validateProfileId),
   async (req, res, next) => {
     try {
+      const { AlumniProfile } = getTenantModels(req);
       const profile = await AlumniProfile.findOne({
         _id: req.params.profileId,
         instituteId: req.tenant._id
@@ -412,6 +494,7 @@ router.post(
   validateParams(validateProfileId),
   async (req, res, next) => {
     try {
+      const { AlumniProfile } = getTenantModels(req);
       const profile = await AlumniProfile.findOne({
         _id: req.params.profileId,
         instituteId: req.tenant._id
@@ -470,6 +553,7 @@ router.post(
   validateParams(validateProfileId),
   async (req, res, next) => {
     try {
+      const { AlumniProfile } = getTenantModels(req);
       const profile = await AlumniProfile.findOne({
         _id: req.params.profileId,
         instituteId: req.tenant._id
@@ -517,6 +601,7 @@ router.post(
   validateParams(validateProfileId),
   async (req, res, next) => {
     try {
+      const { AlumniProfile } = getTenantModels(req);
       const profile = await AlumniProfile.findOne({
         _id: req.params.profileId,
         instituteId: req.tenant._id
@@ -567,6 +652,7 @@ router.post(
   requireTenantAccess,
   async (req, res, next) => {
     try {
+      const { AlumniProfile } = getTenantModels(req);
       const alumni = await AlumniProfile.create({
         ...req.body,
         instituteId: req.tenant._id,

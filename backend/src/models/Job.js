@@ -30,15 +30,37 @@ const jobSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    requestedDeadline: {
+      type: Date,
+      default: null
+    },
+    applicationDeadline: {
+      type: Date,
+      default: null,
+      index: true
+    },
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
     },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null
+    },
+    approvedAt: {
+      type: Date,
+      default: null
+    },
+    rejectedAt: {
+      type: Date,
+      default: null
+    },
     status: {
       type: String,
-      enum: ["draft", "published", "closed"],
-      default: "published"
+      enum: ["pending_approval", "published", "rejected", "expired"],
+      default: "pending_approval"
     }
   },
   {

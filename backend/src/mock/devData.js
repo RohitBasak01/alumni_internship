@@ -3,6 +3,22 @@ export const demoInstitute = {
   name: "SPIT Demo Institute",
   subdomain: "spit",
   domain: "alumni.spit.ac.in",
+  institutionType: "college",
+  educationLevel: "higher_ed",
+  communityLabels: {
+    memberPlural: "Alumni",
+    memberSingular: "Alumnus/Alumna",
+    adminLabel: "Institute Admin"
+  },
+  featureFlags: {
+    enableJobs: true,
+    enableMentorship: true,
+    enableDirectory: true,
+    enableEvents: true,
+    enableAnnouncements: true,
+    enableSocialLinks: true,
+    enableCareerFields: true
+  },
   status: "active",
   subscriptionPlan: "pro",
   subscriptionStatus: "active",
@@ -19,7 +35,7 @@ export const demoInstitute = {
     }
   ],
   primaryContactName: "Rohit Basak",
-  primaryContactEmail: "admin@spit.ac.in",
+  primaryContactEmail: "admin@spit.edu",
   primaryContactPhone: "",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-15T00:00:00.000Z"
@@ -39,8 +55,8 @@ export const demoUsers = [
   {
     _id: "65f000000000000000000003",
     name: "Rohit Basak",
-    email: "admin@spit.ac.in",
-    password: "institution123",
+    email: "admin@spit.edu",
+    password: "Institute@123",
     role: "institute_admin",
     isActive: true,
     passwordSetupCompleted: true,
@@ -74,6 +90,9 @@ export const demoProfiles = [
     linkedinUrl: "",
     websiteUrl: "",
     twitterHandle: "",
+    profileVisibility: "institute_only",
+    showEmail: false,
+    allowMentorRequests: true,
     createdAt: "2026-01-10T00:00:00.000Z",
     updatedAt: "2026-01-10T00:00:00.000Z"
   }
@@ -155,7 +174,11 @@ export function buildSessionUser(user) {
           name: demoInstitute.name,
           status: demoInstitute.status,
           subdomain: demoInstitute.subdomain,
-          domain: demoInstitute.domain
+          domain: demoInstitute.domain,
+          institutionType: demoInstitute.institutionType,
+          educationLevel: demoInstitute.educationLevel,
+          communityLabels: demoInstitute.communityLabels,
+          featureFlags: demoInstitute.featureFlags
         }
       : null
   };

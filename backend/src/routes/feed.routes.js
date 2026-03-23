@@ -1,14 +1,13 @@
 import express from "express";
 
+import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, requireTenantAccess } from "../middleware/auth.middleware.js";
-import Announcement from "../models/Announcement.js";
-import Event from "../models/Event.js";
-import Job from "../models/Job.js";
 
 const router = express.Router();
 
 router.get("/", protect, requireTenantAccess, async (req, res, next) => {
   try {
+    const { Announcement, Event, Job } = getTenantModels(req);
     const instituteId = req.tenant._id;
     const announcementFilter =
       req.user.role === "institute_admin"

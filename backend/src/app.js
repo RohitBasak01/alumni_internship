@@ -45,12 +45,11 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.use(resolveTenant);
 app.use("/api/auth", authRateLimiter, authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/institutes", instituteRoutes);
 app.use("/api/ops", opsRoutes);
-
-app.use(resolveTenant);
 app.use("/api/alumni", alumniRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/events", eventRoutes);

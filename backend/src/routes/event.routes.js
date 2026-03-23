@@ -1,8 +1,8 @@
 import express from "express";
 
+import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
-import Event from "../models/Event.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 
 const router = express.Router();
@@ -37,6 +37,8 @@ function formatEvent(event, user) {
   const isRegistered = event.registrations?.some(
     (entry) => entry.userId?._id?.toString?.() === user._id.toString() || entry.userId?.toString?.() === user._id.toString()
   );
+  const instituteName = user.instituteId?.name || "Institute";
+  const organizerName = `${instituteName} Alumni Association`;
 
   return {
     _id: event._id,
@@ -51,6 +53,8 @@ function formatEvent(event, user) {
     eventType: inferEventType(event),
     dateRange: deriveDateRange(event.eventDate),
     status: deriveStatus(event),
+    organizerName,
+    publishedByLabel: `${organizerName} Committee`,
     registrationCap: Number.isFinite(Number(event.registrationCap)) ? Number(event.registrationCap) : null,
     attendeeCount: event.registrations?.length || 0,
     isRegistered: Boolean(isRegistered),
@@ -82,6 +86,7 @@ function validateEventId(params) {
 
 router.get("/", protect, requireTenantAccess, async (req, res, next) => {
   try {
+    const { Event } = getTenantModels(req);
     const events = await Event.find({ instituteId: req.tenant?._id })
       .populate("registrations.userId", "name email")
       .sort({ eventDate: 1 });
@@ -94,10 +99,12 @@ router.get("/", protect, requireTenantAccess, async (req, res, next) => {
 router.post(
   "/",
   protect,
+  authorize("institute_admin"),
   requireTenantAccess,
   validateBody(validateEventBody),
   async (req, res, next) => {
     try {
+      const { Event } = getTenantModels(req);
       const event = await Event.create({
         ...req.body,
         registrationCap:
@@ -122,6 +129,7 @@ router.post(
   validateParams(validateEventId),
   async (req, res, next) => {
     try {
+      const { Event } = getTenantModels(req);
       const event = await Event.findOne({
         _id: req.params.id,
         instituteId: req.tenant._id
@@ -166,6 +174,7 @@ router.delete(
   validateParams(validateEventId),
   async (req, res, next) => {
     try {
+      const { Event } = getTenantModels(req);
       const event = await Event.findOne({
         _id: req.params.id,
         instituteId: req.tenant._id
@@ -194,10 +203,12 @@ router.delete(
 router.patch(
   "/:id",
   protect,
+  authorize("institute_admin"),
   requireTenantAccess,
   validateParams(validateEventId),
   async (req, res, next) => {
     try {
+      const { Event } = getTenantModels(req);
       const event = await Event.findOneAndUpdate(
         {
           _id: req.params.id,
@@ -229,10 +240,12 @@ router.patch(
 router.delete(
   "/:id",
   protect,
+  authorize("institute_admin"),
   requireTenantAccess,
   validateParams(validateEventId),
   async (req, res, next) => {
     try {
+      const { Event } = getTenantModels(req);
       const event = await Event.findOneAndDelete({
         _id: req.params.id,
         instituteId: req.tenant._id
