@@ -4,6 +4,7 @@ import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
+import { createNotification, createNotificationsForUsers, listActiveAlumniUserIds } from "../utils/notifications.js";
 
 const router = express.Router();
 
@@ -99,7 +100,7 @@ router.get("/", protect, requireTenantAccess, async (req, res, next) => {
 router.post(
   "/",
   protect,
-  authorize("institute_admin"),
+  authorize("institute_admin", "alumni"),
   requireTenantAccess,
   validateBody(validateEventBody),
   async (req, res, next) => {
@@ -240,13 +241,13 @@ router.patch(
 router.delete(
   "/:id",
   protect,
-  authorize("institute_admin"),
+  authorize("institute_admin", "alumni"),
   requireTenantAccess,
   validateParams(validateEventId),
   async (req, res, next) => {
     try {
       const { Event } = getTenantModels(req);
-      const event = await Event.findOneAndDelete({
+      const event = await Event.findOne({
         _id: req.params.id,
         instituteId: req.tenant._id
       });
@@ -257,6 +258,17 @@ router.delete(
         throw error;
       }
 
+      const isAdmin = req.user.role === "institute_admin";
+      const isOwner = event.createdBy?.toString?.() === req.user._id.toString();
+
+      if (!isAdmin && !isOwner) {
+        const error = new Error("You do not have permission to delete this event");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      await event.deleteOne();
+
       res.json({ message: "Event deleted successfully" });
     } catch (error) {
       next(error);
@@ -265,3 +277,4 @@ router.delete(
 );
 
 export default router;
+

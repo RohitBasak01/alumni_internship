@@ -5,9 +5,58 @@ const api = axios.create({
   withCredentials: true
 });
 
-api.interceptors.request.use((config) => {
+function getConfiguredTenantContext() {
   const configuredSubdomain = String(import.meta.env.VITE_TENANT_SUBDOMAIN || "").trim().toLowerCase();
   const configuredDomain = String(import.meta.env.VITE_TENANT_DOMAIN || "").trim().toLowerCase();
+  const browserHost = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+  const reservedHosts = new Set(["localhost", "127.0.0.1"]);
+
+  if (configuredSubdomain || configuredDomain) {
+    return {
+      tenantSubdomain: configuredSubdomain,
+      tenantDomain: configuredDomain
+    };
+  }
+
+  if (browserHost && !reservedHosts.has(browserHost)) {
+    const parts = browserHost.split(".");
+    return {
+      tenantSubdomain: parts.length >= 3 ? parts[0] : "",
+      tenantDomain: parts.length >= 2 ? browserHost : ""
+    };
+  }
+
+  return {
+    tenantSubdomain: "",
+    tenantDomain: ""
+  };
+}
+
+export function getApiOrigin() {
+  const baseUrl = String(api.defaults.baseURL || "http://localhost:5000/api");
+  const normalized = baseUrl.endsWith("/api") ? baseUrl.slice(0, -4) : baseUrl;
+  return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
+}
+
+export function resolveApiAssetUrl(assetUrl) {
+  const value = String(assetUrl || "").trim();
+  if (!value) {
+    return "";
+  }
+
+  if (/^data:/i.test(value) || /^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  if (value.startsWith("/")) {
+    return `${getApiOrigin()}${value}`;
+  }
+
+  return `${getApiOrigin()}/${value}`;
+}
+
+api.interceptors.request.use((config) => {
+  const { tenantSubdomain, tenantDomain } = getConfiguredTenantContext();
   const baseUrl = String(config.baseURL || api.defaults.baseURL || "");
   const isLocalApi = /localhost|127\.0\.0\.1/i.test(baseUrl);
 
@@ -15,12 +64,12 @@ api.interceptors.request.use((config) => {
     config.headers = {};
   }
 
-  if (isLocalApi && configuredSubdomain) {
-    config.headers["x-tenant-subdomain"] = configuredSubdomain;
+  if (isLocalApi && tenantSubdomain) {
+    config.headers["x-tenant-subdomain"] = tenantSubdomain;
   }
 
-  if (isLocalApi && configuredDomain) {
-    config.headers["x-tenant-domain"] = configuredDomain;
+  if (isLocalApi && tenantDomain) {
+    config.headers["x-tenant-domain"] = tenantDomain;
   }
 
   return config;
@@ -40,6 +89,36 @@ api.interceptors.response.use(
   }
 );
 
+export function getOAuthStartUrl(provider, options = {}) {
+  const { tenantSubdomain, tenantDomain } = {
+    ...getConfiguredTenantContext(),
+    ...options
+  };
+  const url = new URL(`/api/auth/oauth/${provider}/start`, getApiOrigin());
+
+  url.searchParams.set("mode", options.mode || "login");
+
+  if (tenantSubdomain) {
+    url.searchParams.set("tenantSubdomain", tenantSubdomain);
+  }
+
+  if (tenantDomain) {
+    url.searchParams.set("tenantDomain", tenantDomain);
+  }
+
+  return url.toString();
+}
+
+export async function fetchOAuthSession() {
+  const { data } = await api.get("/auth/oauth/session");
+  return data;
+}
+
+export async function clearOAuthSession() {
+  const { data } = await api.delete("/auth/oauth/session");
+  return data;
+}
+
 export async function requestPortal(payload) {
   const { data } = await api.post("/institutes/request", payload);
   return data;
@@ -52,6 +131,16 @@ export async function login(payload) {
 
 export async function logout() {
   const { data } = await api.post("/auth/logout");
+  return data;
+}
+
+export async function fetchPublicInstitutes() {
+  const { data } = await api.get("/institutes/public");
+  return data;
+}
+
+export async function submitAlumniRegistration(payload) {
+  const { data } = await api.post("/auth/alumni-registration", payload);
   return data;
 }
 
@@ -240,11 +329,200 @@ export async function deleteAnnouncement(id) {
   return data;
 }
 
+export async function fetchAlumniPosts() {
+  const { data } = await api.get("/alumni-posts");
+  return data;
+}
+
+export async function createAlumniPost(payload) {
+  const { data } = await api.post("/alumni-posts", payload);
+  return data;
+}
+
+export async function fetchAlumniPost(id) {
+  const { data } = await api.get(`/alumni-posts/${id}`);
+  return data;
+}
+
+export async function toggleAlumniPostLike(id) {
+  const { data } = await api.post(`/alumni-posts/${id}/like`);
+  return data;
+}
+
+export async function addAlumniPostComment(id, payload) {
+  const { data } = await api.post(`/alumni-posts/${id}/comments`, payload);
+  return data;
+}
+
+export async function reportAlumniPost(id, payload) {
+  const { data } = await api.post(`/alumni-posts/${id}/report`, payload);
+  return data;
+}
+
 export async function fetchFeed() {
   const { data } = await api.get("/feed");
   return data;
 }
 
+export async function fetchGalleryItems() {
+  const { data } = await api.get("/gallery");
+  return data;
+}
+
+export async function createGalleryItem(payload) {
+  const { data } = await api.post("/gallery", payload);
+  return data;
+}
+
+export async function deleteGalleryItem(id) {
+  const { data } = await api.delete(`/gallery/${id}`);
+  return data;
+}
+
+export async function fetchBusinessListings() {
+  const { data } = await api.get("/business-directory");
+  return data;
+}
+
+export async function createBusinessListing(payload) {
+  const { data } = await api.post("/business-directory", payload);
+  return data;
+}
+
+export async function deleteBusinessListing(id) {
+  const { data } = await api.delete(`/business-directory/${id}`);
+  return data;
+}
+
+export async function fetchCommunityGroups() {
+  const { data } = await api.get("/community-groups");
+  return data;
+}
+
+export async function createCommunityGroup(payload) {
+  const { data } = await api.post("/community-groups", payload);
+  return data;
+}
+
+export async function updateCommunityGroup(id, payload) {
+  const { data } = await api.patch(`/community-groups/${id}`, payload);
+  return data;
+}
+
+export async function deleteCommunityGroup(id) {
+  const { data } = await api.delete(`/community-groups/${id}`);
+  return data;
+}
+
+export async function sendCommunityGroupMessage(id, payload) {
+  const { data } = await api.post(`/community-groups/${id}/messages`, payload);
+  return data;
+}
+
+export async function fetchNotifications(params = {}) {
+  const { data } = await api.get("/notifications", { params });
+  return data;
+}
+
+export async function markNotificationRead(id) {
+  const { data } = await api.post(`/notifications/${id}/read`);
+  return data;
+}
+
+export async function dismissNotification(id) {
+  const { data } = await api.post(`/notifications/${id}/dismiss`);
+  return data;
+}
+
+export async function markAllNotificationsRead() {
+  const { data } = await api.post("/notifications/mark-all-read");
+  return data;
+}
+export async function fetchNotificationSummary() {
+  const { data } = await api.get("/notifications/summary");
+  return data;
+}
+
+export async function updateMentorshipRequest(id, payload) {
+  const { data } = await api.patch(`/mentorship/${id}`, payload);
+  return data;
+}
+
+export async function sendMentorshipMessage(id, payload) {
+  const { data } = await api.post(`/mentorship/${id}/messages`, payload);
+  return data;
+}
+
+export async function upsertMentorshipE2eePublicKey(payload) {
+  const { data } = await api.put("/mentorship/e2ee/public-key", payload);
+  return data;
+}
+
+export async function syncMentorshipConversationEnvelopes(id, payload) {
+  const { data } = await api.patch(`/mentorship/${id}/e2ee/envelopes`, payload);
+  return data;
+}
+
+export async function uploadMentorshipAttachment(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post("/mentorship/uploads", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return data;
+}
+
+export async function markMentorshipConversationRead(id) {
+  const { data } = await api.post(`/mentorship/${id}/read`);
+  return data;
+}
+
+export async function setMentorshipTyping(id, payload) {
+  const { data } = await api.post(`/mentorship/${id}/typing`, payload);
+  return data;
+}
+
+export async function editMentorshipMessage(requestId, messageId, payload) {
+  const { data } = await api.patch(`/mentorship/${requestId}/messages/${messageId}`, payload);
+  return data;
+}
+
+export async function deleteMentorshipMessage(requestId, messageId) {
+  const { data } = await api.delete(`/mentorship/${requestId}/messages/${messageId}`);
+  return data;
+}
+
+export async function toggleMentorshipMessageReaction(requestId, messageId, payload) {
+  const { data } = await api.post(`/mentorship/${requestId}/messages/${messageId}/reactions`, payload);
+  return data;
+}
+
+export async function updateGroupMemberRole(requestId, userId, payload) {
+  const { data } = await api.patch(`/mentorship/${requestId}/members/${userId}/role`, payload);
+  return data;
+}
+
+export async function muteGroupMember(requestId, userId, payload) {
+  const { data } = await api.patch(`/mentorship/${requestId}/members/${userId}/mute`, payload);
+  return data;
+}
+
+export async function unmuteGroupMember(requestId, userId) {
+  const { data } = await api.delete(`/mentorship/${requestId}/members/${userId}/mute`);
+  return data;
+}
+
+export async function removeGroupMember(requestId, userId) {
+  const { data } = await api.delete(`/mentorship/${requestId}/members/${userId}`);
+  return data;
+}
+
+export async function leaveGroupConversation(id) {
+  const { data } = await api.post(`/mentorship/${id}/leave`);
+  return data;
+}
 export async function fetchMentorshipRequests() {
   const { data } = await api.get("/mentorship");
   return data;
@@ -260,24 +538,4 @@ export async function createGroupConversation(payload) {
   return data;
 }
 
-export async function updateMentorshipRequest(id, payload) {
-  const { data } = await api.patch(`/mentorship/${id}`, payload);
-  return data;
-}
 
-export async function sendMentorshipMessage(id, payload) {
-  const { data } = await api.post(`/mentorship/${id}/messages`, payload);
-  return data;
-}
-
-export async function leaveGroupConversation(id) {
-  const { data } = await api.post(`/mentorship/${id}/leave`);
-  return data;
-}
-
-export async function fetchNotificationSummary() {
-  const { data } = await api.get("/notifications/summary");
-  return data;
-}
-
-export default api;

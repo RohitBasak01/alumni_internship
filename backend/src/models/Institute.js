@@ -42,6 +42,10 @@ const featureFlagsSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    enableGroups: {
+      type: Boolean,
+      default: true
+    },
     enableSocialLinks: {
       type: Boolean,
       default: true
@@ -102,6 +106,7 @@ const instituteSchema = new mongoose.Schema(
         enableDirectory: true,
         enableEvents: true,
         enableAnnouncements: true,
+        enableGroups: true,
         enableSocialLinks: true,
         enableCareerFields: true
       })

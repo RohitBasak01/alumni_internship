@@ -13,7 +13,25 @@ const alumniProfileSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
-    batch: {
+    gender: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    dateOfBirth: {
+      type: Date,
+      default: null
+    },
+    mobileNumber: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    authProvider: {
+      type: String,
+      enum: ["google", "linkedin", "email", ""],
+      default: ""
+    },    batch: {
       type: Number,
       default: null
     },
@@ -109,3 +127,4 @@ const alumniProfileSchema = new mongoose.Schema(
 );
 
 export default mongoose.model("AlumniProfile", alumniProfileSchema);
+

@@ -83,6 +83,49 @@ function formatMockConversation(req, conversation) {
   };
 }
 
+function formatMockCommunityGroup(req, group) {
+  const messages = (group.messages || []).map((message) => ({
+    _id: message._id,
+    content: message.content,
+    sentAt: message.sentAt,
+    sender: {
+      id: message.senderId,
+      ...getMockPerson(req, message.senderId)
+    }
+  }));
+  const isAdminViewer = req.mockUser?.role === "institute_admin";
+  const viewerId = req.mockUser?._id || "";
+  const isMemberViewer = (group.memberIds || []).includes(viewerId);
+  const canViewChat = isAdminViewer || isMemberViewer;
+
+  return {
+    _id: group._id,
+    name: group.name,
+    description: group.description || "",
+    groupType: group.groupType,
+    audienceLabel: group.audienceLabel || "",
+    memberCount: (group.memberIds || []).length,
+    members: (group.memberIds || []).map((memberId) => {
+      const person = getMockPerson(req, memberId);
+      return {
+        id: person?._id || memberId,
+        name: person?.name || "Unknown Member",
+        email: person?.email || "",
+        batch: person?.batch ?? null,
+        department: person?.department || "",
+        company: person?.company || "",
+        designation: person?.designation || "",
+        location: person?.location || ""
+      };
+    }),
+    canViewChat,
+    messages: canViewChat ? messages : [],
+    latestMessage: canViewChat ? messages[messages.length - 1] || null : null,
+    createdAt: group.createdAt,
+    updatedAt: group.updatedAt
+  };
+}
+
 function getUserFromToken(req) {
   const authHeader = req.headers.authorization;
   const token =
@@ -793,6 +836,143 @@ router.post("/mentorship/:id/leave", requireMockAuth, requireRole("alumni"), ens
     message: "You left the group successfully",
     conversationId: conversation._id
   });
+});
+
+router.get("/community-groups", requireMockAuth, ensureTenant, (req, res) => {
+  const items = getStore(req).communityGroups
+    .filter((item) => item.instituteId === req.tenant._id)
+    .map((item) => formatMockCommunityGroup(req, item));
+
+  res.json(items);
+});
+
+router.post("/community-groups", requireMockAuth, requireRole("institute_admin"), ensureTenant, (req, res) => {
+  const name = String(req.body?.name || "").trim();
+  const groupType = String(req.body?.groupType || "").trim();
+  const audienceLabel = String(req.body?.audienceLabel || "").trim();
+  const description = String(req.body?.description || "").trim();
+  const memberUserIds = Array.isArray(req.body?.memberUserIds) ? req.body.memberUserIds.map(String) : [];
+
+  if (!name) {
+    return res.status(400).json({ message: "Group name is required", requestId: req.requestId });
+  }
+
+  if (!["interest", "class", "year"].includes(groupType)) {
+    return res.status(400).json({ message: "Group type must be interest, class, or year", requestId: req.requestId });
+  }
+
+  if (!memberUserIds.length) {
+    return res.status(400).json({ message: "Member list is required", requestId: req.requestId });
+  }
+
+  const group = {
+    _id: crypto.randomUUID(),
+    instituteId: req.tenant._id,
+    name,
+    description,
+    groupType,
+    audienceLabel,
+    memberIds: [...new Set(memberUserIds)],
+    createdBy: req.mockUser._id,
+    messages: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  getStore(req).communityGroups.unshift(group);
+  res.status(201).json(formatMockCommunityGroup(req, group));
+});
+
+router.patch("/community-groups/:id", requireMockAuth, requireRole("institute_admin"), ensureTenant, (req, res) => {
+  const group = getStore(req).communityGroups.find(
+    (item) => item._id === req.params.id && item.instituteId === req.tenant._id
+  );
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found", requestId: req.requestId });
+  }
+
+  const name = String(req.body?.name || "").trim();
+  const groupType = String(req.body?.groupType || "").trim();
+  const audienceLabel = String(req.body?.audienceLabel || "").trim();
+  const description = String(req.body?.description || "").trim();
+  const memberUserIds = Array.isArray(req.body?.memberUserIds) ? req.body.memberUserIds.map(String) : [];
+
+  if (!name) {
+    return res.status(400).json({ message: "Group name is required", requestId: req.requestId });
+  }
+
+  if (!["interest", "class", "year"].includes(groupType)) {
+    return res.status(400).json({ message: "Group type must be interest, class, or year", requestId: req.requestId });
+  }
+
+  if (!memberUserIds.length) {
+    return res.status(400).json({ message: "Member list is required", requestId: req.requestId });
+  }
+
+  group.name = name;
+  group.groupType = groupType;
+  group.audienceLabel = audienceLabel;
+  group.description = description;
+  group.memberIds = [...new Set(memberUserIds)];
+  group.updatedAt = new Date().toISOString();
+
+  res.json(formatMockCommunityGroup(req, group));
+});
+
+router.post("/community-groups/:id/messages", requireMockAuth, ensureTenant, (req, res) => {
+  const content = String(req.body?.content || "").trim();
+
+  if (!content) {
+    return res.status(400).json({ message: "Message content is required", requestId: req.requestId });
+  }
+
+  const group = getStore(req).communityGroups.find(
+    (item) =>
+      item._id === req.params.id &&
+      item.instituteId === req.tenant._id &&
+      (req.mockUser.role === "institute_admin" || (item.memberIds || []).includes(req.mockUser._id))
+  );
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found or access denied", requestId: req.requestId });
+  }
+
+  const message = {
+    _id: crypto.randomUUID(),
+    senderId: req.mockUser._id,
+    content,
+    sentAt: new Date().toISOString()
+  };
+
+  group.messages = [...(group.messages || []), message];
+  group.updatedAt = new Date().toISOString();
+
+  res.status(201).json({
+    groupId: group._id,
+    message: {
+      _id: message._id,
+      content: message.content,
+      sentAt: message.sentAt,
+      sender: {
+        id: req.mockUser._id,
+        ...getMockPerson(req, req.mockUser._id)
+      }
+    }
+  });
+});
+
+router.delete("/community-groups/:id", requireMockAuth, requireRole("institute_admin"), ensureTenant, (req, res) => {
+  const index = getStore(req).communityGroups.findIndex(
+    (item) => item._id === req.params.id && item.instituteId === req.tenant._id
+  );
+
+  if (index === -1) {
+    return res.status(404).json({ message: "Group not found", requestId: req.requestId });
+  }
+
+  getStore(req).communityGroups.splice(index, 1);
+  res.json({ message: "Group deleted successfully" });
 });
 
 router.get("/notifications/summary", requireMockAuth, ensureTenant, (req, res) => {

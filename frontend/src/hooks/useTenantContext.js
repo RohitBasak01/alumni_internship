@@ -37,6 +37,16 @@ export function useTenantContext() {
   const auth = useAuth();
   const detectedTenant = detectTenant();
   const institute = auth.user?.institute;
+  const defaultFeatureFlags = {
+    enableJobs: true,
+    enableMentorship: true,
+    enableDirectory: true,
+    enableEvents: true,
+    enableAnnouncements: true,
+    enableGroups: true,
+    enableSocialLinks: true,
+    enableCareerFields: true
+  };
 
   if (!institute) {
     return {
@@ -48,15 +58,7 @@ export function useTenantContext() {
         memberSingular: "Alumnus/Alumna",
         adminLabel: "Institute Admin"
       },
-      featureFlags: {
-        enableJobs: true,
-        enableMentorship: true,
-        enableDirectory: true,
-        enableEvents: true,
-        enableAnnouncements: true,
-        enableSocialLinks: true,
-        enableCareerFields: true
-      }
+      featureFlags: defaultFeatureFlags
     };
   }
 
@@ -71,14 +73,9 @@ export function useTenantContext() {
       memberSingular: "Alumnus/Alumna",
       adminLabel: "Institute Admin"
     },
-    featureFlags: institute.featureFlags || {
-      enableJobs: true,
-      enableMentorship: true,
-      enableDirectory: true,
-      enableEvents: true,
-      enableAnnouncements: true,
-      enableSocialLinks: true,
-      enableCareerFields: true
+    featureFlags: {
+      ...defaultFeatureFlags,
+      ...(institute.featureFlags || {})
     }
   };
 }

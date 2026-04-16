@@ -23,6 +23,25 @@ function getStatusBadgeClass(status) {
   return "bg-slate-100 text-slate-600";
 }
 
+function toCsvCell(value) {
+  const normalized = String(value ?? "").replace(/"/g, '""');
+  return `"${normalized}"`;
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map((row) => row.map(toCsvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function SuperAdminInstituteWorkspace({
   approvalMutation,
   instituteDetailQuery,
@@ -77,12 +96,7 @@ function SuperAdminInstituteWorkspace({
   const currentInstitute = instituteDetailQuery.data?.institute;
 
   function inferTotalUsers(institute) {
-    return (
-      institute?.memberCount ||
-      institute?.activeUsers ||
-      institute?.alumniCount ||
-      0
-    );
+    return institute?.memberCount || institute?.activeUsers || institute?.alumniCount || 0;
   }
 
   function handlePlanFilterChange(value) {
@@ -127,6 +141,28 @@ function SuperAdminInstituteWorkspace({
     });
   }
 
+  function handleExportCsv() {
+    if (!filteredInstitutions.length) {
+      return;
+    }
+
+    const rows = [
+      ["Institution Name", "Admin Email", "Subdomain / Domain", "Total Users", "Plan", "Status", "Created At"],
+      ...filteredInstitutions.map((institute) => [
+        institute.name,
+        institute.primaryContactEmail || "",
+        institute.subdomain || institute.domain || "",
+        inferTotalUsers(institute),
+        institute.subscriptionPlan || "basic",
+        institute.status || "pending",
+        institute.createdAt ? formatDate(institute.createdAt) : ""
+      ])
+    ];
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(`institutions-export-${stamp}.csv`, rows);
+  }
+
   return (
     <section className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -136,7 +172,9 @@ function SuperAdminInstituteWorkspace({
         </div>
         <div className="flex gap-2">
           <button
-            className="flex items-center gap-2 rounded-lg border border-[#1152d4]/20 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-[#1152d4]/5"
+            className="flex items-center gap-2 rounded-lg border border-[#1152d4]/20 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-[#1152d4]/5 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!filteredInstitutions.length}
+            onClick={handleExportCsv}
             type="button"
           >
             <span className="material-symbols-outlined text-lg">file_download</span>

@@ -9,6 +9,76 @@ function monthLabel(date) {
   return new Date(date).toLocaleDateString(undefined, { month: "short" });
 }
 
+function downloadTextFile(filename, content, type = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildMonthlyReport({ institutes, support, totals, mrrByMonth, institutesByMonth, activeRate, alumniPerInstitute, computedMrr }) {
+  const generatedAt = new Date();
+  const latestMrr = mrrByMonth[mrrByMonth.length - 1]?.value || 0;
+  const latestInstitutes = institutesByMonth[institutesByMonth.length - 1]?.value || 0;
+  const lines = [
+    "AlumNet SaaS Monthly Report",
+    `Generated: ${generatedAt.toLocaleString()}`,
+    "",
+    "Platform Summary",
+    `Total institutes: ${totals?.totalInstitutes || 0}`,
+    `Active institutes: ${totals?.activeInstitutes || 0}`,
+    `Pending institutes: ${totals?.pendingInstitutes || 0}`,
+    `Suspended institutes: ${totals?.suspendedInstitutes || 0}`,
+    `Active rate: ${activeRate}%`,
+    `Active alumni users: ${totals?.activeAlumniUsers || 0}`,
+    `Total alumni profiles: ${totals?.totalAlumniProfiles || 0}`,
+    `Average alumni per institute: ${alumniPerInstitute}`,
+    `Current month MRR (USD): ${computedMrr}`,
+    `Latest MRR month value (USD): ${latestMrr}`,
+    `New institutes this month: ${latestInstitutes}`,
+    `Total events: ${totals?.totalEvents || 0}`,
+    `Total jobs: ${totals?.totalJobs || 0}`,
+    `Published jobs: ${totals?.publishedJobs || 0}`,
+    `Total RSVPs: ${totals?.totalRsvps || 0}`,
+    `Mentorship requests: ${totals?.totalMentorshipRequests || 0}`,
+    `Pending mentorship requests: ${totals?.pendingMentorshipRequests || 0}`,
+    "",
+    "Support Summary",
+    `Pending institute requests: ${support?.pendingInstituteRequests || 0}`,
+    `Pending institute admin setup: ${support?.pendingInstituteAdminSetup || 0}`,
+    `Inactive institute admins: ${support?.inactiveInstituteAdmins || 0}`,
+    `Pending alumni invites: ${support?.pendingAlumniInvites || 0}`,
+    `Expired invites: ${support?.expiredInvites || 0}`,
+    "",
+    "Revenue Trend (last 6 months)",
+    ...mrrByMonth.map((item) => `${item.label}: $${item.value.toLocaleString()}`),
+    "",
+    "New Institutions (last 6 months)",
+    ...institutesByMonth.map((item) => `${item.label}: ${item.value}`),
+    "",
+    "Institutes",
+    ...(institutes || []).map((institute) => {
+      const latestBilling = institute.billingHistory?.[0];
+      return [
+        `${institute.name}`,
+        `  Status: ${institute.status || "pending"}`,
+        `  Plan: ${institute.subscriptionPlan || "basic"}`,
+        `  Subscription status: ${institute.subscriptionStatus || "inactive"}`,
+        `  Renewal: ${institute.subscriptionRenewsAt ? new Date(institute.subscriptionRenewsAt).toLocaleDateString() : "Not set"}`,
+        `  Latest billed amount: ${latestBilling?.amount || 0} ${latestBilling?.currency || "INR"}`
+      ].join("\n");
+    })
+  ];
+
+  return lines.join("\n");
+}
+
 function SuperAdminOverview({ institutes, support, totals }) {
   const now = new Date();
   const monthAnchors = Array.from({ length: 6 }, (_, index) => {
@@ -90,6 +160,21 @@ function SuperAdminOverview({ institutes, support, totals }) {
     color: institute.subscriptionStatus === "active" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
   }));
 
+  function handleGenerateMonthlyReport() {
+    const content = buildMonthlyReport({
+      institutes,
+      support,
+      totals,
+      mrrByMonth,
+      institutesByMonth,
+      activeRate,
+      alumniPerInstitute,
+      computedMrr
+    });
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadTextFile(`alumnet-monthly-report-${stamp}.txt`, content);
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -98,7 +183,9 @@ function SuperAdminOverview({ institutes, support, totals }) {
           <p className="mt-1 text-slate-500">Real-time performance metrics across all AlumNet tenants.</p>
         </div>
         <button
-          className="flex items-center gap-2 rounded-lg bg-[#1152d4] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#1152d4]/20 transition-colors hover:bg-[#0f48ba]"
+          className="flex items-center gap-2 rounded-lg bg-[#1152d4] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#1152d4]/20 transition-colors hover:bg-[#0f48ba] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!institutes?.length}
+          onClick={handleGenerateMonthlyReport}
           type="button"
         >
           <span className="material-symbols-outlined text-base">download</span>
@@ -311,7 +398,7 @@ function SuperAdminOverview({ institutes, support, totals }) {
           </div>
 
           <div className="border-t border-slate-200 bg-slate-50 p-4 text-center">
-            <button className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-[#1152d4]" type="button">
+            <button className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-[#1152d4]" onClick={handleGenerateMonthlyReport} type="button">
               View Rankings Report
             </button>
           </div>

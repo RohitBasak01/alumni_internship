@@ -13,6 +13,23 @@ const announcementSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    category: {
+      type: String,
+      trim: true,
+      maxlength: 40,
+      default: "News"
+    },
+    summary: {
+      type: String,
+      trim: true,
+      maxlength: 320,
+      default: ""
+    },
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     content: {
       type: String,
       required: true,
@@ -22,6 +39,10 @@ const announcementSchema = new mongoose.Schema(
       type: String,
       enum: ["draft", "published"],
       default: "published"
+    },
+    publishedAt: {
+      type: Date,
+      default: null
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

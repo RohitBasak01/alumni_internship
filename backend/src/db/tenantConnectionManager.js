@@ -1,22 +1,33 @@
 import mongoose from "mongoose";
 
 import AlumniProfile from "../models/AlumniProfile.js";
+import AlumniPost from "../models/AlumniPost.js";
 import Announcement from "../models/Announcement.js";
+import BusinessListing from "../models/BusinessListing.js";
+import CommunityGroup from "../models/CommunityGroup.js";
 import Event from "../models/Event.js";
+import GalleryItem from "../models/GalleryItem.js";
 import Job from "../models/Job.js";
 import JobApplication from "../models/JobApplication.js";
 import MentorshipRequest from "../models/MentorshipRequest.js";
+import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 
 const TENANT_CONNECTION_CACHE = new Map();
+
 const TENANT_MODEL_BUILDERS = {
   User,
   AlumniProfile,
+  AlumniPost,
   Announcement,
+  BusinessListing,
+  CommunityGroup,
   Event,
+  GalleryItem,
   Job,
   JobApplication,
-  MentorshipRequest
+  MentorshipRequest,
+  Notification
 };
 
 function sanitizeDatabaseName(value = "") {
@@ -34,8 +45,8 @@ function buildTenantDatabaseName(institute) {
     return explicitName;
   }
 
-  const slug = sanitizeDatabaseName(institute?.subdomain || institute?.name || institute?._id);
-  return `alumninet-tenant-${slug}`;
+  const slug = sanitizeDatabaseName(institute?.subdomain || institute?.name || institute?._id || "tenant");
+  return `alumni-${slug}`;
 }
 
 function buildTenantMongoUri(institute) {
@@ -73,7 +84,7 @@ function registerTenantModels(connection) {
 }
 
 export function buildTenantPersistenceConfig(institute) {
-  const isolationMode = institute?.dataIsolationMode || "shared";
+  const isolationMode = institute?.dataIsolationMode === "dedicated" ? "dedicated" : "shared";
   const databaseName = buildTenantDatabaseName(institute);
   const databaseUri = buildTenantMongoUri(institute);
 
@@ -85,10 +96,19 @@ export function buildTenantPersistenceConfig(institute) {
 }
 
 export async function attachTenantDatabaseContext(req, institute) {
+  if (!req) {
+    return null;
+  }
+
   if (!institute) {
-    req.tenantConnection = null;
-    req.tenantModels = null;
-    return;
+    req.tenantConnection = mongoose.connection;
+    req.tenantModels = registerTenantModels(mongoose.connection);
+    req.tenantPersistence = {
+      isolationMode: "shared",
+      databaseName: mongoose.connection?.name || null,
+      databaseUri: mongoose.connection?.client?.s?.url || null
+    };
+    return req.tenantModels;
   }
 
   const config = buildTenantPersistenceConfig(institute);
@@ -97,16 +117,18 @@ export async function attachTenantDatabaseContext(req, institute) {
   if (config.isolationMode === "shared") {
     req.tenantConnection = mongoose.connection;
     req.tenantModels = registerTenantModels(mongoose.connection);
-    return;
+    return req.tenantModels;
   }
 
   const cacheKey = `${institute._id}:${config.databaseUri}`;
   let cached = TENANT_CONNECTION_CACHE.get(cacheKey);
 
   if (!cached) {
-    const connection = await mongoose.createConnection(config.databaseUri, {
-      serverSelectionTimeoutMS: 10000
-    }).asPromise();
+    const connection = await mongoose
+      .createConnection(config.databaseUri, {
+        serverSelectionTimeoutMS: 10000
+      })
+      .asPromise();
 
     cached = {
       connection,
@@ -119,8 +141,14 @@ export async function attachTenantDatabaseContext(req, institute) {
 
   req.tenantConnection = cached.connection;
   req.tenantModels = cached.models;
+  return req.tenantModels;
 }
 
 export function getTenantModels(req) {
-  return req.tenantModels || registerTenantModels(mongoose.connection);
+  if (req?.tenantModels) {
+    return req.tenantModels;
+  }
+
+  return registerTenantModels(mongoose.connection);
 }
+

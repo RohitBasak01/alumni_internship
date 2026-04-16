@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
-import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchInviteDetails, setupPassword } from "../lib/api.js";
 
@@ -47,53 +46,88 @@ function SetupPasswordPage() {
   }
 
   return (
-    <div className="page-narrow">
-      <SectionCard title="Set Your Password" subtitle="Invite Onboarding">
-        {inviteQuery.isLoading ? <p>Checking invite...</p> : null}
-        {inviteQuery.isError ? <p className="error-text">{inviteQuery.error.message}</p> : null}
+    <div className="auth-shell">
+      <section className="auth-grid auth-grid-compact">
+        <aside className="auth-aside">
+          <p className="auth-eyebrow">Invite onboarding</p>
+          <h1>Finish your account setup securely.</h1>
+          <p className="auth-lead">
+            Create your password once and use it alongside your approved social sign-in method for future access.
+          </p>
 
-        {inviteQuery.data ? (
-          <>
-            <p className="muted">
-              {inviteQuery.data.name} ({inviteQuery.data.email})
-            </p>
-            <p className="muted">
-              {inviteQuery.data.institute?.name || "Institute portal"} {inviteQuery.data.role.replace("_", " ")} onboarding
-            </p>
+          {inviteQuery.data ? (
+            <div className="auth-highlight-list compact">
+              <article>
+                <strong>{inviteQuery.data.name}</strong>
+                <span>{inviteQuery.data.email}</span>
+              </article>
+              <article>
+                <strong>{inviteQuery.data.institute?.name || "Institute portal"}</strong>
+                <span>{inviteQuery.data.role.replace("_", " ")} onboarding</span>
+              </article>
+            </div>
+          ) : null}
+        </aside>
 
-            <form className="form-grid" onSubmit={handleSubmit}>
-              <input
-                name="password"
-                onChange={handleChange}
-                placeholder="Create password"
-                type="password"
-                value={form.password}
-              />
-              <input
-                name="confirmPassword"
-                onChange={handleChange}
-                placeholder="Confirm password"
-                type="password"
-                value={form.confirmPassword}
-              />
+        <section className="auth-panel">
+          <div className="auth-panel-header">
+            <p className="auth-panel-kicker">Set password</p>
+            <h2>Activate your account</h2>
+            <p>Create a strong password to complete onboarding.</p>
+          </div>
+
+          {inviteQuery.isLoading ? <p className="auth-alert auth-alert-info">Checking invite...</p> : null}
+          {inviteQuery.isError ? <p className="auth-alert auth-alert-danger">{inviteQuery.error.message}</p> : null}
+
+          {inviteQuery.data ? (
+            <form className="auth-form" onSubmit={handleSubmit}>
+              <label className="auth-field">
+                <span>Create password</span>
+                <input
+                  name="password"
+                  onChange={handleChange}
+                  placeholder="Create password"
+                  type="password"
+                  value={form.password}
+                />
+              </label>
+
+              <label className="auth-field">
+                <span>Confirm password</span>
+                <input
+                  name="confirmPassword"
+                  onChange={handleChange}
+                  placeholder="Confirm password"
+                  type="password"
+                  value={form.confirmPassword}
+                />
+              </label>
+
               {form.confirmPassword && form.password !== form.confirmPassword ? (
-                <p className="error-text">Passwords do not match.</p>
+                <p className="auth-alert auth-alert-danger">Passwords do not match.</p>
               ) : null}
-              <button className="button primary" disabled={setupMutation.isPending} type="submit">
+
+              <button className="button primary auth-submit" disabled={setupMutation.isPending} type="submit">
                 {setupMutation.isPending ? "Saving..." : "Activate Account"}
               </button>
             </form>
-          </>
-        ) : null}
+          ) : null}
 
-        {setupMutation.isError ? <p className="error-text">{setupMutation.error.message}</p> : null}
-        {setupMutation.isSuccess && !setupMutation.data.canLogin ? (
-          <div className="success-panel">
-            <strong>Password saved</strong>
-            <p className="muted">{setupMutation.data.message}</p>
+          {setupMutation.isError ? <p className="auth-alert auth-alert-danger">{setupMutation.error.message}</p> : null}
+          {setupMutation.isSuccess && !setupMutation.data.canLogin ? (
+            <div className="auth-alert auth-alert-success auth-alert-large">
+              <strong>Password saved</strong>
+              <span>{setupMutation.data.message}</span>
+            </div>
+          ) : null}
+
+          <div className="auth-panel-footer auth-panel-footer-left">
+            <Link className="auth-inline-link" to="/login">
+              Back to Login
+            </Link>
           </div>
-        ) : null}
-      </SectionCard>
+        </section>
+      </section>
     </div>
   );
 }

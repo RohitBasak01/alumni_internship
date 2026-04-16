@@ -1,10 +1,21 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { PortalPageHeader, PortalSegmentedTabs } from "../components/PortalPrimitives.jsx";
+import {
+  PortalMetricCard,
+  PortalMetricGrid,
+  PortalPageHeader,
+  PortalSearchField,
+  PortalSegmentedTabs
+} from "../components/PortalPrimitives.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { fetchAlumni, fetchMentorshipRequests, createMentorshipRequest, updateMentorshipRequest } from "../lib/api.js";
+import {
+  createMentorshipRequest,
+  fetchAlumni,
+  fetchMentorshipRequests,
+  updateMentorshipRequest
+} from "../lib/api.js";
 
 function ConnectionRequestsPage() {
   const auth = useAuth();
@@ -23,7 +34,8 @@ function ConnectionRequestsPage() {
 
   const { data: allAlumni = [] } = useQuery({
     queryKey: ["alumni"],
-    queryFn: fetchAlumni
+    queryFn: fetchAlumni,
+    enabled: auth.user?.role === "alumni"
   });
 
   const updateMutation = useMutation({
@@ -37,62 +49,64 @@ function ConnectionRequestsPage() {
     mutationFn: (payload) => createMentorshipRequest(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
-      setConnectionSuccess(true);
+      setConnectionSuccess("Connection request sent.");
       setSelectedForRequest(null);
       setRequestMessage("");
-      setTimeout(() => setConnectionSuccess(null), 2000);
+      setTimeout(() => setConnectionSuccess(null), 2400);
     }
   });
 
-  const pendingRequests = useMemo(() => {
-    const incoming = data
-      .filter((item) => item.mentor?._id === auth.user?.id && item.status === "pending")
-      .map((item) => ({
-        _id: item._id,
-        name: item.requester?.name || "Alumni Member",
-        batch: item.requester?.batch,
-        department: item.requester?.department,
-        mutuals: item.requester?.mutualConnectionsCount || 0
-      }));
+  const pendingRequests = useMemo(
+    () =>
+      data
+        .filter((item) => item.mentor?._id === auth.user?.id && item.status === "pending")
+        .map((item) => ({
+          _id: item._id,
+          name: item.requester?.name || "Alumni member",
+          batch: item.requester?.batch,
+          department: item.requester?.department,
+          message: item.message || "Would like to connect with you.",
+          mutuals: item.requester?.mutualConnectionsCount || 0
+        })),
+    [auth.user?.id, data]
+  );
 
-    return incoming;
-  }, [auth.user?.id, data]);
-
-  const sentRequests = useMemo(() => {
-    const outgoing = data
-      .filter((item) => item.requester?._id === auth.user?.id)
-      .map((item) => ({
-        _id: item._id,
-        name: item.mentor?.name || "Alumni Member",
-        batch: item.mentor?.batch,
-        department: item.mentor?.department,
-        status: item.status
-      }));
-
-    return outgoing;
-  }, [auth.user?.id, data]);
+  const sentRequests = useMemo(
+    () =>
+      data
+        .filter((item) => item.requester?._id === auth.user?.id)
+        .map((item) => ({
+          _id: item._id,
+          name: item.mentor?.name || "Alumni member",
+          batch: item.mentor?.batch,
+          department: item.mentor?.department,
+          status: item.status,
+          message: item.message || ""
+        })),
+    [auth.user?.id, data]
+  );
 
   const discoverAlumni = useMemo(() => {
-    const sentRequestIds = new Set(data
-      .filter((item) => item.requester?._id === auth.user?.id)
-      .map((item) => item.mentor?._id)
+    const sentRequestIds = new Set(
+      data.filter((item) => item.requester?._id === auth.user?.id).map((item) => item.mentor?._id)
     );
-
-    const pendingRequestIds = new Set(data
-      .filter((item) => item.mentor?._id === auth.user?.id && item.status === "pending")
-      .map((item) => item.requester?._id)
+    const pendingRequestIds = new Set(
+      data
+        .filter((item) => item.mentor?._id === auth.user?.id && item.status === "pending")
+        .map((item) => item.requester?._id)
     );
 
     return allAlumni
       .filter((alumni) => {
-        // Exclude self
-        if (alumni.userId?._id === auth.user?.id || alumni.userId === auth.user?.id) return false;
-        // Exclude those already connected to
-        if (sentRequestIds.has(alumni.userId?._id) || sentRequestIds.has(alumni.userId)) return false;
-        // Exclude those who sent pending requests
-        if (pendingRequestIds.has(alumni.userId?._id) || pendingRequestIds.has(alumni.userId)) return false;
-        // Filter by search
-        const haystack = `${alumni.userId?.name || ""} ${alumni.company || ""} ${alumni.designation || ""} ${alumni.batch || ""}`.toLowerCase();
+        const alumniUserId = alumni.userId?._id || alumni.userId;
+        if (alumniUserId === auth.user?.id) {
+          return false;
+        }
+        if (sentRequestIds.has(alumniUserId) || pendingRequestIds.has(alumniUserId)) {
+          return false;
+        }
+
+        const haystack = `${alumni.userId?.name || alumni.name || ""} ${alumni.company || ""} ${alumni.designation || ""} ${alumni.batch || ""}`.toLowerCase();
         return haystack.includes(discoverSearch.toLowerCase());
       })
       .slice(0, 12);
@@ -100,110 +114,66 @@ function ConnectionRequestsPage() {
 
   if (auth.user?.role !== "alumni") {
     return (
-      <SectionCard title="Connection Requests" subtitle="Portal Access">
+      <SectionCard title="Connection requests" subtitle="Portal access">
         <p className="muted">Connection requests are available for alumni accounts.</p>
       </SectionCard>
     );
   }
 
   return (
-    <div className="connections-page">
+    <div className="member-connections-page">
       <PortalPageHeader
-        className="connections-header"
-        subtitle="Manage your professional network and incoming invitations."
-        title="Connection Requests"
+        title="Connection requests"
+        subtitle="Discover alumni, review incoming requests, and track the people you have already reached out to."
       />
+
+      <PortalMetricGrid>
+        <PortalMetricCard title="Pending" value={pendingRequests.length} icon="PN" />
+        <PortalMetricCard title="Sent" value={sentRequests.length} icon="ST" />
+        <PortalMetricCard title="Discoverable" value={discoverAlumni.length} icon="NW" />
+      </PortalMetricGrid>
 
       <PortalSegmentedTabs
         activeValue={activeTab}
         ariaLabel="Connection request sections"
-        className="connections-tabs"
         items={[
           { value: "discover", label: "Discover" },
-          { value: "pending", label: `Pending Requests (${pendingRequests.length})` },
-          { value: "sent", label: `Sent Requests (${sentRequests.length})` }
+          { value: "pending", label: `Pending (${pendingRequests.length})` },
+          { value: "sent", label: `Sent (${sentRequests.length})` }
         ]}
         onChange={setActiveTab}
       />
 
       {isLoading ? <p>Loading connection requests...</p> : null}
       {isError ? <p className="error-text">{error.message}</p> : null}
+      {connectionSuccess ? <p className="success-text">{connectionSuccess}</p> : null}
+      {updateMutation.isError ? <p className="error-text">{updateMutation.error.message}</p> : null}
 
       {activeTab === "discover" ? (
-        <>
-          <section className="connections-section-head">
-            <h2>Discover Alumni</h2>
-            <p className="muted">Connect with other alumni in your network</p>
-          </section>
-
-          <div className="connections-discover-search">
-            <input
-              type="text"
-              placeholder="Search by name, company, or designation..."
+        <div className="member-connections-stack">
+          <SectionCard title="Find alumni to connect with" subtitle="Search the network and send thoughtful requests.">
+            <PortalSearchField
+              className="member-connections-search"
+              onChange={(event) => setDiscoverSearch(event.target.value)}
+              placeholder="Search by name, company, role, or batch"
               value={discoverSearch}
-              onChange={(e) => setDiscoverSearch(e.target.value)}
-              className="connections-search-input"
             />
-          </div>
+          </SectionCard>
 
-          {connectionSuccess ? (
-            <div className="connection-success-message">
-              <p>✓ Connection request sent successfully!</p>
-            </div>
-          ) : null}
-
-          {selectedForRequest ? (
-            <div className="connection-request-modal-overlay" onClick={() => setSelectedForRequest(null)}>
-              <div className="connection-request-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Connect with {selectedForRequest.userId?.name || "Alumni Member"}</h3>
-                  <button className="modal-close" onClick={() => setSelectedForRequest(null)} type="button">×</button>
-                </div>
-                <div className="modal-body">
-                  <div className="connection-profile-summary">
-                    <p><strong>{selectedForRequest.userId?.name}</strong></p>
-                    <p>{selectedForRequest.designation} @ {selectedForRequest.company}</p>
-                    <p className="muted">Batch {selectedForRequest.batch}</p>
-                  </div>
-                  <textarea
-                    className="textarea"
-                    placeholder="Write a message (at least 10 characters)..."
-                    value={requestMessage}
-                    onChange={(e) => setRequestMessage(e.target.value)}
-                    rows="4"
-                  />
-                </div>
-                <div className="modal-footer">
-                  <button
-                    className="button primary"
-                    disabled={sendRequestMutation.isPending || requestMessage.trim().length < 10}
-                    onClick={() => sendRequestMutation.mutate({
-                      mentorUserId: selectedForRequest.userId?._id || selectedForRequest.userId,
-                      message: requestMessage
-                    })}
-                    type="button"
-                  >
-                    {sendRequestMutation.isPending ? "Sending..." : "Send Request"}
-                  </button>
-                  <button className="button secondary" onClick={() => setSelectedForRequest(null)} type="button">Cancel</button>
-                </div>
-                {sendRequestMutation.isError ? <p className="error-text">{sendRequestMutation.error?.message}</p> : null}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="connections-discover-grid">
+          <div className="member-connections-grid">
             {discoverAlumni.map((alumni) => (
-              <article className="connections-discover-card" key={alumni._id}>
-                <div className="connections-discover-header">
-                  <div className="connections-avatar large">{alumni.userId?.name?.slice(0, 1) || "?"}</div>
+              <article className="member-connection-card" key={alumni._id}>
+                <div className="member-connection-card-head">
+                  <div className="member-person-avatar">{(alumni.userId?.name || alumni.name || "?").slice(0, 1)}</div>
+                  <div>
+                    <strong>{alumni.userId?.name || alumni.name || "Alumni member"}</strong>
+                    <p>{alumni.designation || "Alumni member"}{alumni.company ? ` at ${alumni.company}` : ""}</p>
+                  </div>
                 </div>
-                <div className="connections-discover-body">
-                  <h3>{alumni.userId?.name || "Alumni Member"}</h3>
-                  <p className="designation">{alumni.designation} @ {alumni.company}</p>
-                  <p className="location">{alumni.location || "Location unknown"}</p>
-                  <p className="batch">Batch {alumni.batch}</p>
-                  <p className="department">{alumni.department}</p>
+                <div className="member-connection-card-meta">
+                  <span>Batch {alumni.batch || "-"}</span>
+                  <span>{alumni.department || "Department not added"}</span>
+                  <span>{alumni.location || "Location not added"}</span>
                 </div>
                 <button
                   className="button primary"
@@ -213,43 +183,30 @@ function ConnectionRequestsPage() {
                   }}
                   type="button"
                 >
-                  + Connect
+                  Send request
                 </button>
               </article>
             ))}
           </div>
 
-          {!discoverAlumni.length && !discoverSearch ? (
-            <p className="muted">No more alumni to connect with</p>
+          {!discoverAlumni.length ? (
+            <SectionCard title="No matches yet" subtitle="Try widening your search">
+              <p className="muted">
+                {discoverSearch ? "No alumni match your current search." : "You are caught up for now. New people will appear here as the network grows."}
+              </p>
+            </SectionCard>
           ) : null}
-
-          {!discoverAlumni.length && discoverSearch ? (
-            <p className="muted">No alumni match your search</p>
-          ) : null}
-        </>
+        </div>
       ) : null}
 
       {activeTab === "pending" ? (
-        <>
-          <section className="connections-section-head">
-            <h2>Pending Approvals</h2>
-          </section>
-
-          <div className="connections-pending-grid">
-            {pendingRequests.map((item) => (
-              <article className="connections-pending-card" key={item._id}>
-                <div className="connections-person">
-                  <div className="connections-avatar">{item.name.slice(0, 1)}</div>
-                  <div>
-                    <h3>{item.name}</h3>
-                    <p>
-                      Batch {item.batch || "-"} | {item.department || "-"}
-                    </p>
-                    <span>{item.mutuals} Mutual Connections</span>
-                  </div>
-                </div>
-
-                <div className="connections-actions">
+        <div className="member-connections-grid two-column">
+          {pendingRequests.map((item) => (
+            <SectionCard key={item._id} title={item.name} subtitle={`Batch ${item.batch || "-"} | ${item.department || "Department not added"}`}>
+              <div className="member-request-card-body">
+                <p>{item.message}</p>
+                <span>{item.mutuals} mutual connections</span>
+                <div className="member-inline-actions">
                   <button
                     className="button primary"
                     disabled={updateMutation.isPending}
@@ -264,51 +221,84 @@ function ConnectionRequestsPage() {
                     onClick={() => updateMutation.mutate({ id: item._id, status: "declined" })}
                     type="button"
                   >
-                    Ignore
+                    Decline
                   </button>
                 </div>
-              </article>
-            ))}
-          </div>
-
-          {!pendingRequests.length ? <p className="muted">No pending connection requests</p> : null}
-        </>
+              </div>
+            </SectionCard>
+          ))}
+          {!pendingRequests.length ? (
+            <SectionCard title="No pending requests" subtitle="Your inbox is clear">
+              <p className="muted">When alumni request to connect with you, they will appear here.</p>
+            </SectionCard>
+          ) : null}
+        </div>
       ) : null}
 
       {activeTab === "sent" ? (
-        <>
-          <section className="connections-section-head sent">
-            <h2>Sent Requests</h2>
-            <span>Total: {sentRequests.length}</span>
-          </section>
-
-          <div className="connections-sent-list">
-            {sentRequests.map((item) => (
-              <article className="connections-sent-row" key={item._id}>
-                <div className="connections-person">
-                  <div className="connections-avatar small">{item.name.slice(0, 1)}</div>
-                  <div>
-                    <h3>{item.name}</h3>
-                    <p>
-                      Batch {item.batch || "-"} | {item.department || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="connections-sent-actions">
-                  <span className={`connections-status-badge status-${item.status}`}>
-                    {item.status === "pending" ? "Pending Approval" : item.status === "accepted" ? "Connected" : "Declined"}
-                  </span>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          {!sentRequests.length ? <p className="muted">No sent connection requests</p> : null}
-        </>
+        <div className="member-connections-grid two-column">
+          {sentRequests.map((item) => (
+            <SectionCard key={item._id} title={item.name} subtitle={`Batch ${item.batch || "-"} | ${item.department || "Department not added"}`}>
+              <div className="member-request-card-body">
+                <span className={`member-status-pill status-${item.status}`}>{item.status}</span>
+                <p>{item.message || "Connection request sent."}</p>
+              </div>
+            </SectionCard>
+          ))}
+          {!sentRequests.length ? (
+            <SectionCard title="No sent requests" subtitle="Start a few conversations">
+              <p className="muted">Use Discover to reach out to alumni you want to connect with.</p>
+            </SectionCard>
+          ) : null}
+        </div>
       ) : null}
 
-      {updateMutation.isError ? <p className="error-text">{updateMutation.error.message}</p> : null}
+      {selectedForRequest ? (
+        <div className="member-dialog-backdrop" onClick={() => setSelectedForRequest(null)}>
+          <div className="member-dialog" onClick={(event) => event.stopPropagation()}>
+            <div className="member-dialog-header">
+              <div>
+                <p className="member-card-kicker">New connection</p>
+                <h3>Connect with {selectedForRequest.userId?.name || selectedForRequest.name || "alumni member"}</h3>
+              </div>
+              <button className="member-dialog-close" onClick={() => setSelectedForRequest(null)} type="button">
+                Close
+              </button>
+            </div>
+            <div className="member-dialog-body">
+              <p className="muted">
+                Add a short note so your request feels personal and relevant.
+              </p>
+              <textarea
+                className="textarea member-form-textarea"
+                onChange={(event) => setRequestMessage(event.target.value)}
+                placeholder="Write a message of at least 10 characters"
+                rows="5"
+                value={requestMessage}
+              />
+            </div>
+            <div className="member-inline-actions">
+              <button
+                className="button primary"
+                disabled={sendRequestMutation.isPending || requestMessage.trim().length < 10}
+                onClick={() =>
+                  sendRequestMutation.mutate({
+                    mentorUserId: selectedForRequest.userId?._id || selectedForRequest.userId,
+                    message: requestMessage
+                  })
+                }
+                type="button"
+              >
+                {sendRequestMutation.isPending ? "Sending..." : "Send request"}
+              </button>
+              <button className="button secondary" onClick={() => setSelectedForRequest(null)} type="button">
+                Cancel
+              </button>
+            </div>
+            {sendRequestMutation.isError ? <p className="error-text">{sendRequestMutation.error?.message}</p> : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

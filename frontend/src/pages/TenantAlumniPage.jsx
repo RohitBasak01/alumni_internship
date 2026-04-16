@@ -1,7 +1,14 @@
+
 import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { PortalPageHeader, PortalSearchField, PortalSegmentedTabs } from "../components/PortalPrimitives.jsx";
+import {
+  PortalMetricCard,
+  PortalMetricGrid,
+  PortalPageHeader,
+  PortalSearchField,
+  PortalSegmentedTabs
+} from "../components/PortalPrimitives.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
@@ -50,26 +57,94 @@ function getDirectoryConfig(tenant) {
     memberPlural: tenant.communityLabels.memberPlural || "Alumni",
     memberSingular: tenant.communityLabels.memberSingular || "Member",
     adminLabel: tenant.communityLabels.adminLabel || "Institute Admin",
-    educationFieldLabel: isSchool ? "Last Class Attended" : "Course",
+    educationFieldLabel: isSchool ? "Last Class Attended" : "Department",
     yearFieldLabel: isSchool ? "Leaving Year" : "Batch Year",
     yearShortLabel: isSchool ? "Leaving Year" : "Batch",
-    featuredSecondaryLabel: isSchool ? "Current Path" : "Major",
     roleFallback: isSchool ? "Community Member" : "Alumni Member",
     inviteTitle: isSchool ? "Invite Former Student" : "Invite Alumni",
-    inviteButtonLabel: isSchool ? "+ Add Former Student" : "+ Add Alumni",
+    inviteButtonLabel: isSchool ? "Add Former Student" : "Add Alumni",
     directoryTitle: isSchool ? "Former Students Directory" : "Alumni Directory",
-    directorySubtitle: isSchool ? "Community Search" : "Networking Search",
+    directorySubtitle: isSchool ? "Reconnect across your school community." : "Discover people by batch, role, and company.",
     filterPlaceholder: isSchool
-      ? "Filter by name, email, current institution or location..."
-      : "Filter by name, email or company...",
+      ? "Search by name, email, institution, or location"
+      : "Search by name, email, company, or role",
     publicSearchPlaceholder: isSchool
-      ? "Search name, current institution, location..."
-      : "Search name, company, skill...",
-    approvalTitle: isSchool ? "Approve Registrations" : "Approve Registrations",
+      ? "Search by name, current institution, or location"
+      : "Search by name, company, skill, or role",
     approvalDescription: isSchool
-      ? "Verify and approve former students joining your school community."
-      : "Verify and approve new alumni joining your institution's network."
+      ? "Review former-student registrations before they can join the portal."
+      : "Review alumni registrations before they can join the portal."
   };
+}
+
+function getUserId(value) {
+  if (!value) {
+    return "";
+  }
+
+  return typeof value === "string" ? value : value._id || "";
+}
+
+function getDisplayName(item) {
+  return item.name || item.userId?.name || "Community member";
+}
+
+function getInviteFormErrors(inviteForm, isSchool) {
+  const errors = {};
+
+  if (!inviteForm.name.trim()) {
+    errors.name = "Full name is required";
+  }
+
+  if (!inviteForm.email.trim()) {
+    errors.email = "Email is required";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteForm.email.trim())) {
+    errors.email = "Enter a valid email address";
+  }
+
+  if (isSchool) {
+    if (!inviteForm.leavingYear) {
+      errors.leavingYear = "Leaving year is required";
+    }
+    if (!inviteForm.lastClassAttended.trim()) {
+      errors.lastClassAttended = "Last class attended is required";
+    }
+  } else {
+    if (!inviteForm.batch) {
+      errors.batch = "Batch year is required";
+    }
+    if (!inviteForm.department.trim()) {
+      errors.department = "Department is required";
+    }
+  }
+
+  return errors;
+}
+
+function showInvitePanel(isInvitePanelOpen, inviteMutation, inviteForm) {
+  return (
+    isInvitePanelOpen ||
+    inviteMutation.isPending ||
+    Object.values(inviteForm).some((value) => String(value || "").trim().length > 0)
+  );
+}
+
+function NoticeStack({ notices }) {
+  const visibleNotices = notices.filter(Boolean);
+
+  if (!visibleNotices.length) {
+    return null;
+  }
+
+  return (
+    <div className="member-notice-stack">
+      {visibleNotices.map((notice, index) => (
+        <p className={notice.type === "error" ? "error-text" : "success-text"} key={`${notice.message}-${index}`}>
+          {notice.message}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 function TenantAlumniPage() {
@@ -106,12 +181,14 @@ function TenantAlumniPage() {
       setIsInvitePanelOpen(false);
     }
   });
+
   const resendMutation = useMutation({
     mutationFn: resendAlumniInvite,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
     }
   });
+
   const copyMutation = useMutation({
     mutationFn: copyAlumniInviteLink,
     onSuccess: async (response) => {
@@ -119,30 +196,33 @@ function TenantAlumniPage() {
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
     }
   });
+
   const revokeMutation = useMutation({
     mutationFn: revokeAlumniInvite,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
-      setActionNotification({ type: "success", message: "Registration rejected successfully" });
+      setActionNotification({ type: "success", message: "Registration rejected successfully." });
       setTimeout(() => setActionNotification(null), 3000);
     },
-    onError: (error) => {
-      setActionNotification({ type: "error", message: error.message });
+    onError: (mutationError) => {
+      setActionNotification({ type: "error", message: mutationError.message });
       setTimeout(() => setActionNotification(null), 3000);
     }
   });
+
   const approveMutation = useMutation({
     mutationFn: approveAlumniRegistration,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
-      setActionNotification({ type: "success", message: "Registration approved successfully" });
+      setActionNotification({ type: "success", message: "Registration approved successfully." });
       setTimeout(() => setActionNotification(null), 3000);
     },
-    onError: (error) => {
-      setActionNotification({ type: "error", message: error.message });
+    onError: (mutationError) => {
+      setActionNotification({ type: "error", message: mutationError.message });
       setTimeout(() => setActionNotification(null), 3000);
     }
   });
+
   const mentorshipMutation = useMutation({
     mutationFn: createMentorshipRequest,
     onSuccess: () => {
@@ -153,35 +233,24 @@ function TenantAlumniPage() {
   const isAdmin = auth.user?.role === "institute_admin";
   const directoryConfig = getDirectoryConfig(tenant);
   const isSchool = directoryConfig.isSchool;
+  const selfUserId = auth.user?.id || auth.user?._id;
   const directoryEntries = useMemo(
-    () => (isAdmin ? data : data.filter((item) => item.userId !== auth.user?.id)),
-    [auth.user?.id, data, isAdmin]
+    () => (isAdmin ? data : data.filter((item) => getUserId(item.userId) !== selfUserId)),
+    [data, isAdmin, selfUserId]
   );
-  const featuredAlumni = !isAdmin && directoryEntries.length > 1 ? directoryEntries[0] : null;
-  const totalConnections = directoryEntries.length;
-  const alumniCards = useMemo(
-    () => (featuredAlumni ? directoryEntries.slice(1) : directoryEntries),
-    [directoryEntries, featuredAlumni]
+  const activeMembers = useMemo(() => directoryEntries.filter((item) => item.isActive), [directoryEntries]);
+  const featuredMember = !isAdmin && activeMembers.length ? activeMembers[0] : null;
+  const listedMembers = useMemo(
+    () => (featuredMember ? activeMembers.filter((item) => item._id !== featuredMember._id) : activeMembers),
+    [activeMembers, featuredMember]
   );
   const pendingApprovals = useMemo(
     () => data.filter((item) => (item.registrationReviewStatus || "pending") === "pending"),
     [data]
   );
-  const isInviteFormValid = useMemo(
-    () =>
-      Boolean(inviteForm.name.trim()) &&
-      Boolean(inviteForm.email.trim()) &&
-      (isSchool
-        ? Boolean(inviteForm.lastClassAttended.trim()) &&
-          /^\d{4}$/.test(inviteForm.leavingYear) &&
-          Number(inviteForm.leavingYear) >= 1900 &&
-          Number(inviteForm.leavingYear) <= 2100
-        : Boolean(inviteForm.department.trim()) &&
-          /^\d{4}$/.test(inviteForm.batch) &&
-          Number(inviteForm.batch) >= 1900 &&
-          Number(inviteForm.batch) <= 2100),
-    [inviteForm, isSchool]
-  );
+  const pendingInvites = useMemo(() => data.filter((item) => !item.isActive), [data]);
+  const inviteFormErrors = getInviteFormErrors(inviteForm, isSchool);
+  const canSubmitInvite = Object.keys(inviteFormErrors).length === 0;
 
   function handleInviteChange(event) {
     const { name, value } = event.target;
@@ -202,44 +271,6 @@ function TenantAlumniPage() {
     setFilters(initialFilters);
   }
 
-  function getInviteFormErrors() {
-    const errors = {};
-    if (!inviteForm.name.trim()) {
-      errors.name = "Full name is required";
-    }
-    if (!inviteForm.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteForm.email.trim())) {
-      errors.email = "Enter a valid email address";
-    }
-    if (isSchool) {
-      if (!inviteForm.leavingYear) {
-        errors.leavingYear = "Leaving year is required";
-      } else if (
-        !/^\d{4}$/.test(inviteForm.leavingYear) ||
-        inviteForm.leavingYear < 1900 ||
-        inviteForm.leavingYear > 2100
-      ) {
-        errors.leavingYear = "Enter a year between 1900 and 2100";
-      }
-      if (!inviteForm.lastClassAttended.trim()) {
-        errors.lastClassAttended = "Last class attended is required";
-      }
-    } else {
-      if (!inviteForm.batch) {
-        errors.batch = "Batch year is required";
-      } else if (!/^\d{4}$/.test(inviteForm.batch) || inviteForm.batch < 1900 || inviteForm.batch > 2100) {
-        errors.batch = "Enter a year between 1900 and 2100";
-      }
-      if (!inviteForm.department.trim()) {
-        errors.department = "Department is required";
-      }
-    }
-    return errors;
-  }
-
-  const inviteFormErrors = getInviteFormErrors();
-
   function handleMentorshipMessageChange(profileId, value) {
     setMentorshipMessages((current) => ({
       ...current,
@@ -249,10 +280,10 @@ function TenantAlumniPage() {
 
   function submitMentorshipRequest(alumni) {
     mentorshipMutation.mutate({
-      recipientUserId: alumni.userId,
+      recipientUserId: getUserId(alumni.userId),
       message:
         mentorshipMessages[alumni._id]?.trim() ||
-        `Hi ${alumni.name}, I would love to connect and chat with you.`
+        `Hi ${getDisplayName(alumni)}, I would love to connect and chat with you.`
     });
   }
 
@@ -278,7 +309,7 @@ function TenantAlumniPage() {
     ];
 
     const rows = data.map((alumni) => [
-      alumni.name,
+      getDisplayName(alumni),
       alumni.email,
       isSchool ? alumni.leavingYear : alumni.batch,
       isSchool ? alumni.lastClassAttended : alumni.department,
@@ -295,25 +326,46 @@ function TenantAlumniPage() {
     const link = document.createElement("a");
 
     link.href = downloadUrl;
-    link.setAttribute("download", `${directoryConfig.memberPlural.toLowerCase().replace(/\s+/g, "-")}-export-${timestamp}.csv`);
+    link.setAttribute(
+      "download",
+      `${directoryConfig.memberPlural.toLowerCase().replace(/\s+/g, "-")}-export-${timestamp}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(downloadUrl);
   }
 
+  const notices = [
+    actionNotification,
+    copyMutation.isSuccess ? { type: "success", message: "A fresh invite link was copied to the clipboard." } : null,
+    resendMutation.isSuccess ? { type: "success", message: resendMutation.data.invite.message } : null,
+    revokeMutation.isSuccess ? { type: "success", message: revokeMutation.data.message } : null,
+    inviteMutation.isSuccess
+      ? {
+          type: "success",
+          message: inviteMutation.data?.invite?.inviteUrl
+            ? `${inviteMutation.data?.invite?.message} Share the generated invite link if email delivery is manual.`
+            : inviteMutation.data?.invite?.message || "Invite created successfully."
+        }
+      : null,
+    mentorshipMutation.isSuccess ? { type: "success", message: "Connection request sent successfully." } : null,
+    copyMutation.isError ? { type: "error", message: copyMutation.error.message } : null,
+    resendMutation.isError ? { type: "error", message: resendMutation.error.message } : null,
+    revokeMutation.isError ? { type: "error", message: revokeMutation.error.message } : null,
+    inviteMutation.isError ? { type: "error", message: inviteMutation.error.message } : null,
+    mentorshipMutation.isError ? { type: "error", message: mentorshipMutation.error.message } : null
+  ];
+
   if (isAdmin) {
     return (
-      <div className="admin-alumni-page">
+      <div className="member-directory-page admin-mode">
         <PortalPageHeader
+          title={`Manage ${directoryConfig.memberPlural}`}
+          subtitle={directoryConfig.approvalDescription}
           actions={
-            <div className="admin-alumni-header-actions">
-              <button
-                className="button secondary"
-                disabled={!data.length}
-                onClick={handleExportCsv}
-                type="button"
-              >
+            <div className="member-inline-actions">
+              <button className="button secondary" disabled={!data.length} onClick={handleExportCsv} type="button">
                 Export CSV
               </button>
               <button
@@ -328,752 +380,405 @@ function TenantAlumniPage() {
               </button>
             </div>
           }
-          className="admin-alumni-header"
-          subtitle={
-            isSchool
-              ? "View, filter, and moderate the school's former student community, including pending approvals."
-              : "View, filter, and moderate the university's registered alumni base, including pending approvals."
-          }
-          title={`Manage ${directoryConfig.memberPlural}`}
         />
+
+        <PortalMetricGrid>
+          <PortalMetricCard title="Total records" value={data.length} icon="TR" />
+          <PortalMetricCard title="Active members" value={activeMembers.length} icon="AM" />
+          <PortalMetricCard title="Pending approvals" value={pendingApprovals.length} icon="PA" />
+          <PortalMetricCard title="Pending invites" value={pendingInvites.length} icon="PI" />
+        </PortalMetricGrid>
 
         <PortalSegmentedTabs
           activeValue={activeAdminTab}
-          ariaLabel="Alumni management sections"
-          className="admin-alumni-tabs"
+          ariaLabel="Member management sections"
           items={[
-            { value: "manage", label: directoryConfig.directoryTitle },
-            {
-              value: "approvals",
-              label: directoryConfig.approvalTitle,
-              badge: pendingApprovals.length || null
-            }
+            { value: "manage", label: "Roster" },
+            { value: "approvals", label: `Approvals (${pendingApprovals.length})` }
           ]}
           onChange={setActiveAdminTab}
         />
 
+        <NoticeStack notices={notices} />
+        {isError ? <p className="error-text">{error.message}</p> : null}
+
         {activeAdminTab === "manage" ? (
-          <>
-            <section className="admin-alumni-filters">
-              <PortalSearchField
-                className="admin-alumni-search"
-                icon="F"
-                name="q"
-                onChange={handleFilterChange}
-                placeholder={directoryConfig.filterPlaceholder}
-                value={filters.q}
-              />
-
-              <select
-                name={isSchool ? "leavingYear" : "batch"}
-                onChange={handleFilterChange}
-                value={isSchool ? filters.leavingYear : filters.batch}
-              >
-                <option value="">{directoryConfig.yearFieldLabel}: All</option>
-                {[...new Set(data.map((item) => (isSchool ? item.leavingYear : item.batch)).filter(Boolean))].map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                name={isSchool ? "lastClassAttended" : "department"}
-                onChange={handleFilterChange}
-                value={isSchool ? filters.lastClassAttended : filters.department}
-              >
-                <option value="">{directoryConfig.educationFieldLabel}: All</option>
-                {[...new Set(data.map((item) => (isSchool ? item.lastClassAttended : item.department)).filter(Boolean))].map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-
-              <button className="admin-alumni-refresh" onClick={clearFilters} type="button">
-                R
-              </button>
-            </section>
+          <div className="member-directory-admin-grid">
+            <SectionCard title="Roster filters" subtitle="Refine the member list quickly">
+              <div className="member-directory-filter-grid">
+                <PortalSearchField
+                  name="q"
+                  onChange={handleFilterChange}
+                  placeholder={directoryConfig.filterPlaceholder}
+                  value={filters.q}
+                />
+                <input
+                  name={isSchool ? "leavingYear" : "batch"}
+                  onChange={handleFilterChange}
+                  placeholder={directoryConfig.yearFieldLabel}
+                  value={isSchool ? filters.leavingYear : filters.batch}
+                />
+                <input
+                  name={isSchool ? "lastClassAttended" : "department"}
+                  onChange={handleFilterChange}
+                  placeholder={directoryConfig.educationFieldLabel}
+                  value={isSchool ? filters.lastClassAttended : filters.department}
+                />
+                <button className="button secondary" onClick={clearFilters} type="button">
+                  Clear filters
+                </button>
+              </div>
+            </SectionCard>
 
             {showInvitePanel(isInvitePanelOpen, inviteMutation, inviteForm) ? (
-              <SectionCard title={directoryConfig.inviteTitle} subtitle={directoryConfig.adminLabel}>
-                <p className="muted">
-                  Create a secure onboarding link so {directoryConfig.memberPlural.toLowerCase()} can set their own password.
-                </p>
+              <SectionCard title={directoryConfig.inviteTitle} subtitle="Secure onboarding">
+                <form className="member-form-grid member-form-grid-two" onSubmit={handleInviteSubmit}>
+                  <label className="member-form-field">
+                    <span>Full name</span>
+                    <input name="name" onChange={handleInviteChange} value={inviteForm.name} />
+                    {inviteFormErrors.name ? <small className="error-text">{inviteFormErrors.name}</small> : null}
+                  </label>
+                  <label className="member-form-field">
+                    <span>Email</span>
+                    <input name="email" onChange={handleInviteChange} type="email" value={inviteForm.email} />
+                    {inviteFormErrors.email ? <small className="error-text">{inviteFormErrors.email}</small> : null}
+                  </label>
 
-                <form className="form-grid two-column" onSubmit={handleInviteSubmit}>
-                  <div>
-                    <input name="name" onChange={handleInviteChange} placeholder="Full name" value={inviteForm.name} />
-                    {inviteFormErrors.name ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.name}</p> : null}
-                  </div>
-                  <div>
-                    <input
-                      name="email"
-                      onChange={handleInviteChange}
-                      placeholder="Email address"
-                      required
-                      type="email"
-                      value={inviteForm.email}
-                    />
-                    {inviteFormErrors.email ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.email}</p> : null}
-                  </div>
                   {isSchool ? (
                     <>
-                      <div>
-                        <input
-                          name="leavingYear"
-                          max="2100"
-                          min="1900"
-                          onChange={handleInviteChange}
-                          placeholder="Leaving year (1900-2100)"
-                          required
-                          type="number"
-                          value={inviteForm.leavingYear}
-                        />
-                        {inviteFormErrors.leavingYear ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.leavingYear}</p> : null}
-                      </div>
-                      <div>
-                        <input
-                          name="lastClassAttended"
-                          onChange={handleInviteChange}
-                          placeholder="Last class attended"
-                          required
-                          value={inviteForm.lastClassAttended}
-                        />
-                        {inviteFormErrors.lastClassAttended ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.lastClassAttended}</p> : null}
-                      </div>
-                      <input
-                        name="section"
-                        onChange={handleInviteChange}
-                        placeholder="Section / House"
-                        value={inviteForm.section}
-                      />
-                      <input
-                        name="currentEducation"
-                        onChange={handleInviteChange}
-                        placeholder="Current education"
-                        value={inviteForm.currentEducation}
-                      />
-                      <input
-                        name="currentInstitution"
-                        onChange={handleInviteChange}
-                        placeholder="Current institution"
-                        value={inviteForm.currentInstitution}
-                      />
-                      <input
-                        name="occupation"
-                        onChange={handleInviteChange}
-                        placeholder="Occupation"
-                        value={inviteForm.occupation}
-                      />
+                      <label className="member-form-field">
+                        <span>Leaving year</span>
+                        <input name="leavingYear" onChange={handleInviteChange} type="number" value={inviteForm.leavingYear} />
+                        {inviteFormErrors.leavingYear ? <small className="error-text">{inviteFormErrors.leavingYear}</small> : null}
+                      </label>
+                      <label className="member-form-field">
+                        <span>Last class attended</span>
+                        <input name="lastClassAttended" onChange={handleInviteChange} value={inviteForm.lastClassAttended} />
+                        {inviteFormErrors.lastClassAttended ? <small className="error-text">{inviteFormErrors.lastClassAttended}</small> : null}
+                      </label>
+                      <label className="member-form-field">
+                        <span>Section / house</span>
+                        <input name="section" onChange={handleInviteChange} value={inviteForm.section} />
+                      </label>
+                      <label className="member-form-field">
+                        <span>Current education</span>
+                        <input name="currentEducation" onChange={handleInviteChange} value={inviteForm.currentEducation} />
+                      </label>
+                      <label className="member-form-field">
+                        <span>Current institution</span>
+                        <input name="currentInstitution" onChange={handleInviteChange} value={inviteForm.currentInstitution} />
+                      </label>
+                      <label className="member-form-field">
+                        <span>Occupation</span>
+                        <input name="occupation" onChange={handleInviteChange} value={inviteForm.occupation} />
+                      </label>
                     </>
                   ) : (
                     <>
-                      <div>
-                        <input
-                          name="batch"
-                          max="2100"
-                          min="1900"
-                          onChange={handleInviteChange}
-                          placeholder="Batch year (1900-2100)"
-                          required
-                          type="number"
-                          value={inviteForm.batch}
-                        />
-                        {inviteFormErrors.batch ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.batch}</p> : null}
-                      </div>
-                      <div>
-                        <input
-                          name="department"
-                          onChange={handleInviteChange}
-                          placeholder="Department"
-                          required
-                          value={inviteForm.department}
-                        />
-                        {inviteFormErrors.department ? <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem" }}>{inviteFormErrors.department}</p> : null}
-                      </div>
-                      <input
-                        name="company"
-                        onChange={handleInviteChange}
-                        placeholder="Company"
-                        value={inviteForm.company}
-                      />
-                      <input
-                        name="designation"
-                        onChange={handleInviteChange}
-                        placeholder="Designation"
-                        value={inviteForm.designation}
-                      />
+                      <label className="member-form-field">
+                        <span>Batch year</span>
+                        <input name="batch" onChange={handleInviteChange} type="number" value={inviteForm.batch} />
+                        {inviteFormErrors.batch ? <small className="error-text">{inviteFormErrors.batch}</small> : null}
+                      </label>
+                      <label className="member-form-field">
+                        <span>Department</span>
+                        <input name="department" onChange={handleInviteChange} value={inviteForm.department} />
+                        {inviteFormErrors.department ? <small className="error-text">{inviteFormErrors.department}</small> : null}
+                      </label>
+                      <label className="member-form-field">
+                        <span>Company</span>
+                        <input name="company" onChange={handleInviteChange} value={inviteForm.company} />
+                      </label>
+                      <label className="member-form-field">
+                        <span>Designation</span>
+                        <input name="designation" onChange={handleInviteChange} value={inviteForm.designation} />
+                      </label>
                     </>
                   )}
-                  <input
-                    name="location"
-                    onChange={handleInviteChange}
-                    placeholder="Location"
-                    value={inviteForm.location}
-                  />
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <button className="button primary" disabled={inviteMutation.isPending || !isInviteFormValid} style={{ width: "100%" }} type="submit">
-                      {inviteMutation.isPending ? "Creating..." : "Create Invite Link"}
+
+                  <label className="member-form-field member-form-field-full">
+                    <span>Location</span>
+                    <input name="location" onChange={handleInviteChange} value={inviteForm.location} />
+                  </label>
+
+                  <div className="member-inline-actions member-form-field-full">
+                    <button className="button secondary" onClick={() => setIsInvitePanelOpen(false)} type="button">
+                      Close
                     </button>
-                    {!isInviteFormValid && Object.keys(inviteFormErrors).length > 0 ? (
-                      <p className="muted" style={{ fontSize: "0.85em", color: "#d32f2f", marginTop: "0.5rem", textAlign: "center" }}>
-                        Fix the errors above to create an invite
-                      </p>
-                    ) : null}
+                    <button className="button primary" disabled={!canSubmitInvite || inviteMutation.isPending} type="submit">
+                      {inviteMutation.isPending ? "Creating invite..." : "Create invite"}
+                    </button>
                   </div>
-                  <button
-                    className="button secondary"
-                    onClick={() => {
-                      setInviteForm(initialInviteForm);
-                      setIsInvitePanelOpen(false);
-                    }}
-                    type="button"
-                  >
-                    Cancel
-                  </button>
                 </form>
               </SectionCard>
             ) : null}
 
-            <section className="admin-alumni-table-card">
-              <div className="admin-alumni-table-head">
-                <span>Name & Contact</span>
-                <span>{directoryConfig.yearFieldLabel}</span>
-                <span>{directoryConfig.educationFieldLabel}</span>
-                <span>{isSchool ? "Current Path" : "Company"}</span>
-                <span>Actions</span>
-              </div>
-
-              {isLoading ? <p>Loading alumni...</p> : null}
-              {isError ? <p className="error-text">{error.message}</p> : null}
-              {!isLoading && !data.length ? (
-                <p className="muted">No {directoryConfig.memberPlural.toLowerCase()} match these filters yet.</p>
+            <div className="member-directory-grid admin-grid">
+              {isLoading ? <p>Loading members...</p> : null}
+              {!isLoading && !directoryEntries.length ? (
+                <SectionCard title="No members found" subtitle="Try changing your filters">
+                  <p className="muted">There are no member records matching the current filter set.</p>
+                </SectionCard>
               ) : null}
 
-              <div className="admin-alumni-table-body">
-                {data.map((alumni) => (
-                  <article className="admin-alumni-row" key={alumni._id}>
-                    <div className="admin-alumni-person">
-                      <div className="admin-alumni-avatar">{alumni.name.slice(0, 1)}</div>
-                      <div>
-                        <strong>{alumni.name}</strong>
-                        <p>{alumni.email}</p>
-                      </div>
+              {directoryEntries.map((alumni) => (
+                <article className="member-directory-card admin-card" key={alumni._id}>
+                  <div className="member-directory-card-head">
+                    <div className="member-person-avatar">{getDisplayName(alumni).slice(0, 1)}</div>
+                    <div>
+                      <strong>{getDisplayName(alumni)}</strong>
+                      <p>{alumni.email}</p>
                     </div>
+                  </div>
 
-                    <span>{isSchool ? alumni.leavingYear || "-" : alumni.batch}</span>
-                    <span className="admin-alumni-course">
-                      {isSchool ? alumni.lastClassAttended || "-" : alumni.department}
-                    </span>
-                    <span>
-                      {isSchool
-                        ? alumni.currentEducation || alumni.currentInstitution || alumni.occupation || "Community member"
-                        : alumni.company || "Independent"}
-                    </span>
+                  <div className="member-directory-card-meta">
+                    <span>{isSchool ? `Leaving year ${alumni.leavingYear || "-"}` : `Batch ${alumni.batch || "-"}`}</span>
+                    <span>{isSchool ? alumni.lastClassAttended || "Class not added" : alumni.department || "Department not added"}</span>
+                    <span>{alumni.location || "Location not added"}</span>
+                  </div>
 
-                    <div className="admin-alumni-actions">
-                      {alumni.invitationStatus !== "active" ? (
-                        <>
-                          <button
-                            className="admin-alumni-icon"
-                            disabled={copyMutation.isPending}
-                            onClick={() => copyMutation.mutate(alumni._id)}
-                            type="button"
-                          >
-                            CP
-                          </button>
-                          <button
-                            className="admin-alumni-icon"
-                            disabled={resendMutation.isPending}
-                            onClick={() => resendMutation.mutate(alumni._id)}
-                            type="button"
-                          >
-                            RS
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button className="admin-alumni-icon" type="button">
-                            VW
-                          </button>
-                          <button className="admin-alumni-icon" type="button">
-                            ED
-                          </button>
-                        </>
-                      )}
-                      <button
-                        className="admin-alumni-icon"
-                        disabled={revokeMutation.isPending || alumni.invitationStatus === "revoked"}
-                        onClick={() => revokeMutation.mutate(alumni._id)}
-                        type="button"
-                      >
-                        DL
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <div className="admin-alumni-table-footer">
-                <p>
-                  Showing 1 to {Math.min(data.length, 4)} of <strong>{data.length}</strong>{" "}
-                  {directoryConfig.memberPlural.toLowerCase()}
-                </p>
-                <div className="admin-alumni-pagination">
-                  <button disabled type="button">{"<"}</button>
-                  <button className="active" type="button">1</button>
-                  <button disabled type="button">{">"}</button>
-                </div>
-              </div>
-            </section>
-
-            <section className="admin-alumni-stats">
-              <article className="admin-alumni-stat-card">
-                <span className="admin-alumni-stat-icon blue">NR</span>
-                <div>
-                  <p>New Registrations</p>
-                  <strong>+24</strong>
-                  <small>this week</small>
-                </div>
-              </article>
-
-              <article className="admin-alumni-stat-card">
-                <span className="admin-alumni-stat-icon purple">VP</span>
-                <div>
-                  <p>Verified Profiles</p>
-                  <strong>92%</strong>
-                  <small>of total</small>
-                </div>
-              </article>
-
-              <article className="admin-alumni-stat-card">
-                <span className="admin-alumni-stat-icon gold">AT</span>
-                <div>
-                  <p>Active Threads</p>
-                  <strong>156</strong>
-                  <small>mentorships</small>
-                </div>
-              </article>
-
-              <article className="admin-alumni-stat-card">
-                <span className="admin-alumni-stat-icon green">ER</span>
-                <div>
-                  <p>Engagement Rate</p>
-                  <strong>12.5%</strong>
-                  <small>up 2%</small>
-                </div>
-              </article>
-            </section>
-          </>
-        ) : (
-          <>
-            <section className="admin-approvals-metrics">
-              <article className="admin-approvals-metric">
-                <p>Total Pending</p>
-                <strong>{pendingApprovals.length}</strong>
-                <span className="admin-approvals-trend danger">12%</span>
-              </article>
-
-              <article className="admin-approvals-metric">
-                <p>New Today</p>
-                <strong>{Math.min(pendingApprovals.length, 12)}</strong>
-                <span className="admin-approvals-pill">Priority</span>
-              </article>
-
-              <article className="admin-approvals-metric">
-                <p>Avg. Verification Time</p>
-                <strong>4h</strong>
-                <span className="admin-approvals-trend success">-15m</span>
-              </article>
-            </section>
-
-            <section className="admin-approvals-filters">
-              <label className="admin-approvals-search">
-                <span aria-hidden="true">S</span>
-                <input
-                  name="q"
-                  onChange={handleFilterChange}
-                  placeholder="Search pending requests by name or email..."
-                  value={filters.q}
-                />
-              </label>
-
-              <select
-                name={isSchool ? "leavingYear" : "batch"}
-                onChange={handleFilterChange}
-                value={isSchool ? filters.leavingYear : filters.batch}
-              >
-                <option value="">{directoryConfig.yearFieldLabel}</option>
-                {[...new Set(pendingApprovals.map((item) => (isSchool ? item.leavingYear : item.batch)).filter(Boolean))].map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                name={isSchool ? "lastClassAttended" : "department"}
-                onChange={handleFilterChange}
-                value={isSchool ? filters.lastClassAttended : filters.department}
-              >
-                <option value="">{directoryConfig.educationFieldLabel}</option>
-                {[...new Set(pendingApprovals.map((item) => (isSchool ? item.lastClassAttended : item.department)).filter(Boolean))].map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-
-              <button className="admin-approvals-clear" onClick={clearFilters} type="button">
-                Clear all filters
-              </button>
-            </section>
-
-            <section className="admin-approvals-table-card">
-              <div className="admin-approvals-table-head">
-                <span>{directoryConfig.memberSingular} Details</span>
-                <span>Education</span>
-                <span>Verification</span>
-                <span>Actions</span>
-              </div>
-
-              {isLoading ? <p>Loading alumni...</p> : null}
-              {isError ? <p className="error-text">{error.message}</p> : null}
-              {!isLoading && !pendingApprovals.length ? (
-                <p className="muted">No pending registrations match these filters yet.</p>
-              ) : null}
-
-              <div className="admin-approvals-table-body">
-                {pendingApprovals.map((alumni, index) => (
-                  <article className="admin-approvals-row" key={alumni._id}>
-                    <div className="admin-approvals-person">
-                      <div className={`admin-approvals-avatar tone-${(index % 3) + 1}`}>
-                        {alumni.name
-                          .split(" ")
-                          .map((part) => part[0])
-                          .join("")
-                          .slice(0, 2)}
-                      </div>
-                      <div>
-                        <strong>{alumni.name}</strong>
-                        <p>{alumni.email}</p>
-                      </div>
-                    </div>
-
-                    <div className="admin-approvals-education">
-                      <strong>{isSchool ? alumni.lastClassAttended || "-" : alumni.department}</strong>
-                      <p>
-                        {isSchool
-                          ? `Leaving year ${alumni.leavingYear || "-"}`
-                          : `Batch of ${alumni.batch}`}
-                      </p>
-                    </div>
-
-                    <div className="admin-approvals-verification">
-                      <button className="admin-approvals-link" type="button">
-                        {isSchool ? "Student Record" : "LinkedIn Profile"}
-                      </button>
-                      <span className="admin-approvals-doc">
-                        {isSchool
-                          ? index === 0
-                            ? "School Record.pdf"
-                            : index === 1
-                              ? "Transfer Certificate.pdf"
-                              : "Guardian Note.pdf"
-                          : index === 0
-                            ? "ID Card.pdf"
-                            : index === 1
-                              ? "Degree.pdf"
-                              : "Provisional.pdf"}
-                      </span>
-                    </div>
-
-                    <div className="admin-approvals-actions">
-                      <button className="admin-approvals-info" type="button">
-                        i
-                      </button>
-                      <button
-                        className="admin-approvals-reject"
-                        disabled={revokeMutation.isPending || alumni.invitationStatus === "revoked"}
-                        onClick={() => revokeMutation.mutate(alumni._id)}
-                        type="button"
-                      >
-                        Reject
-                      </button>
-                      <button
-                        className="button primary compact"
-                        disabled={approveMutation.isPending}
-                        onClick={() => approveMutation.mutate(alumni._id)}
-                        type="button"
-                      >
-                        {approveMutation.isPending ? "Approving..." : "Approve"}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <div className="admin-approvals-table-footer">
-                <p>
-                  Showing {Math.min(pendingApprovals.length, 3)} of <strong>{pendingApprovals.length}</strong>{" "}
-                  pending registrations
-                </p>
-                <div className="admin-approvals-pagination">
-                  <button type="button">Previous</button>
-                  <button type="button">Next</button>
-                </div>
-              </div>
-            </section>
-          </>
-        )}
-
-        {copyMutation.isSuccess ? <p className="success-text">A fresh invite link was copied to the clipboard.</p> : null}
-        {actionNotification ? (
-          <p className={actionNotification.type === "success" ? "success-text" : "error-text"}>
-            {actionNotification.message}
-          </p>
-        ) : null}
-        {resendMutation.isSuccess ? <p className="success-text">{resendMutation.data.invite.message}</p> : null}
-        {revokeMutation.isSuccess ? <p className="success-text">{revokeMutation.data.message}</p> : null}
-        {inviteMutation.isSuccess ? (
-          <div className="success-text">
-            <p>{inviteMutation.data?.invite?.message || "Invite created successfully."}</p>
-            {inviteMutation.data?.invite?.inviteUrl ? (
-              <p>
-                Invite link: <a href={inviteMutation.data.invite.inviteUrl}>{inviteMutation.data.invite.inviteUrl}</a>
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-        {copyMutation.isError ? <p className="error-text">{copyMutation.error.message}</p> : null}
-        {resendMutation.isError ? <p className="error-text">{resendMutation.error.message}</p> : null}
-        {revokeMutation.isError ? <p className="error-text">{revokeMutation.error.message}</p> : null}
-        {inviteMutation.isError ? <p className="error-text">{inviteMutation.error.message}</p> : null}
-      </div>
-    );
-  }
-
-  return (
-    <div className="page-stack">
-      <section className="directory-showcase">
-        <div className="directory-showcase-grid">
-          {featuredAlumni ? (
-            <article className="alumni-profile-card directory-featured-card">
-              <div className="alumni-profile-avatar" />
-              <h2>{featuredAlumni.name}</h2>
-              <p className="alumni-profile-role">
-                {isSchool
-                  ? featuredAlumni.currentEducation || featuredAlumni.occupation || "Community Member"
-                  : featuredAlumni.designation || "Software Engineer"}
-              </p>
-              <p className="alumni-profile-meta">
-                {isSchool
-                  ? `${featuredAlumni.currentInstitution || featuredAlumni.lastClassAttended || "Former Student"} | ${featuredAlumni.location || "Mumbai"}`
-                  : `${featuredAlumni.company || "Open Systems Labs"} | ${featuredAlumni.location || "Mumbai"}`}
-              </p>
-              <div className="alumni-profile-divider" />
-              <div className="alumni-profile-stats">
-                <div>
-                  <span>{directoryConfig.yearShortLabel}</span>
-                  <strong>{isSchool ? featuredAlumni.leavingYear || "-" : featuredAlumni.batch}</strong>
-                </div>
-                <div>
-                  <span>{directoryConfig.featuredSecondaryLabel}</span>
-                  <strong>
-                    {isSchool
-                      ? featuredAlumni.lastClassAttended || featuredAlumni.section || "-"
-                      : featuredAlumni.department}
-                  </strong>
-                </div>
-              </div>
-            </article>
-          ) : null}
-
-          <article className="alumni-metric-card directory-stat-card">
-            <div className="alumni-metric-head">
-              <span className="alumni-metric-icon">CN</span>
-              <span className="alumni-metric-positive">+12%</span>
-            </div>
-            <strong>{totalConnections}</strong>
-            <p>Total Connections</p>
-          </article>
-        </div>
-      </section>
-
-      <SectionCard title={directoryConfig.directoryTitle} subtitle={directoryConfig.directorySubtitle}>
-        <div className="filter-grid">
-          <input
-            name="q"
-            onChange={handleFilterChange}
-            placeholder={directoryConfig.publicSearchPlaceholder}
-            value={filters.q}
-          />
-          <input
-            name={isSchool ? "leavingYear" : "batch"}
-            onChange={handleFilterChange}
-            placeholder={directoryConfig.yearFieldLabel}
-            value={isSchool ? filters.leavingYear : filters.batch}
-          />
-          <input
-            name={isSchool ? "lastClassAttended" : "department"}
-            onChange={handleFilterChange}
-            placeholder={directoryConfig.educationFieldLabel}
-            value={isSchool ? filters.lastClassAttended : filters.department}
-          />
-          <input
-            name={isSchool ? "section" : "company"}
-            onChange={handleFilterChange}
-            placeholder={isSchool ? "Section / House" : "Company"}
-            value={isSchool ? filters.section : filters.company}
-          />
-          {!isSchool ? (
-            <input name="skill" onChange={handleFilterChange} placeholder="Skill" value={filters.skill} />
-          ) : null}
-          <button className="button secondary" onClick={clearFilters} type="button">
-            Clear Filters
-          </button>
-        </div>
-
-        {isLoading ? <p>Loading alumni...</p> : null}
-        {isError ? <p className="error-text">{error.message}</p> : null}
-
-        {!isLoading && !data.length ? (
-          <p className="muted">No {directoryConfig.memberPlural.toLowerCase()} match these filters yet.</p>
-        ) : null}
-
-        <div className="directory-card-grid">
-          {alumniCards.map((alumni) => (
-            <article className="directory-member-card" key={alumni._id}>
-              <div className="directory-member-header">
-                <div className="directory-member-avatar">{alumni.name.slice(0, 1)}</div>
-                <div>
-                  <h4>{alumni.name}</h4>
-                  <p className="muted">
+                  <p className="member-directory-card-copy">
                     {isSchool
                       ? alumni.currentEducation || alumni.occupation || directoryConfig.roleFallback
                       : alumni.designation || directoryConfig.roleFallback}
                     {isSchool
                       ? alumni.currentInstitution
-                        ? ` | ${alumni.currentInstitution}`
+                        ? ` at ${alumni.currentInstitution}`
                         : ""
                       : alumni.company
-                        ? ` | ${alumni.company}`
+                        ? ` at ${alumni.company}`
                         : ""}
                   </p>
-                </div>
+
+                  <div className="member-directory-card-actions">
+                    <span className={`member-status-pill status-${alumni.isActive ? "accepted" : alumni.invitationStatus || "pending"}`}>
+                      {alumni.isActive ? "Active" : alumni.invitationStatus || "Pending"}
+                    </span>
+                    {!alumni.isActive ? (
+                      <div className="member-inline-actions">
+                        <button className="button secondary compact" disabled={copyMutation.isPending} onClick={() => copyMutation.mutate(alumni._id)} type="button">
+                          Copy link
+                        </button>
+                        <button className="button secondary compact" disabled={resendMutation.isPending} onClick={() => resendMutation.mutate(alumni._id)} type="button">
+                          Resend
+                        </button>
+                        <button className="button secondary compact" disabled={revokeMutation.isPending || alumni.invitationStatus === "revoked"} onClick={() => revokeMutation.mutate(alumni._id)} type="button">
+                          Revoke
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="member-directory-admin-grid approvals-mode">
+            <SectionCard title="Pending registrations" subtitle="Review and approve new members">
+              <p className="muted">{directoryConfig.approvalDescription}</p>
+            </SectionCard>
+
+            <div className="member-approval-grid">
+              {isLoading ? <p>Loading approvals...</p> : null}
+              {!isLoading && !pendingApprovals.length ? (
+                <SectionCard title="No approvals waiting" subtitle="You are all caught up">
+                  <p className="muted">New registration requests will appear here as people complete signup.</p>
+                </SectionCard>
+              ) : null}
+
+              {pendingApprovals.map((alumni) => (
+                <article className="member-approval-card" key={alumni._id}>
+                  <div className="member-approval-card-head">
+                    <div className="member-person-avatar">{getDisplayName(alumni).slice(0, 1)}</div>
+                    <div>
+                      <strong>{getDisplayName(alumni)}</strong>
+                      <p>{alumni.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="member-approval-card-grid">
+                    <article>
+                      <span>{directoryConfig.yearFieldLabel}</span>
+                      <strong>{isSchool ? alumni.leavingYear || "-" : alumni.batch || "-"}</strong>
+                    </article>
+                    <article>
+                      <span>{directoryConfig.educationFieldLabel}</span>
+                      <strong>{isSchool ? alumni.lastClassAttended || "-" : alumni.department || "-"}</strong>
+                    </article>
+                    <article>
+                      <span>Location</span>
+                      <strong>{alumni.location || "Not added"}</strong>
+                    </article>
+                    <article>
+                      <span>Current context</span>
+                      <strong>
+                        {isSchool
+                          ? alumni.currentInstitution || alumni.currentEducation || alumni.occupation || "Pending details"
+                          : alumni.company || alumni.designation || "Pending details"}
+                      </strong>
+                    </article>
+                  </div>
+
+                  <div className="member-inline-actions">
+                    <button className="button secondary" disabled={revokeMutation.isPending} onClick={() => revokeMutation.mutate(alumni._id)} type="button">
+                      Reject
+                    </button>
+                    <button className="button primary" disabled={approveMutation.isPending} onClick={() => approveMutation.mutate(alumni._id)} type="button">
+                      {approveMutation.isPending ? "Approving..." : "Approve"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="member-directory-page">
+      <PortalPageHeader
+        title={directoryConfig.directoryTitle}
+        subtitle={directoryConfig.directorySubtitle}
+      />
+
+      <PortalMetricGrid>
+        <PortalMetricCard title="Members visible" value={activeMembers.length} icon="MB" />
+        <PortalMetricCard title="Batches represented" value={new Set(activeMembers.map((item) => item.batch || item.leavingYear).filter(Boolean)).size} icon="BT" />
+        <PortalMetricCard title="Companies / institutions" value={new Set(activeMembers.map((item) => item.company || item.currentInstitution).filter(Boolean)).size} icon="CP" />
+      </PortalMetricGrid>
+
+      <NoticeStack notices={notices} />
+      {isError ? <p className="error-text">{error.message}</p> : null}
+
+      <div className="member-directory-grid hero-grid">
+        {featuredMember ? (
+          <section className="member-directory-spotlight">
+            <p className="member-card-kicker">Featured connection</p>
+            <div className="member-directory-spotlight-head">
+              <div className="member-profile-avatar">{getDisplayName(featuredMember).slice(0, 1)}</div>
+              <div>
+                <h2>{getDisplayName(featuredMember)}</h2>
+                <p>
+                  {isSchool
+                    ? featuredMember.currentEducation || featuredMember.occupation || directoryConfig.roleFallback
+                    : featuredMember.designation || directoryConfig.roleFallback}
+                </p>
               </div>
+            </div>
+            <p className="member-directory-spotlight-copy">
+              {isSchool
+                ? `${featuredMember.currentInstitution || featuredMember.lastClassAttended || "School community"} · ${featuredMember.location || "Location not added"}`
+                : `${featuredMember.company || "Company not added"} · ${featuredMember.location || "Location not added"}`}
+            </p>
+            <div className="member-profile-tags">
+              <span>{isSchool ? `Leaving year ${featuredMember.leavingYear || "-"}` : `Batch ${featuredMember.batch || "-"}`}</span>
+              <span>{isSchool ? featuredMember.lastClassAttended || "Class pending" : featuredMember.department || "Department pending"}</span>
+              <span>{featuredMember.allowMentorRequests ? "Open to mentorship" : "Profile only"}</span>
+            </div>
+          </section>
+        ) : null}
 
-              <p className="muted">
-                {isSchool
-                  ? `${directoryConfig.yearShortLabel} ${alumni.leavingYear || "-"} | ${alumni.lastClassAttended || "-"}`
-                  : `Batch ${alumni.batch} | ${alumni.department}`}
-                {alumni.location ? ` | ${alumni.location}` : ""}
-              </p>
+        <SectionCard title="Refine the directory" subtitle="Search across the network">
+          <div className="member-directory-filter-grid">
+            <PortalSearchField
+              name="q"
+              onChange={handleFilterChange}
+              placeholder={directoryConfig.publicSearchPlaceholder}
+              value={filters.q}
+            />
+            <input
+              name={isSchool ? "leavingYear" : "batch"}
+              onChange={handleFilterChange}
+              placeholder={directoryConfig.yearFieldLabel}
+              value={isSchool ? filters.leavingYear : filters.batch}
+            />
+            <input
+              name={isSchool ? "lastClassAttended" : "department"}
+              onChange={handleFilterChange}
+              placeholder={directoryConfig.educationFieldLabel}
+              value={isSchool ? filters.lastClassAttended : filters.department}
+            />
+            <input
+              name={isSchool ? "section" : "company"}
+              onChange={handleFilterChange}
+              placeholder={isSchool ? "Section / house" : "Company"}
+              value={isSchool ? filters.section : filters.company}
+            />
+            {!isSchool ? (
+              <input name="skill" onChange={handleFilterChange} placeholder="Skill" value={filters.skill} />
+            ) : null}
+            <button className="button secondary" onClick={clearFilters} type="button">
+              Clear filters
+            </button>
+          </div>
+        </SectionCard>
+      </div>
 
-              {!isSchool && alumni.skills?.length ? (
-                <p className="muted">Skills: {alumni.skills.join(", ")}</p>
-              ) : null}
+      {isLoading ? <p>Loading members...</p> : null}
+      {!isLoading && !activeMembers.length ? (
+        <SectionCard title="No members found" subtitle="Try adjusting your search">
+          <p className="muted">No active members match the current filter set.</p>
+        </SectionCard>
+      ) : null}
 
-              {auth.user?.role === "alumni" && alumni.userId !== auth.user?.id && alumni.isActive ? (
-                <div className="mentorship-box">
-                  <textarea
-                    className="textarea"
-                    onChange={(event) => handleMentorshipMessageChange(alumni._id, event.target.value)}
-                    placeholder={`Send ${alumni.name} a chat request`}
-                    rows="3"
-                    value={mentorshipMessages[alumni._id] || ""}
-                  />
-                  <button
-                    className="button primary compact"
-                    disabled={mentorshipMutation.isPending}
-                    onClick={() => submitMentorshipRequest(alumni)}
-                    type="button"
-                  >
-                    Request Chat
-                  </button>
-                </div>
-              ) : null}
+      <div className="member-directory-grid cards-grid">
+        {listedMembers.map((alumni) => (
+          <article className="member-directory-card" key={alumni._id}>
+            <div className="member-directory-card-head">
+              <div className="member-person-avatar">{getDisplayName(alumni).slice(0, 1)}</div>
+              <div>
+                <strong>{getDisplayName(alumni)}</strong>
+                <p>
+                  {isSchool
+                    ? alumni.currentEducation || alumni.occupation || directoryConfig.roleFallback
+                    : alumni.designation || directoryConfig.roleFallback}
+                </p>
+              </div>
+            </div>
 
-              <div className="list-item-actions">
-                <span className={`badge ${alumni.isActive ? "active" : "pending"}`}>
-                  {alumni.isActive ? "active" : "inactive"}
-                </span>
-                {auth.user?.role === "institute_admin" ? (
-                  <span
-                    className={`badge ${
-                      alumni.isActive
-                        ? "active"
-                        : alumni.invitationStatus === "revoked"
-                          ? "suspended"
-                          : "pending"
-                    }`}
-                  >
-                    {alumni.isActive ? "active" : alumni.invitationStatus}
+            <div className="member-directory-card-meta">
+              <span>{isSchool ? `Leaving year ${alumni.leavingYear || "-"}` : `Batch ${alumni.batch || "-"}`}</span>
+              <span>{isSchool ? alumni.lastClassAttended || "Class pending" : alumni.department || "Department pending"}</span>
+              <span>{alumni.location || "Location not added"}</span>
+            </div>
+
+            <p className="member-directory-card-copy">
+              {isSchool
+                ? alumni.currentInstitution || "Current institution not added"
+                : alumni.company || "Company not added"}
+            </p>
+
+            {!isSchool && alumni.skills?.length ? (
+              <div className="member-chip-cloud">
+                {alumni.skills.slice(0, 4).map((skill) => (
+                  <span className="member-chip-pill" key={skill}>
+                    {skill}
                   </span>
-                ) : null}
-                {auth.user?.role === "institute_admin" && alumni.invitationStatus !== "active" ? (
-                  <>
-                    <button
-                      className="button secondary compact"
-                      disabled={copyMutation.isPending}
-                      onClick={() => copyMutation.mutate(alumni._id)}
-                      type="button"
-                    >
-                      Copy Link
-                    </button>
-                    <button
-                      className="button secondary compact"
-                      disabled={resendMutation.isPending}
-                      onClick={() => resendMutation.mutate(alumni._id)}
-                      type="button"
-                    >
-                      Resend
-                    </button>
-                    <button
-                      className="button secondary compact"
-                      disabled={revokeMutation.isPending || alumni.invitationStatus === "revoked"}
-                      onClick={() => revokeMutation.mutate(alumni._id)}
-                      type="button"
-                    >
-                      Revoke
-                    </button>
-                  </>
-                ) : null}
+                ))}
               </div>
-            </article>
-          ))}
-        </div>
+            ) : null}
 
-        {copyMutation.isSuccess ? (
-          <p className="success-text">A fresh invite link was copied to the clipboard.</p>
-        ) : null}
-        {resendMutation.isSuccess ? (
-          <p className="success-text">{resendMutation.data.invite.message}</p>
-        ) : null}
-        {revokeMutation.isSuccess ? (
-          <p className="success-text">{revokeMutation.data.message}</p>
-        ) : null}
-        {mentorshipMutation.isSuccess ? (
-          <p className="success-text">Mentorship request sent successfully.</p>
-        ) : null}
-        {copyMutation.isError ? <p className="error-text">{copyMutation.error.message}</p> : null}
-        {resendMutation.isError ? <p className="error-text">{resendMutation.error.message}</p> : null}
-        {revokeMutation.isError ? <p className="error-text">{revokeMutation.error.message}</p> : null}
-        {mentorshipMutation.isError ? (
-          <p className="error-text">{mentorshipMutation.error.message}</p>
-        ) : null}
-      </SectionCard>
+            {getUserId(alumni.userId) !== selfUserId && alumni.isActive ? (
+              <div className="member-directory-outreach">
+                <textarea
+                  className="textarea member-form-textarea"
+                  onChange={(event) => handleMentorshipMessageChange(alumni._id, event.target.value)}
+                  placeholder={`Write a short note to ${getDisplayName(alumni)}`}
+                  rows="4"
+                  value={mentorshipMessages[alumni._id] || ""}
+                />
+                <button className="button primary" disabled={mentorshipMutation.isPending} onClick={() => submitMentorshipRequest(alumni)} type="button">
+                  Request chat
+                </button>
+              </div>
+            ) : null}
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
 
 export default TenantAlumniPage;
-
-function showInvitePanel(isInvitePanelOpen, inviteMutation, inviteForm) {
-  return (
-    isInvitePanelOpen ||
-    inviteMutation.isPending ||
-    Object.values(inviteForm).some((value) => String(value || "").trim().length > 0)
-  );
-}

@@ -16,6 +16,7 @@ export const demoInstitute = {
     enableDirectory: true,
     enableEvents: true,
     enableAnnouncements: true,
+    enableGroups: true,
     enableSocialLinks: true,
     enableCareerFields: true
   },
@@ -142,6 +143,42 @@ export const demoJobs = [
 
 export const demoMentorshipRequests = [];
 
+export const demoCommunityGroups = [
+  {
+    _id: "65f000000000000000000601",
+    instituteId: demoInstitute._id,
+    name: "AI Builders Circle",
+    description: "Institute-managed group for alumni interested in applied AI, product building, and founder conversations.",
+    groupType: "interest",
+    audienceLabel: "Artificial Intelligence",
+    memberIds: ["65f000000000000000000004"],
+    createdBy: "65f000000000000000000003",
+    messages: [
+      {
+        _id: "65f000000000000000000701",
+        senderId: "65f000000000000000000004",
+        content: "Excited to start this group. Would love to discuss product ideas and AI use cases.",
+        sentAt: "2026-03-18T10:30:00.000Z"
+      }
+    ],
+    createdAt: "2026-03-12T10:00:00.000Z",
+    updatedAt: "2026-03-18T10:30:00.000Z"
+  },
+  {
+    _id: "65f000000000000000000602",
+    instituteId: demoInstitute._id,
+    name: "Batch of 2018",
+    description: "Official year group for the 2018 graduating cohort.",
+    groupType: "year",
+    audienceLabel: "Batch of 2018",
+    memberIds: ["65f000000000000000000004"],
+    createdBy: "65f000000000000000000003",
+    messages: [],
+    createdAt: "2026-03-15T10:00:00.000Z",
+    updatedAt: "2026-03-15T10:00:00.000Z"
+  }
+];
+
 export const demoAuditLogs = [
   {
     _id: "65f000000000000000000501",
@@ -193,6 +230,7 @@ export function createMockStore() {
     events: demoEvents.map((item) => structuredClone(item)),
     jobs: demoJobs.map((item) => structuredClone(item)),
     mentorshipRequests: demoMentorshipRequests.map((item) => structuredClone(item)),
+    communityGroups: demoCommunityGroups.map((item) => structuredClone(item)),
     auditLogs: demoAuditLogs.map((item) => structuredClone(item))
   };
 }

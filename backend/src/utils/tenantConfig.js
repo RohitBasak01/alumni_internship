@@ -22,6 +22,7 @@ export function getDefaultFeatureFlags(institutionType = "college") {
       enableDirectory: true,
       enableEvents: true,
       enableAnnouncements: true,
+      enableGroups: true,
       enableSocialLinks: false,
       enableCareerFields: false
     };
@@ -33,6 +34,7 @@ export function getDefaultFeatureFlags(institutionType = "college") {
     enableDirectory: true,
     enableEvents: true,
     enableAnnouncements: true,
+    enableGroups: true,
     enableSocialLinks: true,
     enableCareerFields: true
   };

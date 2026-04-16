@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 function severityForLog(log) {
   const text = `${log.action || ""} ${log.metadata?.status || ""}`.toLowerCase();
 
@@ -47,7 +49,12 @@ function actorInitials(log) {
     .toUpperCase();
 }
 
+function formatMetadataEntries(metadata) {
+  return Object.entries(metadata || {}).filter(([, value]) => value !== null && value !== undefined && value !== "");
+}
+
 function SuperAdminAuditCenter({ auditFilters, auditLogsQuery, institutes, onFilterChange }) {
+  const [selectedLog, setSelectedLog] = useState(null);
   const logs = auditLogsQuery.data || [];
   const severityCounts = logs.reduce(
     (counts, log) => {
@@ -68,6 +75,7 @@ function SuperAdminAuditCenter({ auditFilters, auditLogsQuery, institutes, onFil
     : "100.0";
 
   const activeWebhooks = institutes.filter((institute) => institute.subscriptionStatus === "active").length * 6;
+  const selectedLogMetadata = useMemo(() => formatMetadataEntries(selectedLog?.metadata), [selectedLog]);
 
   return (
     <div className="space-y-6">
@@ -250,7 +258,11 @@ function SuperAdminAuditCenter({ auditFilters, auditLogsQuery, institutes, onFil
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-xs font-bold uppercase tracking-tight text-[#1152d4] hover:underline" type="button">
+                      <button
+                        className="text-xs font-bold uppercase tracking-tight text-[#1152d4] hover:underline"
+                        onClick={() => setSelectedLog(log)}
+                        type="button"
+                      >
                         View Details
                       </button>
                     </td>
@@ -270,7 +282,7 @@ function SuperAdminAuditCenter({ auditFilters, auditLogsQuery, institutes, onFil
 
         <div className="flex items-center justify-between border-t border-[#1152d4]/10 bg-slate-50 px-6 py-4">
           <p className="text-sm text-slate-500">
-            Showing <span className="font-bold text-slate-900">1</span> to <span className="font-bold text-slate-900">{logs.length}</span> of{" "}
+            Showing <span className="font-bold text-slate-900">1</span> to <span className="font-bold text-slate-900">{logs.length}</span> of {" "}
             <span className="font-bold text-slate-900">{logs.length.toLocaleString()}</span> logs
           </p>
           <div className="flex gap-2">
@@ -290,6 +302,65 @@ function SuperAdminAuditCenter({ auditFilters, auditLogsQuery, institutes, onFil
           </div>
         </div>
       </section>
+
+      {selectedLog ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 px-4 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Log detail</p>
+                <h4 className="mt-2 text-xl font-bold text-slate-900">{selectedLog.action}</h4>
+                <p className="mt-1 text-sm text-slate-500">{new Date(selectedLog.createdAt).toLocaleString()}</p>
+              </div>
+              <button
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                onClick={() => setSelectedLog(null)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="grid gap-6 p-6 md:grid-cols-2">
+              <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Context</p>
+                <div className="mt-3 space-y-3 text-sm text-slate-700">
+                  <p>
+                    <strong>Severity:</strong> {severityLabel(severityForLog(selectedLog))}
+                  </p>
+                  <p>
+                    <strong>Institution:</strong> {selectedLog.institute?.name || "Platform"}
+                  </p>
+                  <p>
+                    <strong>Actor:</strong> {actorLabel(selectedLog)}
+                  </p>
+                  <p>
+                    <strong>Target type:</strong> {selectedLog.targetType || "Unknown"}
+                  </p>
+                  <p>
+                    <strong>Target id:</strong> {selectedLog.targetId || "Not available"}
+                  </p>
+                </div>
+              </article>
+
+              <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Metadata</p>
+                <div className="mt-3 space-y-3 text-sm text-slate-700">
+                  {selectedLogMetadata.length ? (
+                    selectedLogMetadata.map(([key, value]) => (
+                      <p key={key}>
+                        <strong>{key}:</strong> {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-slate-500">No extra metadata recorded for this event.</p>
+                  )}
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

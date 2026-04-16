@@ -16,7 +16,7 @@ export function generateToken(user) {
     {
       userId: user._id,
       role: user.role,
-      instituteId: user.instituteId || null
+      instituteId: user.instituteId?._id || user.instituteId || null
     },
     process.env.JWT_SECRET || "change-me",
     { expiresIn: "7d" }
@@ -47,3 +47,4 @@ export function clearAuthCookie(res) {
     secure: process.env.NODE_ENV === "production"
   });
 }
+

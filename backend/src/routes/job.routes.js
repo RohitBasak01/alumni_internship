@@ -4,6 +4,7 @@ import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import { sendApplicationEmail } from "../utils/email.js";
+import { createNotification, createNotificationsForUsers, listActiveAlumniUserIds } from "../utils/notifications.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 
 const router = express.Router();
@@ -142,7 +143,8 @@ router.post(
   validateBody(validateJobBody),
   async (req, res, next) => {
     try {
-      const { Job } = getTenantModels(req);
+      const tenantModels = getTenantModels(req);
+      const { Job } = tenantModels;
       const requestedDeadline = normalizeDateOrNull(req.body.requestedDeadline);
       const applicationDeadline = req.user.role === "institute_admin" ? normalizeDateOrNull(req.body.applicationDeadline || req.body.requestedDeadline) : null;
       const isAdmin = req.user.role === "institute_admin";
@@ -162,6 +164,23 @@ router.post(
       });
 
       await job.populate("postedBy", "name email");
+
+      if (job.status === "published") {
+        const alumniUserIds = await listActiveAlumniUserIds(tenantModels, req.tenant._id, [req.user._id]);
+        await createNotificationsForUsers(tenantModels, {
+          instituteId: req.tenant._id,
+          userIds: alumniUserIds,
+          actorUserId: req.user._id,
+          category: "jobs",
+          type: "job_published",
+          title: `New role: ${job.title}`,
+          message: `${job.company} is hiring alumni from your network.`,
+          entityType: "Job",
+          entityId: job._id,
+          linkTo: "/portal/jobs"
+        });
+      }
+
       res.status(201).json(formatJob(job, req.user));
     } catch (error) {
       next(error);
@@ -376,3 +395,4 @@ router.post(
 );
 
 export default router;
+

@@ -3,6 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 
 import SectionCard from "../components/SectionCard.jsx";
+import {
+  PortalMetricCard,
+  PortalMetricGrid,
+  PortalPageHeader
+} from "../components/PortalPrimitives.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import { fetchMyAlumniProfile, updateMyAlumniProfile } from "../lib/api.js";
@@ -31,17 +36,6 @@ const emptyForm = {
   allowMentorRequests: true
 };
 
-function getCompletion(profile) {
-  return [
-    profile.name,
-    profile.company,
-    profile.designation,
-    profile.location,
-    profile.bio,
-    profile.skills
-  ].filter((value) => String(value || "").trim().length > 0).length;
-}
-
 const industryOptions = [
   "Information Technology",
   "Software",
@@ -53,623 +47,23 @@ const industryOptions = [
   "Other"
 ];
 
-function AlumniProfilePage() {
-  const auth = useAuth();
-  const tenant = useTenantContext();
-  const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
-  const isSchool = tenant.institutionType === "school";
-  const showCareerFields = tenant.featureFlags.enableCareerFields;
-  const showSocialLinks = tenant.featureFlags.enableSocialLinks;
-  const isEditMode = searchParams.get("mode") === "edit";
-  const profileSections = [
-    { id: "profile-info", label: "Profile Info", icon: "PI" },
-    { id: "experience", label: isSchool ? "Current Journey" : "Experience", icon: "EX" },
-    { id: "education", label: "Education", icon: "ED" },
-    { id: "privacy", label: "Privacy", icon: "PR" }
-  ];
-  const [form, setForm] = useState(emptyForm);
-  const [skillInput, setSkillInput] = useState("");
-  const [activeSection, setActiveSection] = useState(profileSections[0].id);
-  const isAlumni = auth.user?.role === "alumni";
+const profileSections = [
+  { id: "profile-info", label: "Profile", icon: "PF" },
+  { id: "experience", label: "Experience", icon: "EX" },
+  { id: "education", label: "Education", icon: "ED" },
+  { id: "privacy", label: "Privacy", icon: "PV" }
+];
 
-  const profileQuery = useQuery({
-    queryKey: ["my-alumni-profile"],
-    queryFn: fetchMyAlumniProfile,
-    enabled: isAlumni
-  });
-
-  useEffect(() => {
-    if (profileQuery.data) {
-      setForm(buildForm(profileQuery.data));
-    }
-  }, [profileQuery.data]);
-
-  const updateMutation = useMutation({
-    mutationFn: updateMyAlumniProfile,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-alumni-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["alumni"] });
-    }
-  });
-
-  const completion = getCompletion(form);
-  const completionPercent = Math.round((completion / 6) * 100);
-  const skills = useMemo(
-    () =>
-      form.skills
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter(Boolean),
-    [form.skills]
-  );
-  const profile = profileQuery.data;
-  const profileName = profile?.name || auth.user?.name || "Alex Rivera";
-  const profileBatch = profile?.batch || 2018;
-  const profileDepartment = profile?.department || "Computer Science";
-  const leavingYear = profile?.leavingYear || "";
-  const lastClassAttended = profile?.lastClassAttended || "";
-  const currentEducation = profile?.currentEducation || "";
-  const currentInstitution = profile?.currentInstitution || "";
-  const occupation = profile?.occupation || "";
-  const profileCompany = profile?.company || "Google Inc.";
-  const profileRole = profile?.designation || "Senior Software Engineer";
-  const profileIndustry = profile?.industry || "Technology & Software";
-  const profileLocation = profile?.location || "San Francisco, CA";
-  const profileBio =
-    profile?.bio ||
-    "Passionate software engineer focused on building scalable systems, mentoring peers, and staying connected with fellow alumni.";
-  const profileLinks = [
-    { label: "LinkedIn Profile", value: profile?.linkedinUrl || "" },
-    { label: "Personal Portfolio", value: profile?.websiteUrl || "" },
-    { label: "Twitter / X", value: profile?.twitterHandle || "" }
-  ].filter((item) => item.value);
-  const displayLinks = profileLinks.length
-    ? profileLinks
-    : [
-        { label: "LinkedIn Profile", value: "#" },
-        { label: "Personal Portfolio", value: "#" },
-        { label: "Twitter / X", value: "#" }
-      ];
-  const displaySkills = skills.length
-    ? skills
-    : ["TypeScript", "Node.js", "React", "System Design", "Cloud Architecture"];
-  const mutualConnections = [
-    { id: "1", name: "Sarah Chen", batch: "Class of '17" },
-    { id: "2", name: "Marcus Miller", batch: "Class of '19" },
-    { id: "3", name: "Elena Rossi", batch: "Class of '18" },
-    { id: "4", name: "James Wilson", batch: "Class of '16" }
-  ];
-
-  function handleChange(event) {
-    const { name, value, type, checked } = event.target;
-    setForm((current) => ({
-      ...current,
-      [name]: type === "checkbox" ? checked : value
-    }));
-  }
-
-  function syncSkills(nextSkills) {
-    setForm((current) => ({ ...current, skills: nextSkills.join(", ") }));
-  }
-
-  function handleSkillAdd(event) {
-    event.preventDefault();
-    const nextSkill = skillInput.trim();
-    if (!nextSkill || skills.some((skill) => skill.toLowerCase() === nextSkill.toLowerCase())) {
-      return;
-    }
-
-    syncSkills([...skills, nextSkill]);
-    setSkillInput("");
-  }
-
-  function handleSkillRemove(skillToRemove) {
-    syncSkills(skills.filter((skill) => skill !== skillToRemove));
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    updateMutation.mutate({
-      ...form,
-      skills
-    });
-  }
-
-  function jumpToSection(sectionId) {
-    const element = document.getElementById(sectionId);
-
-    if (!element) {
-      return;
-    }
-
-    setActiveSection(sectionId);
-    element.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  if (!isAlumni) {
-    return (
-      <SectionCard title="My Profile" subtitle="Portal Access">
-        <p className="muted">
-          This page is for alumni users. Institute admins can manage accounts from the alumni directory.
-        </p>
-      </SectionCard>
-    );
-  }
-
-  if (!isEditMode) {
-    return (
-      <div className="alumni-profile-view">
-        <aside className="alumni-profile-view-sidebar">
-          <section className="alumni-profile-hero-card">
-            <div className="alumni-profile-hero-banner" />
-            <div className="alumni-profile-hero-avatar" />
-            <div className="alumni-profile-hero-body">
-              <h1>{profileName}</h1>
-              <p className="alumni-profile-hero-batch">{isSchool ? `Leaving Year ${leavingYear || "-"}` : `Class of ${profileBatch}`}</p>
-              <p className="alumni-profile-hero-meta">
-                B.S. {profileDepartment} • {auth.user?.institute?.name || "AlumNet University"}
-              </p>
-            </div>
-            <div className="alumni-profile-hero-actions">
-              <button className="button primary" type="button">
-                Connect
-              </button>
-              <button className="button secondary" type="button">
-                Message
-              </button>
-            </div>
-          </section>
-
-          <section className="alumni-profile-view-card">
-            <h3>{isSchool ? "Current Snapshot" : "Professional Details"}</h3>
-            <div className="alumni-profile-detail-list">
-              <article>
-                <span>{isSchool ? "Current Path" : "Current Role"}</span>
-                <strong>{isSchool ? currentEducation || occupation || "Community Member" : profileRole}</strong>
-                <p>{isSchool ? currentInstitution || profileLocation : profileCompany}</p>
-              </article>
-              <article>
-                <span>{isSchool ? "Last Class Attended" : "Industry"}</span>
-                <strong>{isSchool ? lastClassAttended || "-" : profileIndustry}</strong>
-              </article>
-              <article>
-                <span>Location</span>
-                <strong>{profileLocation}</strong>
-              </article>
-            </div>
-          </section>
-
-          {showSocialLinks ? (
-            <section className="alumni-profile-view-card">
-              <h3>Online Presence</h3>
-              <div className="alumni-profile-link-stack">
-                {displayLinks.map((item) => (
-                  <a
-                    className="alumni-profile-link-pill"
-                    href={item.value}
-                    key={item.label}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    <span>{item.label}</span>
-                  </a>
-                ))}
-              </div>
-            </section>
-          ) : null}
-        </aside>
-
-        <div className="alumni-profile-view-main">
-          <div className="alumni-profile-tab-bar">
-            <button className="active" type="button">
-              About
-            </button>
-            <button type="button">{isSchool ? "Current Journey" : "Experience"}</button>
-            <button type="button">Education</button>
-            <button type="button">Connections</button>
-            <Link className="alumni-profile-edit-link" to="/portal/profile?mode=edit">
-              Edit Profile
-            </Link>
-          </div>
-
-          <section className="alumni-profile-content-card">
-            <div className="alumni-profile-section-title">
-              <span>AB</span>
-              <h2>About</h2>
-            </div>
-            <p className="alumni-profile-about-copy">{profileBio}</p>
-          </section>
-
-          <section className="alumni-profile-content-card">
-            <div className="alumni-profile-section-title">
-              <span>ED</span>
-              <h2>Education</h2>
-            </div>
-            <article className="alumni-profile-education-row">
-              <div className="alumni-profile-education-icon">ED</div>
-              <div>
-                <h3>{auth.user?.institute?.name || "Stanford University"}</h3>
-                <strong>{isSchool ? lastClassAttended || "Former Student Record" : `B.S. in ${profileDepartment}`}</strong>
-                <p>2014 — {profileBatch}</p>
-                <p>
-                  {isSchool
-                    ? currentEducation || currentInstitution || "Continuing academic journey details can be added in the profile editor."
-                    : "Built a strong foundation in engineering, systems thinking, and collaborative leadership through coursework and community projects."}
-                </p>
-              </div>
-            </article>
-          </section>
-
-          {showCareerFields ? (
-            <section className="alumni-profile-content-card">
-              <div className="alumni-profile-section-title">
-                <span>SK</span>
-                <h2>Skills & Expertise</h2>
-              </div>
-              <div className="alumni-profile-skills">
-                {displaySkills.map((skill) => (
-                  <span className="alumni-profile-skill-pill" key={skill}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <section className="alumni-profile-content-card">
-            <div className="alumni-profile-content-header">
-              <div className="alumni-profile-section-title">
-                <span>MC</span>
-                <h2>Mutual Connections</h2>
-              </div>
-              <button className="alumni-profile-view-all" type="button">
-                View All
-              </button>
-            </div>
-            <div className="alumni-profile-mutuals">
-              {mutualConnections.map((item) => (
-                <article className="alumni-profile-mutual-card" key={item.id}>
-                  <div className="alumni-profile-mutual-avatar">{item.name.slice(0, 1)}</div>
-                  <strong>{item.name}</strong>
-                  <span>{item.batch}</span>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="alumni-edit-page">
-      <aside className="alumni-edit-rail">
-        {profileSections.map((section) => (
-          <button
-            key={section.label}
-            className={
-              activeSection === section.id ? "alumni-edit-rail-link active" : "alumni-edit-rail-link"
-            }
-            onClick={() => jumpToSection(section.id)}
-            type="button"
-          >
-            <span className="alumni-edit-rail-icon" aria-hidden="true">
-              {section.icon}
-            </span>
-            <span>{section.label}</span>
-          </button>
-        ))}
-      </aside>
-
-      <form className="alumni-edit-content" onSubmit={handleSubmit}>
-        <header className="alumni-edit-header">
-          <div>
-            <p className="alumni-edit-kicker">{isSchool ? "Member Profile Settings" : "Alumni Profile Settings"}</p>
-            <h1>Edit Profile</h1>
-            <p>
-              {isSchool
-                ? "Keep your member profile current so your school community can stay connected."
-                : "Keep your professional identity up to date so alumni can find and connect with you."}
-            </p>
-          </div>
-
-          <div className="alumni-edit-top-actions">
-            <button className="button secondary compact" type="button">
-              Alerts
-            </button>
-            <button className="button secondary compact" type="button">
-              Settings
-            </button>
-            <button className="button primary compact" disabled={updateMutation.isPending} type="submit">
-              {updateMutation.isPending ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </header>
-
-        {profileQuery.isLoading ? <p>Loading your profile...</p> : null}
-        {profileQuery.isError ? <p className="error-text">{profileQuery.error.message}</p> : null}
-
-        {profileQuery.data ? (
-          <div className="alumni-edit-meta">
-            <span>{profileQuery.data.email}</span>
-            <span>{isSchool ? `Leaving Year ${profileQuery.data.leavingYear || "-"}` : `Batch ${profileQuery.data.batch}`}</span>
-            <span>{isSchool ? profileQuery.data.lastClassAttended || "" : profileQuery.data.department}</span>
-            <strong>{completionPercent}% complete</strong>
-          </div>
-        ) : null}
-
-        <section className="alumni-edit-card" id="profile-info">
-          <div className="alumni-edit-card-title">
-            <span className="alumni-edit-card-icon">PI</span>
-            <h2>Personal Information</h2>
-          </div>
-
-          <div className="alumni-edit-identity">
-            <div className="alumni-edit-avatar-wrap">
-              <div className="alumni-edit-avatar">
-                <span>{(form.name || auth.user?.name || "A").slice(0, 1)}</span>
-              </div>
-              <button className="alumni-edit-avatar-button" type="button">
-                +
-              </button>
-            </div>
-
-            <div className="alumni-edit-form-grid">
-              <label className="alumni-edit-field alumni-edit-field-full">
-                <span>Full Name</span>
-                <input name="name" onChange={handleChange} value={form.name} />
-              </label>
-
-              <label className="alumni-edit-field alumni-edit-field-full">
-                <span>Bio</span>
-                <textarea
-                  className="textarea alumni-edit-textarea"
-                  name="bio"
-                  onChange={handleChange}
-                  rows="4"
-                  value={form.bio}
-                />
-              </label>
-            </div>
-          </div>
-        </section>
-
-        <section className="alumni-edit-card" id="experience">
-          <div className="alumni-edit-card-title">
-            <span className="alumni-edit-card-icon">PD</span>
-            <h2>{isSchool ? "Current Journey" : "Experience"}</h2>
-          </div>
-
-          <div className="alumni-edit-form-grid alumni-edit-form-grid-two">
-            {isSchool ? (
-              <>
-                <label className="alumni-edit-field">
-                  <span>Current Education</span>
-                  <input name="currentEducation" onChange={handleChange} value={form.currentEducation} />
-                </label>
-
-                <label className="alumni-edit-field">
-                  <span>Current Institution</span>
-                  <input name="currentInstitution" onChange={handleChange} value={form.currentInstitution} />
-                </label>
-
-                <label className="alumni-edit-field">
-                  <span>Occupation</span>
-                  <input name="occupation" onChange={handleChange} value={form.occupation} />
-                </label>
-              </>
-            ) : (
-              <>
-                <label className="alumni-edit-field">
-                  <span>Current Company</span>
-                  <input name="company" onChange={handleChange} value={form.company} />
-                </label>
-
-                <label className="alumni-edit-field">
-                  <span>Job Title</span>
-                  <input name="designation" onChange={handleChange} value={form.designation} />
-                </label>
-
-                <label className="alumni-edit-field">
-                  <span>Industry</span>
-                  <select name="industry" onChange={handleChange} value={form.industry}>
-                    <option value="">Select an industry</option>
-                    {industryOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
-            )}
-
-            <label className="alumni-edit-field">
-              <span>Location</span>
-              <input name="location" onChange={handleChange} value={form.location} />
-            </label>
-          </div>
-        </section>
-
-        {showSocialLinks ? (
-          <section className="alumni-edit-card">
-            <div className="alumni-edit-card-title">
-              <span className="alumni-edit-card-icon">ON</span>
-              <h2>Online Presence</h2>
-            </div>
-
-            <div className="alumni-edit-links">
-            <label className="alumni-edit-link-row">
-              <span className="alumni-edit-link-icon">IN</span>
-              <input
-                name="linkedinUrl"
-                onChange={handleChange}
-                placeholder="https://linkedin.com/in/yourprofile"
-                value={form.linkedinUrl}
-              />
-            </label>
-
-            <label className="alumni-edit-link-row">
-              <span className="alumni-edit-link-icon">WB</span>
-              <input
-                name="websiteUrl"
-                onChange={handleChange}
-                placeholder="https://yourwebsite.dev"
-                value={form.websiteUrl}
-              />
-            </label>
-
-            <label className="alumni-edit-link-row">
-              <span className="alumni-edit-link-icon">X</span>
-              <input
-                name="twitterHandle"
-                onChange={handleChange}
-                placeholder="X username"
-                value={form.twitterHandle}
-              />
-            </label>
-            </div>
-          </section>
-        ) : null}
-
-        <section className="alumni-edit-card" id="education">
-          <div className="alumni-edit-card-title">
-            <span className="alumni-edit-card-icon">ED</span>
-            <h2>Education</h2>
-          </div>
-
-          <div className="alumni-edit-form-grid alumni-edit-form-grid-two">
-            <label className="alumni-edit-field">
-              <span>Institute</span>
-              <input readOnly value={auth.user?.institute?.name || "AlumNet University"} />
-            </label>
-
-            <label className="alumni-edit-field">
-              <span>{isSchool ? "Last Class Attended" : "Department"}</span>
-              <input readOnly value={isSchool ? profileQuery.data?.lastClassAttended || "" : profileQuery.data?.department || "Computer Science"} />
-            </label>
-
-            <label className="alumni-edit-field">
-              <span>{isSchool ? "Leaving Year" : "Graduation Batch"}</span>
-              <input readOnly value={isSchool ? profileQuery.data?.leavingYear || "" : profileQuery.data?.batch || ""} />
-            </label>
-
-            <div className="alumni-edit-note">
-              <strong>{isSchool ? "Need to update school record details?" : "Need to update academic details?"}</strong>
-              <p>
-                {isSchool
-                  ? "Leaving year and class attended are controlled from your member record. Contact your school admin if these details need correction."
-                  : "Graduation year and department are controlled from your alumni record. Contact your institute admin if these details need correction."}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="alumni-edit-card" id="privacy">
-          <div className="alumni-edit-card-title">
-            <span className="alumni-edit-card-icon">PR</span>
-            <h2>Privacy & Visibility</h2>
-          </div>
-
-          <div className="alumni-edit-form-grid">
-            <label className="alumni-edit-field alumni-edit-field-full">
-              <span>Who can view your profile?</span>
-              <select name="profileVisibility" onChange={handleChange} value={form.profileVisibility}>
-                <option value="public">Everyone on the platform</option>
-                <option value="institute_only">Only members from my institute</option>
-                <option value="private">Only me</option>
-              </select>
-            </label>
-
-            <label className="alumni-edit-toggle">
-              <input
-                checked={form.showEmail}
-                name="showEmail"
-                onChange={handleChange}
-                type="checkbox"
-              />
-              <div>
-                <strong>Show my email on my profile</strong>
-                <p>Let other alumni contact you directly from your public profile card.</p>
-              </div>
-            </label>
-
-            <label className="alumni-edit-toggle">
-              <input
-                checked={form.allowMentorRequests}
-                name="allowMentorRequests"
-                onChange={handleChange}
-                type="checkbox"
-              />
-              <div>
-                <strong>Allow mentorship and networking requests</strong>
-                <p>Turn this off if you want to pause incoming connection or mentorship outreach.</p>
-              </div>
-            </label>
-          </div>
-        </section>
-
-        {showCareerFields ? (
-          <section className="alumni-edit-card">
-            <div className="alumni-edit-card-title">
-              <span className="alumni-edit-card-icon">SK</span>
-              <h2>Professional Skills</h2>
-            </div>
-
-            <div className="alumni-edit-skill-list">
-              {skills.map((skill) => (
-                <button
-                  className="alumni-edit-skill-chip"
-                  key={skill}
-                  onClick={() => handleSkillRemove(skill)}
-                  type="button"
-                >
-                  <span>{skill}</span>
-                  <span aria-hidden="true">x</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="alumni-edit-skill-entry">
-              <input
-                onChange={(event) => setSkillInput(event.target.value)}
-                placeholder="Add a skill..."
-                value={skillInput}
-              />
-              <button className="alumni-edit-add-button" onClick={handleSkillAdd} type="button">
-                +
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {updateMutation.isSuccess ? (
-          <p className="success-text">Profile updated successfully.</p>
-        ) : null}
-        {updateMutation.isError ? <p className="error-text">{updateMutation.error.message}</p> : null}
-
-        <footer className="alumni-edit-footer">
-          <button
-            className="button secondary"
-            onClick={() => {
-              setForm(profileQuery.data ? buildForm(profileQuery.data) : emptyForm);
-              setSkillInput("");
-            }}
-            type="button"
-          >
-            Cancel
-          </button>
-          <button className="button primary" disabled={updateMutation.isPending} type="submit">
-            {updateMutation.isPending ? "Saving..." : "Save Profile Changes"}
-          </button>
-        </footer>
-      </form>
-    </div>
-  );
+function getCompletion(profile) {
+  return [
+    profile.name,
+    profile.company,
+    profile.designation,
+    profile.location,
+    profile.bio,
+    profile.skills
+  ].filter((value) => String(value || "").trim().length > 0).length;
 }
-
-export default AlumniProfilePage;
 
 function buildForm(profile) {
   return {
@@ -696,3 +90,483 @@ function buildForm(profile) {
     allowMentorRequests: profile.allowMentorRequests ?? true
   };
 }
+
+function AlumniProfilePage() {
+  const auth = useAuth();
+  const tenant = useTenantContext();
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const isSchool = tenant.institutionType === "school";
+  const showCareerFields = tenant.featureFlags.enableCareerFields;
+  const showSocialLinks = tenant.featureFlags.enableSocialLinks;
+  const isEditMode = searchParams.get("mode") === "edit";
+  const [form, setForm] = useState(emptyForm);
+  const [skillInput, setSkillInput] = useState("");
+  const [activeSection, setActiveSection] = useState(profileSections[0].id);
+  const isAlumni = auth.user?.role === "alumni";
+
+  const profileQuery = useQuery({
+    queryKey: ["my-alumni-profile"],
+    queryFn: fetchMyAlumniProfile,
+    enabled: isAlumni
+  });
+
+  useEffect(() => {
+    if (profileQuery.data) {
+      setForm(buildForm(profileQuery.data));
+    }
+  }, [profileQuery.data]);
+
+  const updateMutation = useMutation({
+    mutationFn: updateMyAlumniProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-alumni-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+    }
+  });
+
+  const skills = useMemo(
+    () =>
+      form.skills
+        .split(",")
+        .map((skill) => skill.trim())
+        .filter(Boolean),
+    [form.skills]
+  );
+
+  const completion = getCompletion(form);
+  const completionPercent = Math.round((completion / 6) * 100);
+  const profile = profileQuery.data;
+  const profileName = profile?.name || auth.user?.name || "Community Member";
+  const profileBatch = profile?.batch || "-";
+  const profileDepartment = profile?.department || (isSchool ? "School Community" : "Department pending");
+  const leavingYear = profile?.leavingYear || "-";
+  const lastClassAttended = profile?.lastClassAttended || "-";
+  const currentEducation = profile?.currentEducation || "";
+  const currentInstitution = profile?.currentInstitution || "";
+  const occupation = profile?.occupation || "";
+  const profileCompany = profile?.company || "Independent";
+  const profileRole = profile?.designation || (isSchool ? "Community Member" : "Alumni Member");
+  const profileIndustry = profile?.industry || "Not added yet";
+  const profileLocation = profile?.location || "Location not added";
+  const profileBio =
+    profile?.bio ||
+    (isSchool
+      ? "Add a short introduction so other members of your school community can reconnect with you."
+      : "Share what you are building, where you work, and what kind of alumni conversations you enjoy.");
+  const links = [
+    { label: "LinkedIn", value: profile?.linkedinUrl || "" },
+    { label: "Website", value: profile?.websiteUrl || "" },
+    { label: "Twitter / X", value: profile?.twitterHandle || "" }
+  ].filter((item) => item.value);
+  const displaySkills = skills.length ? skills : ["Profile", "Community", "Mentorship"];
+  const connections = [
+    { id: "1", name: "Sarah Chen", note: "Product leadership - Class of 2017" },
+    { id: "2", name: "Marcus Miller", note: "Engineering manager - Class of 2019" },
+    { id: "3", name: "Elena Rossi", note: "Founder network - Class of 2018" }
+  ];
+
+  function handleChange(event) {
+    const { name, value, type, checked } = event.target;
+    setForm((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value
+    }));
+  }
+
+  function syncSkills(nextSkills) {
+    setForm((current) => ({ ...current, skills: nextSkills.join(", ") }));
+  }
+
+  function handleSkillAdd(event) {
+    event.preventDefault();
+    const nextSkill = skillInput.trim();
+
+    if (!nextSkill || skills.some((skill) => skill.toLowerCase() === nextSkill.toLowerCase())) {
+      return;
+    }
+
+    syncSkills([...skills, nextSkill]);
+    setSkillInput("");
+  }
+
+  function handleSkillRemove(skillToRemove) {
+    syncSkills(skills.filter((skill) => skill !== skillToRemove));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    updateMutation.mutate({
+      ...form,
+      skills
+    });
+  }
+
+  function jumpToSection(sectionId) {
+    const element = document.getElementById(sectionId);
+    if (!element) {
+      return;
+    }
+
+    setActiveSection(sectionId);
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  if (!isAlumni) {
+    return (
+      <SectionCard title="My Profile" subtitle="Portal Access">
+        <p className="muted">
+          This page is for alumni users. Institute admins can manage accounts from the members directory.
+        </p>
+      </SectionCard>
+    );
+  }
+
+  if (profileQuery.isLoading && !profileQuery.data) {
+    return <p>Loading your profile...</p>;
+  }
+
+  if (isEditMode) {
+    return (
+      <div className="member-profile-editor">
+        <aside className="member-profile-editor-rail">
+          <div className="member-profile-editor-rail-copy">
+            <p className="member-card-kicker">Profile editor</p>
+            <h2>Keep your alumni identity current.</h2>
+            <p>
+              Update the details that help people discover you, understand your journey, and reach out with confidence.
+            </p>
+          </div>
+          <nav className="member-profile-editor-nav" aria-label="Profile edit sections">
+            {profileSections.map((section) => (
+              <button
+                key={section.id}
+                className={activeSection === section.id ? "member-profile-editor-link active" : "member-profile-editor-link"}
+                onClick={() => jumpToSection(section.id)}
+                type="button"
+              >
+                <span>{section.icon}</span>
+                <strong>{section.label}</strong>
+              </button>
+            ))}
+          </nav>
+          <div className="member-profile-editor-summary">
+            <span>Profile completion</span>
+            <strong>{completionPercent}%</strong>
+            <p>{completion} of 6 key details filled in.</p>
+          </div>
+        </aside>
+
+        <form className="member-profile-editor-body" onSubmit={handleSubmit}>
+          <PortalPageHeader
+            title="Edit profile"
+            subtitle="Every update improves how you appear across the alumni network."
+            actions={
+              <div className="member-inline-actions">
+                <Link className="button secondary" to="/portal/profile">
+                  Back to profile
+                </Link>
+                <button className="button primary" disabled={updateMutation.isPending} type="submit">
+                  {updateMutation.isPending ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            }
+          />
+
+          {profileQuery.isError ? <p className="error-text">{profileQuery.error.message}</p> : null}
+          {updateMutation.isSuccess ? <p className="success-text">Profile updated successfully.</p> : null}
+          {updateMutation.isError ? <p className="error-text">{updateMutation.error.message}</p> : null}
+
+          <PortalMetricGrid>
+            <PortalMetricCard title="Completion" value={completionPercent} valueSuffix="%" icon="CM" />
+            <PortalMetricCard title="Visibility" value={form.profileVisibility.replaceAll("_", " ")} icon="VS" />
+            <PortalMetricCard title="Mentorship" value={form.allowMentorRequests ? "Open" : "Paused"} icon="MT" />
+          </PortalMetricGrid>
+
+          <SectionCard title="Personal details" subtitle="How people recognize you" id="profile-info">
+            <div className="member-form-grid member-form-grid-two">
+              <label className="member-form-field member-form-field-full">
+                <span>Full name</span>
+                <input name="name" onChange={handleChange} value={form.name} />
+              </label>
+              <label className="member-form-field member-form-field-full">
+                <span>Bio</span>
+                <textarea className="textarea member-form-textarea" name="bio" onChange={handleChange} rows="5" value={form.bio} />
+              </label>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title={isSchool ? "Current journey" : "Professional details"}
+            subtitle="The details alumni use when they search for you"
+            id="experience"
+          >
+            <div className="member-form-grid member-form-grid-two">
+              {isSchool ? (
+                <>
+                  <label className="member-form-field">
+                    <span>Current education</span>
+                    <input name="currentEducation" onChange={handleChange} value={form.currentEducation} />
+                  </label>
+                  <label className="member-form-field">
+                    <span>Current institution</span>
+                    <input name="currentInstitution" onChange={handleChange} value={form.currentInstitution} />
+                  </label>
+                  <label className="member-form-field">
+                    <span>Occupation</span>
+                    <input name="occupation" onChange={handleChange} value={form.occupation} />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="member-form-field">
+                    <span>Current company</span>
+                    <input name="company" onChange={handleChange} value={form.company} />
+                  </label>
+                  <label className="member-form-field">
+                    <span>Job title</span>
+                    <input name="designation" onChange={handleChange} value={form.designation} />
+                  </label>
+                  <label className="member-form-field">
+                    <span>Industry</span>
+                    <select name="industry" onChange={handleChange} value={form.industry}>
+                      <option value="">Select an industry</option>
+                      {industryOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              <label className="member-form-field">
+                <span>Location</span>
+                <input name="location" onChange={handleChange} value={form.location} />
+              </label>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Education record" subtitle="These are tied to your institute record" id="education">
+            <div className="member-form-grid member-form-grid-two">
+              <label className="member-form-field">
+                <span>Institute</span>
+                <input readOnly value={auth.user?.institute?.name || tenant.displayName || "Institute"} />
+              </label>
+              <label className="member-form-field">
+                <span>{isSchool ? "Last class attended" : "Department"}</span>
+                <input readOnly value={isSchool ? lastClassAttended : profileDepartment} />
+              </label>
+              <label className="member-form-field">
+                <span>{isSchool ? "Leaving year" : "Batch"}</span>
+                <input readOnly value={isSchool ? leavingYear : profileBatch} />
+              </label>
+              <div className="member-note-card">
+                <strong>Need a correction?</strong>
+                <p>
+                  Contact your institute admin if your academic record needs an update. These fields are managed from your verified alumni record.
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          {showSocialLinks ? (
+            <SectionCard title="Online presence" subtitle="Optional links that help people know more about you">
+              <div className="member-form-grid">
+                <label className="member-form-field">
+                  <span>LinkedIn</span>
+                  <input name="linkedinUrl" onChange={handleChange} placeholder="https://linkedin.com/in/yourprofile" value={form.linkedinUrl} />
+                </label>
+                <label className="member-form-field">
+                  <span>Website</span>
+                  <input name="websiteUrl" onChange={handleChange} placeholder="https://yourportfolio.dev" value={form.websiteUrl} />
+                </label>
+                <label className="member-form-field">
+                  <span>Twitter / X</span>
+                  <input name="twitterHandle" onChange={handleChange} placeholder="@yourhandle" value={form.twitterHandle} />
+                </label>
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {showCareerFields ? (
+            <SectionCard title="Skills" subtitle="Add keywords that improve discovery across the network">
+              <div className="member-skill-editor">
+                <div className="member-skill-list">
+                  {skills.map((skill) => (
+                    <button className="member-skill-chip" key={skill} onClick={() => handleSkillRemove(skill)} type="button">
+                      <span>{skill}</span>
+                      <span aria-hidden="true">x</span>
+                    </button>
+                  ))}
+                  {!skills.length ? <p className="muted">No skills added yet.</p> : null}
+                </div>
+                <div className="member-skill-input-row">
+                  <input onChange={(event) => setSkillInput(event.target.value)} placeholder="Add a skill" value={skillInput} />
+                  <button className="button secondary" onClick={handleSkillAdd} type="button">
+                    Add skill
+                  </button>
+                </div>
+              </div>
+            </SectionCard>
+          ) : null}
+
+          <SectionCard title="Privacy and outreach" subtitle="Choose how visible and reachable you want to be" id="privacy">
+            <div className="member-form-grid">
+              <label className="member-form-field member-form-field-full">
+                <span>Profile visibility</span>
+                <select name="profileVisibility" onChange={handleChange} value={form.profileVisibility}>
+                  <option value="public">Everyone on the platform</option>
+                  <option value="institute_only">Only members from my institute</option>
+                  <option value="private">Only me</option>
+                </select>
+              </label>
+              <label className="member-toggle-row">
+                <input checked={form.showEmail} name="showEmail" onChange={handleChange} type="checkbox" />
+                <div>
+                  <strong>Show my email on my profile</strong>
+                  <p>Let other alumni contact you directly from your profile card.</p>
+                </div>
+              </label>
+              <label className="member-toggle-row">
+                <input checked={form.allowMentorRequests} name="allowMentorRequests" onChange={handleChange} type="checkbox" />
+                <div>
+                  <strong>Allow mentorship and networking requests</strong>
+                  <p>Pause inbound requests anytime if you need to quiet your inbox.</p>
+                </div>
+              </label>
+            </div>
+          </SectionCard>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="member-profile-page">
+      <PortalPageHeader
+        title="My profile"
+        subtitle="Your professional identity across the institute network."
+        actions={
+          <Link className="button primary" to="/portal/profile?mode=edit">
+            Edit profile
+          </Link>
+        }
+      />
+
+      <div className="member-profile-grid">
+        <section className="member-profile-hero">
+          <div className="member-profile-identity">
+            <div className="member-profile-avatar">{profileName.slice(0, 1)}</div>
+            <div>
+              <p className="member-card-kicker">Verified member</p>
+              <h2>{profileName}</h2>
+              <p>
+                {isSchool ? `Leaving year ${leavingYear}` : `Class of ${profileBatch}`} at {auth.user?.institute?.name || tenant.displayName}
+              </p>
+            </div>
+          </div>
+          <p className="member-profile-hero-role">
+            {isSchool ? currentEducation || occupation || "Community member" : `${profileRole} at ${profileCompany}`}
+          </p>
+          <p className="member-profile-hero-location">{profileLocation}</p>
+          <div className="member-profile-tags">
+            <span>{isSchool ? lastClassAttended : profileDepartment}</span>
+            <span>{isSchool ? currentInstitution || "Current journey pending" : profileIndustry}</span>
+            <span>{form.allowMentorRequests ? "Open to mentorship" : "Mentorship paused"}</span>
+          </div>
+        </section>
+
+        <PortalMetricGrid className="member-profile-metrics">
+          <PortalMetricCard title="Completion" value={completionPercent} valueSuffix="%" icon="CM" />
+          <PortalMetricCard title="Skills" value={displaySkills.length} icon="SK" />
+          <PortalMetricCard title="Visibility" value={form.profileVisibility.replaceAll("_", " ")} icon="VS" />
+        </PortalMetricGrid>
+      </div>
+
+      <div className="member-profile-content-grid">
+        <SectionCard title="About" subtitle="What alumni should know about you">
+          <p className="member-reading-copy">{profileBio}</p>
+        </SectionCard>
+
+        <SectionCard title={isSchool ? "Current snapshot" : "Professional snapshot"} subtitle="The quick version">
+          <div className="member-detail-stack">
+            <article>
+              <span>{isSchool ? "Current path" : "Current role"}</span>
+              <strong>{isSchool ? currentEducation || occupation || "Community member" : profileRole}</strong>
+              <p>{isSchool ? currentInstitution || "Institution not added" : profileCompany}</p>
+            </article>
+            <article>
+              <span>{isSchool ? "Last class attended" : "Industry"}</span>
+              <strong>{isSchool ? lastClassAttended : profileIndustry}</strong>
+            </article>
+            <article>
+              <span>Location</span>
+              <strong>{profileLocation}</strong>
+            </article>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Education" subtitle="Verified institute record">
+          <div className="member-detail-stack">
+            <article>
+              <span>Institute</span>
+              <strong>{auth.user?.institute?.name || tenant.displayName || "Institute"}</strong>
+            </article>
+            <article>
+              <span>{isSchool ? "Last class attended" : "Department"}</span>
+              <strong>{isSchool ? lastClassAttended : profileDepartment}</strong>
+            </article>
+            <article>
+              <span>{isSchool ? "Leaving year" : "Graduation batch"}</span>
+              <strong>{isSchool ? leavingYear : profileBatch}</strong>
+            </article>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Skills and expertise" subtitle="How people find you in the directory">
+          <div className="member-chip-cloud">
+            {displaySkills.map((skill) => (
+              <span className="member-chip-pill" key={skill}>
+                {skill}
+              </span>
+            ))}
+          </div>
+        </SectionCard>
+
+        {showSocialLinks ? (
+          <SectionCard title="Online presence" subtitle="Optional profile links">
+            <div className="member-link-stack">
+              {links.length ? (
+                links.map((item) => (
+                  <a className="member-link-row" href={item.value} key={item.label} rel="noreferrer" target="_blank">
+                    <strong>{item.label}</strong>
+                    <span>{item.value}</span>
+                  </a>
+                ))
+              ) : (
+                <p className="muted">No public links added yet.</p>
+              )}
+            </div>
+          </SectionCard>
+        ) : null}
+
+        <SectionCard title="Network" subtitle="Suggested alumni you may know">
+          <div className="member-people-list">
+            {connections.map((item) => (
+              <article className="member-person-card" key={item.id}>
+                <div className="member-person-avatar">{item.name.slice(0, 1)}</div>
+                <div className="member-person-copy">
+                  <strong>{item.name}</strong>
+                  <p>{item.note}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+      </div>
+    </div>
+  );
+}
+
+export default AlumniProfilePage;

@@ -62,6 +62,17 @@ function buildDefaultTenantConfig({ name, subdomain }) {
   });
 }
 
+router.get("/public", async (_req, res, next) => {
+  try {
+    const institutes = await Institute.find({ status: "active" })
+      .select("name subdomain domain institutionType educationLevel communityLabels")
+      .sort({ name: 1 });
+
+    res.json(institutes);
+  } catch (error) {
+    next(error);
+  }
+});
 router.post("/request", validateBody(validateInstituteRequestBody), async (req, res, next) => {
   try {
     const {
@@ -330,3 +341,5 @@ router.patch(
 );
 
 export default router;
+
+
