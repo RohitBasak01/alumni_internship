@@ -1,0 +1,93 @@
+/* Dashboard & Activity Feed Styles */
+
+.alumni-feed-page {
+  display: grid;
+  gap: 1.25rem;
+  --alumni-cobalt: #2554d8;
+  --alumni-cyan: #0f8aa6;
+  --alumni-coral: #dd5f4f;
+  --alumni-gold: #b7791f;
+  --alumni-berry: #7b4ccf;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(37, 84, 216, 0.12), transparent 30%),
+    radial-gradient(circle at 92% 4%, rgba(15, 138, 166, 0.12), transparent 32%),
+    radial-gradient(circle at 84% 88%, rgba(221, 95, 79, 0.1), transparent 28%),
+    linear-gradient(180deg, #f9fbff 0%, #f4f8ff 60%, #f8fbff 100%);
+}
+
+.alumni-feed-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.alumni-editor-shell {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(191, 219, 254, 0.4), transparent 32%),
+    linear-gradient(180deg, #f8fafc 0%, #eef4fb 100%);
+}
+
+.alumni-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.alumni-post-card {
+  padding: 1.3rem;
+  border: 1px solid rgba(37, 84, 216, 0.14);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 250, 255, 0.96));
+  box-shadow: 0 14px 26px rgba(20, 33, 61, 0.07);
+}
+
+.alumni-post-card:nth-child(3n + 1) { border-top: 4px solid rgba(37, 84, 216, 0.45); }
+.alumni-post-card:nth-child(3n + 2) { border-top: 4px solid rgba(15, 138, 166, 0.45); }
+.alumni-post-card:nth-child(3n + 3) { border-top: 4px solid rgba(221, 95, 79, 0.4); }
+
+.alumni-post-avatar {
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #173ea9;
+  font-weight: 800;
+}
+
+.alumni-post-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: rgba(37, 84, 216, 0.1);
+  color: #194186;
+  font-weight: 700;
+}
+
+/* Admin Dashboard specific */
+.admin-dashboard {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (max-width: 1180px) {
+  .alumni-feed-layout {
+    grid-template-columns: 1fr;
+  }
+}

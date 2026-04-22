@@ -7,23 +7,65 @@ import { validateBody, validateParams } from "../middleware/validate.middleware.
 import Institute from "../models/Institute.js";
 import User from "../models/User.js";
 import {
-  clearAuthCookie,
+  clearAuthCookies,
   comparePassword,
-  generateToken,
+  generateAccessToken,
   getAuthCookieOptions,
   hashPassword,
-  setAuthCookie
+  setAuthCookies
 } from "../utils/auth.js";
+import { sendInviteEmail } from "../utils/email.js";
 import { buildTenantConfigSnapshot } from "../utils/tenantConfig.js";
 import { hasMinLength, isEmail, isNonEmptyString, isPositiveYear } from "../utils/validation.js";
+import { login, logout, getMe, refresh, forgotPassword, resetPassword } from "../controllers/auth.controller.js";
 
 const router = express.Router();
 const OAUTH_FLOW_COOKIE = "oauthFlow";
 const OAUTH_PENDING_COOKIE = "oauthPending";
 const OAUTH_COOKIE_MAX_AGE = 1000 * 60 * 15;
 
+// Helper functions (kept for OAuth)
 function hashInviteToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function buildInviteUrl(rawInviteToken) {
+  return `${process.env.CLIENT_URL || "http://localhost:5173"}/setup-password/${rawInviteToken}`;
+}
+
+function issueInviteToken(user) {
+  const rawInviteToken = crypto.randomBytes(24).toString("hex");
+  user.inviteTokenHash = hashInviteToken(rawInviteToken);
+  user.inviteTokenExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+  user.passwordSetupCompleted = false;
+  user.isActive = false;
+
+  return {
+    inviteUrl: buildInviteUrl(rawInviteToken),
+    expiresAt: user.inviteTokenExpiresAt
+  };
+}
+
+function getEmailDomain(email) {
+  const [, domain = ""] = String(email || "").trim().toLowerCase().split("@");
+  return domain;
+}
+
+function isDomainLike(value) {
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(value);
+}
+
+function getAutoApprovalDomains(institute) {
+  const configuredDomains = Array.isArray(institute?.featureFlags?.autoApproveEmailDomains)
+    ? institute.featureFlags.autoApproveEmailDomains
+    : [];
+
+  const baseDomains = configuredDomains.length ? configuredDomains : [institute?.domain || ""];
+  const normalized = baseDomains
+    .map((value) => String(value || "").trim().toLowerCase().replace(/^@/, ""))
+    .filter((value) => value && isDomainLike(value));
+
+  return [...new Set(normalized)];
 }
 
 function isObject(value) {
@@ -478,67 +520,13 @@ function redirectWithError(res, pathname, message, extraParams = {}) {
   res.redirect(buildFrontendUrl(pathname, { ...extraParams, error: message }));
 }
 
-router.post("/login", validateBody(validateLoginBody), async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const normalizedEmail = email?.trim().toLowerCase();
-
-    let user = await User.findOne({ email: normalizedEmail, role: "super_admin" }).populate("instituteId");
-
-    if (!user) {
-      const RequestUser = getRequestUserModel(req);
-      user = await RequestUser.findOne({ email: normalizedEmail });
-
-      if (user && req.tenant) {
-        user.instituteId = req.tenant;
-      } else if (!user) {
-        user = await User.findOne({ email: normalizedEmail }).populate("instituteId");
-      }
-    }
-
-    if (!user) {
-      const error = new Error("Invalid credentials");
-      error.statusCode = 401;
-      throw error;
-    }
-
-    const validPassword = await comparePassword(password, user.passwordHash);
-
-    if (!validPassword) {
-      const error = new Error("Invalid credentials");
-      error.statusCode = 401;
-      throw error;
-    }
-
-    if (!user.isActive) {
-      const error = new Error("Your account is not active yet");
-      error.statusCode = 403;
-      throw error;
-    }
-
-    if (user.passwordSetupCompleted === false) {
-      const error = new Error("Please finish setting your password from the invite link first");
-      error.statusCode = 403;
-      throw error;
-    }
-
-    if (user.role !== "super_admin" && (!user.instituteId || user.instituteId.status !== "active")) {
-      const error = new Error("Your institute portal is not active yet");
-      error.statusCode = 403;
-      throw error;
-    }
-
-    const token = generateToken(user);
-    setAuthCookie(res, token);
-
-    res.json({
-      token,
-      user: formatUserSession(user)
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+// Routes
+router.post("/login", validateBody(validateLoginBody), login);
+router.post("/logout", logout);
+router.post("/refresh", refresh);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
+router.get("/me", protect, getMe);
 
 router.get("/oauth/session", (req, res) => {
   const pendingSession = getCookiePayload(req, OAUTH_PENDING_COOKIE);
@@ -657,8 +645,8 @@ router.get("/oauth/:provider/callback", validateParams(validateOAuthProvider), a
 
     ensureUserCanLogin(user);
 
-    const token = generateToken(user);
-    setAuthCookie(res, token);
+    const token = generateAccessToken(user);
+    setAuthCookies(res, token);
     clearOAuthPendingSession(res);
 
     res.redirect(buildFrontendUrl(user.role === "super_admin" ? "/super-admin" : "/portal"));
@@ -718,6 +706,12 @@ router.post("/alumni-registration", validateBody(validateAlumniRegistrationBody)
         ]
       : [];
 
+    const isEligibleForAutoApproval =
+      shouldLinkOAuth &&
+      oauthSession?.emailVerified !== false &&
+      Boolean(institute.featureFlags?.autoApproveAlumni) &&
+      getAutoApprovalDomains(institute).includes(getEmailDomain(normalizedEmail));
+
     const user = await TenantUser.create({
       instituteId: institute._id,
       name: `${req.body.firstName.trim()} ${req.body.lastName.trim()}`.trim(),
@@ -730,6 +724,8 @@ router.post("/alumni-registration", validateBody(validateAlumniRegistrationBody)
       inviteTokenExpiresAt: null,
       oauthAccounts
     });
+
+    const registrationReviewStatus = isEligibleForAutoApproval ? "approved" : "pending";
 
     await TenantAlumniProfile.create({
       instituteId: institute._id,
@@ -751,14 +747,33 @@ router.post("/alumni-registration", validateBody(validateAlumniRegistrationBody)
       location: req.body.currentCity.trim(),
       bio: "",
       skills: [],
-      registrationReviewStatus: "pending"
+      registrationReviewStatus,
+      registrationRejectedReason: "",
+      registrationReviewedAt: isEligibleForAutoApproval ? new Date() : null
     });
+
+    if (isEligibleForAutoApproval) {
+      const { inviteUrl, expiresAt } = issueInviteToken(user);
+      await user.save();
+
+      await sendInviteEmail({
+        to: user.email,
+        recipientName: user.name,
+        instituteName: institute.name,
+        inviteUrl,
+        expiresAt,
+        portalRoleLabel: institute?.institutionType === "school" ? "former student" : "alumni",
+        institutionType: institute?.institutionType || "college"
+      });
+    }
 
     clearOAuthPendingSession(res);
 
     res.status(201).json({
-      message:
-        "Registration submitted successfully. Your institute admin will review it and email you a password setup link after approval."
+      message: isEligibleForAutoApproval
+        ? "Registration approved automatically. A password setup link has been sent to your email."
+        : "Registration submitted successfully. Your institute admin will review it and email you a password setup link after approval.",
+      autoApproved: isEligibleForAutoApproval
     });
   } catch (error) {
     next(error);
@@ -844,19 +859,6 @@ router.post("/setup-password", validateBody(validateSetupPasswordBody), async (r
         : "Password set successfully. You can sign in after your institute is approved.",
       user: formatUserSession(user)
     });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post("/logout", (_req, res) => {
-  clearAuthCookie(res);
-  res.json({ message: "Logged out successfully" });
-});
-
-router.get("/me", protect, async (req, res, next) => {
-  try {
-    res.json(formatUserSession(req.user));
   } catch (error) {
     next(error);
   }

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { softDeletePlugin } from "../utils/softDeletePlugin.js";
 
 const mentorshipMessageAttachmentSchema = new mongoose.Schema(
   {
@@ -310,5 +311,7 @@ const mentorshipRequestSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+mentorshipRequestSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("MentorshipRequest", mentorshipRequestSchema);

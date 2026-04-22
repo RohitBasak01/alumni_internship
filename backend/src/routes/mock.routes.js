@@ -3,7 +3,13 @@ import express from "express";
 import jwt from "jsonwebtoken";
 
 import { createMockStore, buildSessionUser } from "../mock/devData.js";
-import { AUTH_COOKIE_NAME, clearAuthCookie, generateToken, setAuthCookie } from "../utils/auth.js";
+import {
+  AUTH_COOKIE_NAME,
+  clearAuthCookies,
+  generateAccessToken,
+  getJwtSecret,
+  setAuthCookies
+} from "../utils/auth.js";
 
 const router = express.Router();
 
@@ -23,8 +29,31 @@ function getStore(req) {
   return req.app.locals.mockStore;
 }
 
+function getDraftStore(req) {
+  if (!req.app.locals.portalOnboardingDrafts) {
+    req.app.locals.portalOnboardingDrafts = new Map();
+  }
+  return req.app.locals.portalOnboardingDrafts;
+}
+
+function getRequestedTenantSubdomain(req) {
+  return String(req.headers["x-tenant-subdomain"] || req.query.tenantSubdomain || "")
+    .trim()
+    .toLowerCase();
+}
+
+function getInstituteById(req, instituteId) {
+  return getStore(req).institutes.find((item) => item._id === instituteId) || null;
+}
+
 function getInstitute(req) {
-  return getStore(req).institutes[0];
+  const requestedSubdomain = getRequestedTenantSubdomain(req);
+
+  if (requestedSubdomain) {
+    return getStore(req).institutes.find((item) => item.subdomain === requestedSubdomain) || null;
+  }
+
+  return getStore(req).institutes[0] || null;
 }
 
 function getMockPerson(req, userId) {
@@ -42,6 +71,12 @@ function getMockPerson(req, userId) {
     email: user.email,
     batch: profile?.batch,
     department: profile?.department,
+    leavingYear: profile?.leavingYear,
+    lastClassAttended: profile?.lastClassAttended,
+    section: profile?.section,
+    currentEducation: profile?.currentEducation,
+    currentInstitution: profile?.currentInstitution,
+    occupation: profile?.occupation,
     company: profile?.company,
     designation: profile?.designation,
     location: profile?.location
@@ -113,6 +148,11 @@ function formatMockCommunityGroup(req, group) {
         email: person?.email || "",
         batch: person?.batch ?? null,
         department: person?.department || "",
+        leavingYear: person?.leavingYear ?? null,
+        lastClassAttended: person?.lastClassAttended || "",
+        section: person?.section || "",
+        currentInstitution: person?.currentInstitution || "",
+        occupation: person?.occupation || "",
         company: person?.company || "",
         designation: person?.designation || "",
         location: person?.location || ""
@@ -137,7 +177,7 @@ function getUserFromToken(req) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "change-me");
+    const decoded = jwt.verify(token, getJwtSecret());
     return getStore(req).users.find((user) => user._id === decoded.userId) || null;
   } catch {
     return null;
@@ -156,7 +196,7 @@ function requireMockAuth(req, res, next) {
 
   req.user = buildSessionUser(user);
   req.mockUser = user;
-  req.tenant = user.instituteId ? getInstitute(req) : null;
+  req.tenant = user.instituteId ? getInstituteById(req, user.instituteId) : null;
   next();
 }
 
@@ -201,6 +241,12 @@ function formatAlumniProfile(req, profile) {
     isActive: user?.isActive || false,
     batch: profile.batch,
     department: profile.department,
+    leavingYear: profile.leavingYear,
+    lastClassAttended: profile.lastClassAttended || "",
+    section: profile.section || "",
+    currentEducation: profile.currentEducation || "",
+    currentInstitution: profile.currentInstitution || "",
+    occupation: profile.occupation || "",
     company: profile.company,
     designation: profile.designation,
     location: profile.location,
@@ -255,9 +301,26 @@ router.get("/health", (req, res) => {
   });
 });
 
+router.get("/institutes/public", (req, res) => {
+  const institutes = getStore(req)
+    .institutes.filter((item) => item.status === "active")
+    .map((item) => ({
+      _id: item._id,
+      name: item.name,
+      subdomain: item.subdomain,
+      domain: item.domain || null,
+      institutionType: item.institutionType,
+      educationLevel: item.educationLevel,
+      communityLabels: item.communityLabels
+    }));
+
+  res.json(institutes);
+});
+
 router.post("/auth/login", (req, res) => {
   const { email, password } = req.body;
   const user = getStore(req).users.find((item) => item.email === String(email || "").trim().toLowerCase());
+  const institute = user?.instituteId ? getInstituteById(req, user.instituteId) : null;
 
   if (!user || user.password !== password) {
     return res.status(401).json({
@@ -266,23 +329,101 @@ router.post("/auth/login", (req, res) => {
     });
   }
 
-  const token = generateToken(user);
-  setAuthCookie(res, token);
+  const token = generateAccessToken(user);
+  setAuthCookies(res, token);
 
   res.json({
     token,
-    user: buildSessionUser(user),
+    user: buildSessionUser(user, institute),
     mockMode: true
   });
 });
 
 router.post("/auth/logout", (_req, res) => {
-  clearAuthCookie(res);
+  clearAuthCookies(res);
   res.json({ message: "Logged out successfully" });
 });
 
 router.get("/auth/me", requireMockAuth, (req, res) => {
-  res.json(buildSessionUser(req.mockUser));
+  res.json(buildSessionUser(req.mockUser, req.tenant));
+});
+
+router.get("/auth/oauth/session", (_req, res) => {
+  res.json({ oauthSession: null });
+});
+
+router.delete("/auth/oauth/session", (_req, res) => {
+  res.json({ message: "OAuth session cleared" });
+});
+
+router.post("/auth/alumni-registration", (req, res) => {
+  const institute = getInstituteById(req, req.body?.instituteId);
+
+  if (!institute || institute.status !== "active") {
+    return res.status(404).json({
+      message: "Selected institute is not available for registration",
+      requestId: req.requestId
+    });
+  }
+
+  const normalizedEmail = String(req.body?.email || "").trim().toLowerCase();
+  if (!normalizedEmail) {
+    return res.status(400).json({ message: "Email is required", requestId: req.requestId });
+  }
+
+  const existingUser = getStore(req).users.find((item) => item.email === normalizedEmail);
+  if (existingUser) {
+    return res.status(409).json({ message: "An account with this email already exists", requestId: req.requestId });
+  }
+
+  const userId = crypto.randomUUID();
+  const profileId = crypto.randomUUID();
+  const displayName = `${String(req.body?.firstName || "").trim()} ${String(req.body?.lastName || "").trim()}`.trim() || normalizedEmail;
+  const batchYear = req.body?.batch ? Number(req.body.batch) : null;
+
+  getStore(req).users.push({
+    _id: userId,
+    name: displayName,
+    email: normalizedEmail,
+    password: "Pending@123",
+    role: "alumni",
+    isActive: false,
+    passwordSetupCompleted: false,
+    instituteId: institute._id
+  });
+
+  getStore(req).profiles.push({
+    _id: profileId,
+    instituteId: institute._id,
+    userId,
+    batch: institute.institutionType === "school" ? null : batchYear,
+    department: institute.institutionType === "school" ? "" : String(req.body?.department || "").trim(),
+    leavingYear: institute.institutionType === "school" ? batchYear : null,
+    lastClassAttended: institute.institutionType === "school" ? String(req.body?.department || "").trim() : "",
+    section: String(req.body?.section || "").trim(),
+    currentEducation: String(req.body?.currentEducation || "").trim(),
+    currentInstitution: String(req.body?.currentInstitution || "").trim(),
+    occupation: String(req.body?.occupation || "").trim(),
+    company: String(req.body?.company || "").trim(),
+    designation: String(req.body?.designation || "").trim(),
+    location: String(req.body?.currentCity || "").trim(),
+    industry: "",
+    bio: "",
+    skills: [],
+    linkedinUrl: "",
+    websiteUrl: "",
+    twitterHandle: "",
+    profileVisibility: "institute_only",
+    showEmail: false,
+    allowMentorRequests: institute.featureFlags?.enableMentorship !== false,
+    registrationReviewStatus: "pending",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  res.status(201).json({
+    message: "Registration submitted successfully. Your institution admin will review it in mock mode."
+  });
 });
 
 router.post("/institutes/request", (req, res) => {
@@ -300,6 +441,87 @@ router.post("/institutes/request", (req, res) => {
       message: "Portal request submitted in development mock mode."
     },
     invite: null,
+    emailDelivery: {
+      delivered: false,
+      mode: "mock",
+      message: "Mock mode is enabled. No email was sent."
+    }
+  });
+});
+
+router.post("/institutes/onboarding/draft", (req, res) => {
+  const draftId = String(req.body?.draftId || "").trim() || crypto.randomUUID();
+  const currentStep = Math.max(1, Math.min(4, Number(req.body?.currentStep || 1)));
+  const data = {
+    name: String(req.body?.name || "").trim(),
+    institutionType: req.body?.institutionType === "school" ? "school" : "college",
+    educationLevel: String(req.body?.educationLevel || "higher_ed").trim(),
+    subdomain: String(req.body?.subdomain || "").trim().toLowerCase(),
+    domain: String(req.body?.domain || "").trim().toLowerCase(),
+    primaryContactName: String(req.body?.primaryContactName || "").trim(),
+    primaryContactEmail: String(req.body?.primaryContactEmail || "").trim().toLowerCase(),
+    primaryContactPhone: String(req.body?.primaryContactPhone || "").trim(),
+    website: String(req.body?.website || "").trim(),
+    bio: String(req.body?.bio || "").trim(),
+    branding: {
+      logoUrl: String(req.body?.branding?.logoUrl || "").trim(),
+      primaryColor: String(req.body?.branding?.primaryColor || "").trim(),
+      secondaryColor: String(req.body?.branding?.secondaryColor || "").trim(),
+      accentColor: String(req.body?.branding?.accentColor || "").trim(),
+      tagline: String(req.body?.branding?.tagline || "").trim()
+    },
+    featureFlags: req.body?.featureFlags && typeof req.body.featureFlags === "object" ? req.body.featureFlags : {}
+  };
+
+  const savedAt = new Date().toISOString();
+  getDraftStore(req).set(draftId, { draftId, currentStep, data, savedAt });
+  res.status(201).json({ draftId, currentStep, savedAt });
+});
+
+router.get("/institutes/onboarding/draft/:draftId", (req, res) => {
+  const draft = getDraftStore(req).get(req.params.draftId);
+  if (!draft) {
+    return res.status(404).json({ message: "Draft not found", requestId: req.requestId });
+  }
+  res.json(draft);
+});
+
+router.post("/institutes/onboarding/submit", (req, res) => {
+  const draftId = String(req.body?.draftId || "").trim();
+  let payload = req.body || {};
+  const draft = draftId ? getDraftStore(req).get(draftId) : null;
+  if (draft?.data) {
+    payload = { ...draft.data, ...payload };
+  }
+
+  if (draftId) {
+    getDraftStore(req).delete(draftId);
+  }
+
+  const instituteName = payload.name || "Requested Institute";
+  const subdomain = payload.subdomain || "requested";
+  const domain = payload.domain || null;
+  const primaryContactEmail = payload.primaryContactEmail || "";
+  const inviteUrl = "http://localhost:5173/setup-password/mock";
+
+  res.status(201).json({
+    institute: {
+      _id: crypto.randomUUID(),
+      name: instituteName,
+      subdomain,
+      domain,
+      status: "pending"
+    },
+    onboarding: {
+      contactEmail: primaryContactEmail,
+      status: "pending_approval",
+      message: "Portal request submitted in development mock mode."
+    },
+    invite: {
+      email: primaryContactEmail,
+      inviteUrl,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    },
     emailDelivery: {
       delivered: false,
       mode: "mock",
@@ -368,12 +590,13 @@ router.get("/admin/analytics", requireMockAuth, requireRole("super_admin"), (req
 });
 
 router.get("/admin/support-overview", requireMockAuth, requireRole("super_admin"), (_req, res) => {
+  const store = getStore(_req);
   res.json({
     pendingInstituteRequests: 0,
     suspendedInstitutes: 0,
     pendingInstituteAdminSetup: 0,
     inactiveInstituteAdmins: 0,
-    pendingAlumniInvites: 0,
+    pendingAlumniInvites: store.users.filter((item) => item.role === "alumni" && !item.passwordSetupCompleted).length,
     expiredInvites: 0
   });
 });
@@ -493,14 +716,20 @@ router.get("/ops/status", requireMockAuth, requireRole("super_admin"), (req, res
 });
 
 router.get("/alumni", requireMockAuth, ensureTenant, (req, res) => {
-  const { q, batch, department, company, skill } = req.query;
+  const { q, batch, department, company, skill, leavingYear, lastClassAttended, section, location } = req.query;
   const normalizedQuery = String(q || "").trim().toLowerCase();
 
   const results = getStore(req).profiles
     .filter((profile) => profile.instituteId === req.tenant._id)
     .filter((profile) => (!batch ? true : String(profile.batch) === String(batch)))
     .filter((profile) => (!department ? true : profile.department.toLowerCase().includes(String(department).toLowerCase())))
+    .filter((profile) => (!leavingYear ? true : String(profile.leavingYear) === String(leavingYear)))
+    .filter((profile) =>
+      !lastClassAttended ? true : String(profile.lastClassAttended || "").toLowerCase().includes(String(lastClassAttended).toLowerCase())
+    )
+    .filter((profile) => (!section ? true : String(profile.section || "").toLowerCase().includes(String(section).toLowerCase())))
     .filter((profile) => (!company ? true : String(profile.company || "").toLowerCase().includes(String(company).toLowerCase())))
+    .filter((profile) => (!location ? true : String(profile.location || "").toLowerCase().includes(String(location).toLowerCase())))
     .filter((profile) => (!skill ? true : (profile.skills || []).some((item) => item.toLowerCase().includes(String(skill).toLowerCase()))))
     .map((profile) => formatAlumniProfile(req, profile))
     .filter((profile) => {
@@ -508,7 +737,18 @@ router.get("/alumni", requireMockAuth, ensureTenant, (req, res) => {
         return true;
       }
 
-      return [profile.name, profile.email, profile.department, profile.company, profile.designation, profile.location, profile.bio]
+      return [
+        profile.name,
+        profile.email,
+        profile.department,
+        profile.lastClassAttended,
+        profile.currentInstitution,
+        profile.occupation,
+        profile.company,
+        profile.designation,
+        profile.location,
+        profile.bio
+      ]
         .concat(profile.skills || [])
         .filter(Boolean)
         .some((item) => String(item).toLowerCase().includes(normalizedQuery));
@@ -531,6 +771,12 @@ router.get("/alumni/me", requireMockAuth, ensureTenant, (req, res) => {
     email: req.mockUser.email,
     batch: profile.batch,
     department: profile.department,
+    leavingYear: profile.leavingYear,
+    lastClassAttended: profile.lastClassAttended || "",
+    section: profile.section || "",
+    currentEducation: profile.currentEducation || "",
+    currentInstitution: profile.currentInstitution || "",
+    occupation: profile.occupation || "",
     company: profile.company || "",
     designation: profile.designation || "",
     location: profile.location || "",
@@ -554,6 +800,14 @@ router.patch("/alumni/me", requireMockAuth, requireRole("alumni"), ensureTenant,
   }
 
   req.mockUser.name = req.body?.name?.trim?.() || req.mockUser.name;
+  profile.batch = req.body?.batch !== undefined && req.body?.batch !== "" ? Number(req.body.batch) : profile.batch;
+  profile.department = req.body?.department?.trim?.() ?? profile.department;
+  profile.leavingYear = req.body?.leavingYear !== undefined && req.body?.leavingYear !== "" ? Number(req.body.leavingYear) : profile.leavingYear;
+  profile.lastClassAttended = req.body?.lastClassAttended?.trim?.() ?? profile.lastClassAttended;
+  profile.section = req.body?.section?.trim?.() ?? profile.section;
+  profile.currentEducation = req.body?.currentEducation?.trim?.() ?? profile.currentEducation;
+  profile.currentInstitution = req.body?.currentInstitution?.trim?.() ?? profile.currentInstitution;
+  profile.occupation = req.body?.occupation?.trim?.() ?? profile.occupation;
   profile.company = req.body?.company?.trim?.() ?? profile.company;
   profile.designation = req.body?.designation?.trim?.() ?? profile.designation;
   profile.location = req.body?.location?.trim?.() ?? profile.location;
@@ -976,9 +1230,13 @@ router.delete("/community-groups/:id", requireMockAuth, requireRole("institute_a
 });
 
 router.get("/notifications/summary", requireMockAuth, ensureTenant, (req, res) => {
+  const pendingAlumniInvites = getStore(req).users.filter(
+    (item) => item.instituteId === req.tenant?._id && item.role === "alumni" && !item.passwordSetupCompleted
+  ).length;
+
   res.json({
-    pendingMentorshipRequests: 0,
-    pendingAlumniInvites: 0
+    pendingMentorshipRequests: req.tenant?.featureFlags?.enableMentorship === false ? 0 : 0,
+    pendingAlumniInvites
   });
 });
 

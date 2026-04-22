@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { softDeletePlugin } from "../utils/softDeletePlugin.js";
 
 const jobSchema = new mongoose.Schema(
   {
@@ -67,5 +68,7 @@ const jobSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+jobSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("Job", jobSchema);

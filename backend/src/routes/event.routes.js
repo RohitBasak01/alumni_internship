@@ -267,7 +267,7 @@ router.delete(
         throw error;
       }
 
-      await event.deleteOne();
+      await event.softDelete();
 
       res.json({ message: "Event deleted successfully" });
     } catch (error) {

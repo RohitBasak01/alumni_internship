@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { attachTenantDatabaseContext, getTenantModels } from "../db/tenantConnectionManager.js";
 import Institute from "../models/Institute.js";
 import User from "../models/User.js";
-import { AUTH_COOKIE_NAME } from "../utils/auth.js";
+import { AUTH_COOKIE_NAME, getJwtSecret } from "../utils/auth.js";
 
 export async function protect(req, _res, next) {
   try {
@@ -20,7 +20,7 @@ export async function protect(req, _res, next) {
       throw error;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "change-me");
+    const decoded = jwt.verify(token, getJwtSecret());
     let institute = req.tenant || null;
 
     if (!institute && decoded.instituteId) {

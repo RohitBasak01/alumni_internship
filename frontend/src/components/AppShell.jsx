@@ -53,6 +53,12 @@ function AppShell({ children }) {
   if (isHomePage) {
     return (
       <div className="mx-auto min-h-screen w-full max-w-[1240px] px-4 pb-16 pt-4 lg:px-6 lg:pt-6">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:rounded-xl focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg"
+        >
+          Skip to content
+        </a>
         <header className="mb-7 rounded-[24px] border border-slate-200/80 bg-white/88 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur md:px-6">
           <div className="flex items-center justify-between gap-4">
             <Link className="flex min-w-0 items-center gap-3 text-slate-900" to="/">
@@ -227,7 +233,7 @@ function AppShell({ children }) {
           ) : null}
         </header>
 
-        <main>{children}</main>
+        <main id="main-content">{children}</main>
       </div>
     );
   }
@@ -235,6 +241,12 @@ function AppShell({ children }) {
   if (isAuthRoute) {
     return (
       <div className="mx-auto min-h-screen w-full max-w-[1240px] px-4 pb-16 pt-4 lg:px-6 lg:pt-6">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:rounded-xl focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg"
+        >
+          Skip to content
+        </a>
         <header className="mb-6 rounded-[24px] border border-slate-200/80 bg-white/88 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur md:px-6">
           <div className="flex items-center justify-between gap-4">
             <Link className="flex min-w-0 items-center gap-3 text-slate-900" to="/">
@@ -261,12 +273,14 @@ function AppShell({ children }) {
               >
                 {isLoginPage ? "Alumni Signup" : "Back to Login"}
               </Link>
-              <Link
-                className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(37,84,216,0.2)] transition hover:bg-brand-700"
-                to="/request-portal"
-              >
-                Register Institution
-              </Link>
+              {isPlatformDomain ? (
+                <Link
+                  className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(37,84,216,0.2)] transition hover:bg-brand-700"
+                  to="/request-portal"
+                >
+                  Register Institution
+                </Link>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-2 md:hidden">
@@ -280,7 +294,7 @@ function AppShell({ children }) {
           </div>
         </header>
 
-        <main>{children}</main>
+        <main id="main-content">{children}</main>
       </div>
     );
   }
@@ -362,7 +376,7 @@ function AppShell({ children }) {
         </div>
       </header>
 
-      <main>{children}</main>
+      <main id="main-content">{children}</main>
     </div>
   );
 }

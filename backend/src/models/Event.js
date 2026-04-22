@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { softDeletePlugin } from "../utils/softDeletePlugin.js";
 
 const eventSchema = new mongoose.Schema(
   {
@@ -53,5 +54,7 @@ const eventSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+eventSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("Event", eventSchema);

@@ -11,7 +11,7 @@ import JobApplication from "../models/JobApplication.js";
 import MentorshipRequest from "../models/MentorshipRequest.js";
 import User from "../models/User.js";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const CENTRAL_MONGODB_URI =
   process.env.CENTRAL_MONGODB_URI ||

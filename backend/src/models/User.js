@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { softDeletePlugin } from "../utils/softDeletePlugin.js";
 
 const oauthAccountSchema = new mongoose.Schema(
   {
@@ -72,6 +73,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    resetPasswordTokenHash: {
+      type: String,
+      default: null
+    },
+    resetPasswordExpiresAt: {
+      type: Date,
+      default: null
+    },
     oauthAccounts: {
       type: [oauthAccountSchema],
       default: []
@@ -95,5 +104,7 @@ const userSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+userSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("User", userSchema);

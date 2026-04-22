@@ -1,21 +1,14 @@
 import { Navigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext.jsx";
+import PageLoader from "./PageLoader.jsx";
 
 function ProtectedRoute({ allow, children }) {
   const location = useLocation();
   const auth = useAuth();
 
   if (auth.isLoading) {
-    return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-12">
-        <div className="rounded-[24px] border border-slate-200/70 bg-white/95 p-8 shadow-[0_10px_24px_rgba(20,33,61,0.05)]">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Loading</p>
-          <h1 className="m-0 text-3xl font-semibold tracking-[-0.04em] text-slate-900">Checking your session</h1>
-          <p className="mt-3 text-slate-500">Please wait while we verify access.</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Checking your session..." />;
   }
 
   if (auth.sessionError) {

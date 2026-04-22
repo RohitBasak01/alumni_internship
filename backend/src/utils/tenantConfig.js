@@ -24,7 +24,10 @@ export function getDefaultFeatureFlags(institutionType = "college") {
       enableAnnouncements: true,
       enableGroups: true,
       enableSocialLinks: false,
-      enableCareerFields: false
+      enableCareerFields: false,
+      allowStudentRegistrations: false,
+      autoApproveAlumni: false,
+      autoApproveEmailDomains: []
     };
   }
 
@@ -36,7 +39,30 @@ export function getDefaultFeatureFlags(institutionType = "college") {
     enableAnnouncements: true,
     enableGroups: true,
     enableSocialLinks: true,
-    enableCareerFields: true
+    enableCareerFields: true,
+    allowStudentRegistrations: false,
+    autoApproveAlumni: false,
+    autoApproveEmailDomains: []
+  };
+}
+
+export function getDefaultBranding(institutionType = "college") {
+  if (institutionType === "school") {
+    return {
+      tagline: "Stay connected with your school community.",
+      primaryColor: "#1f7a5c",
+      secondaryColor: "#0f4f3c",
+      accentColor: "#e7f6ef",
+      logoUrl: ""
+    };
+  }
+
+  return {
+    tagline: "Build lifelong alumni relationships.",
+    primaryColor: "#2554d8",
+    secondaryColor: "#163795",
+    accentColor: "#eef3ff",
+    logoUrl: ""
   };
 }
 
@@ -48,6 +74,7 @@ export function buildTenantConfigSnapshot(institute) {
   const institutionType = institute.institutionType || "college";
   const communityDefaults = getDefaultCommunityLabels(institutionType);
   const featureDefaults = getDefaultFeatureFlags(institutionType);
+  const brandingDefaults = getDefaultBranding(institutionType);
 
   return {
     institutionType,
@@ -59,6 +86,10 @@ export function buildTenantConfigSnapshot(institute) {
     featureFlags: {
       ...featureDefaults,
       ...(institute.featureFlags || {})
+    },
+    branding: {
+      ...brandingDefaults,
+      ...(institute.branding || {})
     }
   };
 }

@@ -1,14 +1,17 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SectionCard from "../components/SectionCard.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import {
   approveAlumniRegistration,
+  bulkResendAlumniInvites,
+  bulkReviewAlumniRegistrations,
   fetchAlumni,
   inviteAlumni,
   revokeAlumniInvite
 } from "../lib/api.js";
+import { getTenantDisplayConfig } from "../utils/tenantDisplay.js";
 
 const initialInviteForm = {
   name: "",
@@ -48,16 +51,18 @@ function getRegistrationConfig(tenant) {
     verificationLabel: isSchool ? "Student Record" : "LinkedIn Profile",
     subtitle: isSchool
       ? "Verify and approve former students joining your school community."
-      : "Verify and approve new alumni joining your institution's network."
+      : "Verify and approve new members joining your institution's network."
   };
 }
 
 function ApproveRegistrationsPage() {
   const tenant = useTenantContext();
+  const tenantDisplay = getTenantDisplayConfig(tenant);
   const queryClient = useQueryClient();
   const [inviteForm, setInviteForm] = useState(initialInviteForm);
   const [filters, setFilters] = useState(initialFilters);
   const [actionNotification, setActionNotification] = useState(null);
+  const [selectedProfileIds, setSelectedProfileIds] = useState([]);
   const deferredSearch = useDeferredValue(filters.q);
   const appliedFilters = {
     ...filters,
@@ -96,8 +101,9 @@ function ApproveRegistrationsPage() {
   });
 
   const revokeMutation = useMutation({
-    mutationFn: revokeAlumniInvite,
-    onSuccess: (data) => {
+    mutationFn: ({ profileId, rejectionReason }) =>
+      revokeAlumniInvite(profileId, { rejectionReason }),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
       setActionNotification({ type: "success", message: "Invitation revoked successfully" });
       setTimeout(() => setActionNotification(null), 3000);
@@ -108,10 +114,60 @@ function ApproveRegistrationsPage() {
     }
   });
 
+  const bulkReviewMutation = useMutation({
+    mutationFn: bulkReviewAlumniRegistrations,
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      setSelectedProfileIds([]);
+      setActionNotification({
+        type: "success",
+        message: response?.message || "Registrations updated successfully"
+      });
+      setTimeout(() => setActionNotification(null), 3000);
+    },
+    onError: (bulkError) => {
+      setActionNotification({ type: "error", message: bulkError.message });
+      setTimeout(() => setActionNotification(null), 3000);
+    }
+  });
+
+  const bulkResendMutation = useMutation({
+    mutationFn: bulkResendAlumniInvites,
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      setActionNotification({
+        type: "success",
+        message: response?.message || "Invites resent successfully"
+      });
+      setTimeout(() => setActionNotification(null), 3000);
+    },
+    onError: (bulkError) => {
+      setActionNotification({ type: "error", message: bulkError.message });
+      setTimeout(() => setActionNotification(null), 3000);
+    }
+  });
+
   const pendingApprovals = useMemo(
     () => data.filter((item) => (item.registrationReviewStatus || "pending") === "pending"),
     [data]
   );
+  const pendingProfileIds = useMemo(() => pendingApprovals.map((item) => item._id), [pendingApprovals]);
+  const selectedPendingIds = useMemo(
+    () => selectedProfileIds.filter((profileId) => pendingProfileIds.includes(profileId)),
+    [pendingProfileIds, selectedProfileIds]
+  );
+  const allPendingSelected = pendingApprovals.length > 0 && selectedPendingIds.length === pendingApprovals.length;
+  const isActionPending =
+    approveMutation.isPending ||
+    revokeMutation.isPending ||
+    inviteMutation.isPending ||
+    bulkReviewMutation.isPending ||
+    bulkResendMutation.isPending;
+
+  useEffect(() => {
+    setSelectedProfileIds((current) => current.filter((profileId) => pendingProfileIds.includes(profileId)));
+  }, [pendingProfileIds]);
+
   const config = getRegistrationConfig(tenant);
   const isSchool = config.isSchool;
   const isInviteFormValid = useMemo(
@@ -147,6 +203,80 @@ function ApproveRegistrationsPage() {
 
   function clearFilters() {
     setFilters(initialFilters);
+  }
+
+  function toggleProfileSelection(profileId) {
+    setSelectedProfileIds((current) =>
+      current.includes(profileId) ? current.filter((value) => value !== profileId) : [...current, profileId]
+    );
+  }
+
+  function toggleAllPendingSelection() {
+    setSelectedProfileIds((current) => {
+      if (allPendingSelected) {
+        return current.filter((profileId) => !pendingProfileIds.includes(profileId));
+      }
+
+      const merged = new Set([...current, ...pendingProfileIds]);
+      return [...merged];
+    });
+  }
+
+  function handleBulkReview(action) {
+    if (!selectedPendingIds.length || isActionPending) {
+      return;
+    }
+
+    if (action === "reject") {
+      const rejectionReason = window
+        .prompt("Enter rejection reason for selected registrations:", "")
+        ?.trim();
+
+      if (!rejectionReason) {
+        return;
+      }
+
+      bulkReviewMutation.mutate({
+        action,
+        profileIds: selectedPendingIds,
+        rejectionReason
+      });
+      return;
+    }
+
+    bulkReviewMutation.mutate({
+      action,
+      profileIds: selectedPendingIds
+    });
+  }
+
+  function handleBulkResendInvites() {
+    if (!selectedPendingIds.length || isActionPending) {
+      return;
+    }
+
+    bulkResendMutation.mutate({
+      profileIds: selectedPendingIds
+    });
+  }
+
+  function handleSingleReject(profileId) {
+    if (isActionPending) {
+      return;
+    }
+
+    const rejectionReason = window
+      .prompt("Enter rejection reason for this registration:", "")
+      ?.trim();
+
+    if (!rejectionReason) {
+      return;
+    }
+
+    revokeMutation.mutate({
+      profileId,
+      rejectionReason
+    });
   }
 
   function getInviteFormErrors() {
@@ -259,14 +389,54 @@ function ApproveRegistrationsPage() {
       </section>
 
       <section className="admin-approvals-table-card">
+        <div className="admin-approvals-bulkbar">
+          <p>
+            <strong>{selectedPendingIds.length}</strong> selected
+          </p>
+          <div className="admin-approvals-bulk-actions">
+            <button
+              className="button secondary compact"
+              disabled={!selectedPendingIds.length || isActionPending}
+              onClick={handleBulkResendInvites}
+              type="button"
+            >
+              {bulkResendMutation.isPending ? "Sending..." : "Resend Invite Selected"}
+            </button>
+            <button
+              className="admin-approvals-reject"
+              disabled={!selectedPendingIds.length || isActionPending}
+              onClick={() => handleBulkReview("reject")}
+              type="button"
+            >
+              {bulkReviewMutation.isPending ? "Updating..." : "Reject Selected"}
+            </button>
+            <button
+              className="button primary compact"
+              disabled={!selectedPendingIds.length || isActionPending}
+              onClick={() => handleBulkReview("approve")}
+              type="button"
+            >
+              {bulkReviewMutation.isPending ? "Updating..." : "Approve Selected"}
+            </button>
+          </div>
+        </div>
+
         <div className="admin-approvals-table-head">
+          <span className="admin-approvals-select-cell">
+            <input
+              checked={allPendingSelected}
+              disabled={!pendingApprovals.length || isActionPending}
+              onChange={toggleAllPendingSelection}
+              type="checkbox"
+            />
+          </span>
           <span>{config.memberSingular} Details</span>
           <span>Education</span>
           <span>Verification</span>
           <span>Actions</span>
         </div>
 
-        {isLoading ? <p>Loading alumni...</p> : null}
+        {isLoading ? <p>{`Loading ${tenantDisplay.memberPlural.toLowerCase()}...`}</p> : null}
         {isError ? <p className="error-text">{error.message}</p> : null}
         {!isLoading && !pendingApprovals.length ? (
           <p className="muted">No pending registrations match these filters yet.</p>
@@ -275,6 +445,15 @@ function ApproveRegistrationsPage() {
         <div className="admin-approvals-table-body">
           {pendingApprovals.map((alumni, index) => (
             <article className="admin-approvals-row" key={alumni._id}>
+              <div className="admin-approvals-select-cell">
+                <input
+                  checked={selectedPendingIds.includes(alumni._id)}
+                  disabled={isActionPending}
+                  onChange={() => toggleProfileSelection(alumni._id)}
+                  type="checkbox"
+                />
+              </div>
+
               <div className="admin-approvals-person">
                 <div className={`admin-approvals-avatar tone-${(index % 3) + 1}`}>
                   {alumni.name
@@ -319,15 +498,15 @@ function ApproveRegistrationsPage() {
                 </button>
                 <button
                   className="admin-approvals-reject"
-                  disabled={revokeMutation.isPending || alumni.invitationStatus === "revoked"}
-                  onClick={() => revokeMutation.mutate(alumni._id)}
+                  disabled={isActionPending || alumni.invitationStatus === "revoked"}
+                  onClick={() => handleSingleReject(alumni._id)}
                   type="button"
                 >
                   {revokeMutation.isPending ? "Rejecting..." : "Reject"}
                 </button>
                 <button
                   className="button primary compact"
-                  disabled={approveMutation.isPending}
+                  disabled={isActionPending}
                   onClick={() => approveMutation.mutate(alumni._id)}
                   type="button"
                 >

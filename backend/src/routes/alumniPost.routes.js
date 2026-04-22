@@ -339,5 +339,43 @@ router.post(
   }
 );
 
+router.delete(
+  "/:id",
+  protect,
+  authorize("alumni", "institute_admin"),
+  requireTenantAccess,
+  validateParams(validatePostId),
+  async (req, res, next) => {
+    try {
+      const { AlumniPost } = getTenantModels(req);
+      const post = await AlumniPost.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!post) {
+        const error = new Error("Post not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const isAuthor = post.authorUserId.toString() === req.user._id.toString();
+      const isAdmin = req.user.role === "institute_admin";
+
+      if (!isAuthor && !isAdmin) {
+        const error = new Error("You do not have permission to delete this post");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      await post.softDelete();
+
+      res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;
 

@@ -2,13 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
+import TenantPublicStatus from "../components/TenantPublicStatus.jsx";
 import {
   clearOAuthSession,
+  fetchCurrentTenantPublicProfile,
   fetchOAuthSession,
   fetchPublicInstitutes,
   getOAuthStartUrl,
+  redirectToTenantPortal,
   submitAlumniRegistration
 } from "../lib/api.js";
+import { useTenantBranding } from "../hooks/useTenantBranding.js";
+import { useTenantContext } from "../hooks/useTenantContext.js";
+import { getTenantDisplayConfig } from "../utils/tenantDisplay.js";
 
 const providerOptions = [
   { id: "google", label: "Continue with Google", tone: "light" },
@@ -71,6 +77,7 @@ function buildDateOfBirth(form) {
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const tenant = useTenantContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialProvider = providerOptions.some((option) => option.id === searchParams.get("provider"))
     ? searchParams.get("provider")
@@ -84,7 +91,14 @@ function RegisterPage() {
 
   const institutesQuery = useQuery({
     queryKey: ["public-institutes"],
-    queryFn: fetchPublicInstitutes
+    queryFn: fetchPublicInstitutes,
+    enabled: !tenant.isTenant
+  });
+
+  const currentTenantQuery = useQuery({
+    queryKey: ["tenant-public-profile", tenant.slug],
+    queryFn: fetchCurrentTenantPublicProfile,
+    enabled: tenant.isTenant
   });
 
   const oauthSessionQuery = useQuery({
@@ -97,16 +111,30 @@ function RegisterPage() {
     mutationFn: clearOAuthSession
   });
 
-  const selectedInstitute = useMemo(
-    () => institutesQuery.data?.find((item) => item._id === form.instituteId) || null,
-    [form.instituteId, institutesQuery.data]
+  const selectedInstitute = useMemo(() => {
+    if (tenant.isTenant) {
+      return currentTenantQuery.data || null;
+    }
+
+    return institutesQuery.data?.find((item) => item._id === form.instituteId) || null;
+  }, [tenant.isTenant, currentTenantQuery.data, form.instituteId, institutesQuery.data]);
+  const tenantDisplay = useMemo(
+    () =>
+      getTenantDisplayConfig({
+        institutionType: selectedInstitute?.institutionType || "college",
+        communityLabels: selectedInstitute?.communityLabels
+      }),
+    [selectedInstitute]
   );
-  const isSchool = selectedInstitute?.institutionType === "school";
+  const isSchool = tenantDisplay.isSchool;
+  useTenantBranding(selectedInstitute?.branding, tenant.isTenant);
   const oauthSession = oauthSessionQuery.data?.oauthSession || null;
   const hasConnectedSocialProvider = Boolean(
     oauthSession && (oauthSession.provider === "google" || oauthSession.provider === "linkedin")
   );
   const activeProviderIsConnectedSocial = hasConnectedSocialProvider && oauthSession.provider === form.authProvider;
+  const tenantStatus = currentTenantQuery.error?.data?.details?.portalStatus || null;
+  const tenantName = currentTenantQuery.error?.data?.details?.instituteName || "";
 
   const mutation = useMutation({
     mutationFn: submitAlumniRegistration,
@@ -138,6 +166,17 @@ function RegisterPage() {
       return nextParams;
     });
   }, [oauthSession, setSearchParams]);
+
+  useEffect(() => {
+    if (!tenant.isTenant || !currentTenantQuery.data?._id) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      instituteId: currentTenantQuery.data._id
+    }));
+  }, [tenant.isTenant, currentTenantQuery.data]);
 
   function updateProvider(nextProvider) {
     if (nextProvider === "google" || nextProvider === "linkedin") {
@@ -190,15 +229,25 @@ function RegisterPage() {
     });
   }
 
+  if (tenant.isTenant && currentTenantQuery.isError) {
+    return (
+      <TenantPublicStatus
+        status={tenantStatus || "not-found"}
+        instituteName={tenantName}
+        showBackHome={false}
+      />
+    );
+  }
+
   if (step === 3) {
     return (
       <div className="auth-shell">
         <section className="auth-grid auth-grid-compact">
           <aside className="auth-aside auth-aside-success">
             <p className="auth-eyebrow">Application submitted</p>
-            <h1>Your alumni request is now in review.</h1>
+            <h1>Your registration request is now in review.</h1>
             <p className="auth-lead">
-              The institute admin will verify your details. After approval, a password setup link will be sent to <strong>{form.email}</strong>.
+              The {tenantDisplay.adminLabel.toLowerCase()} will verify your details. After approval, a password setup link will be sent to <strong>{form.email}</strong>.
             </p>
           </aside>
 
@@ -212,7 +261,7 @@ function RegisterPage() {
             <div className="auth-highlight-list compact">
               <article>
                 <strong>1. Admin verification</strong>
-                <span>Your institute admin reviews the batch, department, and profile details you submitted.</span>
+                <span>{tenantDisplay.approvalSummary}</span>
               </article>
               <article>
                 <strong>2. Password setup</strong>
@@ -242,10 +291,10 @@ function RegisterPage() {
     <div className="auth-shell">
       <section className="auth-grid auth-grid-wide">
         <aside className="auth-aside">
-          <p className="auth-eyebrow">Alumni onboarding</p>
-          <h1>Create an account that your institute can trust.</h1>
+          <p className="auth-eyebrow">Community onboarding</p>
+          <h1>Create an account that your institution can trust.</h1>
           <p className="auth-lead">
-            Start with Google, LinkedIn, or email, then submit your alumni details for institute approval.
+            {tenantDisplay.onboardingLead}
           </p>
 
           <div className="auth-stepper">
@@ -260,7 +309,7 @@ function RegisterPage() {
               <span>2</span>
               <div>
                 <strong>Institute details</strong>
-                <small>Batch, department, and academic profile</small>
+                <small>{tenantDisplay.profileStepSummary}</small>
               </div>
             </div>
           </div>
@@ -268,7 +317,7 @@ function RegisterPage() {
           <div className="auth-highlight-list">
             <article>
               <strong>Admin-controlled approval</strong>
-              <span>Registrations stay pending until your institute verifies your details.</span>
+              <span>Registrations stay pending until your institution verifies your details.</span>
             </article>
             <article>
               <strong>Social login ready</strong>
@@ -280,11 +329,11 @@ function RegisterPage() {
         <section className="auth-panel auth-panel-wide">
           <div className="auth-panel-header">
             <p className="auth-panel-kicker">Registration</p>
-            <h2>{step === 1 ? "Create your alumni identity" : "Tell us about your institute history"}</h2>
+            <h2>{step === 1 ? tenantDisplay.identityTitle : tenantDisplay.historyTitle}</h2>
             <p>
               {step === 1
                 ? "Use a professional email identity and complete your basic details."
-                : "Add the academic details your institute admin will use to approve your request."}
+                : `Add the profile details your ${tenantDisplay.adminLabel.toLowerCase()} will use to approve your request.`}
             </p>
           </div>
 
@@ -305,8 +354,8 @@ function RegisterPage() {
           {oauthStatus === "connected" ? (
             <p className="auth-alert auth-alert-success">
               {oauthSource === "login"
-                ? `Your ${form.authProvider} account is verified. Complete this form to request alumni access.`
-                : `Your ${form.authProvider} account is connected. Finish the form to submit your alumni registration.`}
+                ? `Your ${form.authProvider} account is verified. Complete this form to request portal access.`
+                : `Your ${form.authProvider} account is connected. Finish the form to submit your registration.`}
             </p>
           ) : null}
           {activeProviderIsConnectedSocial ? (
@@ -392,22 +441,44 @@ function RegisterPage() {
             <form className="auth-form-grid" onSubmit={handleSubmit}>
               <label className="auth-field auth-field-full">
                 <span>Institute</span>
-                <select name="instituteId" onChange={handleChange} required value={form.instituteId}>
-                  <option value="">Select institute</option>
-                  {(institutesQuery.data || []).map((institute) => (
-                    <option key={institute._id} value={institute._id}>{institute.name}</option>
-                  ))}
-                </select>
+                {tenant.isTenant ? (
+                  <input readOnly value={selectedInstitute?.name || "Institution portal"} />
+                ) : (
+                  <select name="instituteId" onChange={handleChange} required value={form.instituteId}>
+                    <option value="">Select institute</option>
+                    {(institutesQuery.data || []).map((institute) => (
+                      <option key={institute._id} value={institute._id}>{institute.name}</option>
+                    ))}
+                  </select>
+                )}
               </label>
 
+              {!tenant.isTenant && selectedInstitute ? (
+                <p className="auth-alert auth-alert-info auth-field-full">
+                  Prefer the institution portal experience?{" "}
+                  <button
+                    className="auth-inline-button"
+                    onClick={() =>
+                      redirectToTenantPortal(
+                        selectedInstitute,
+                        `/register?provider=${encodeURIComponent(form.authProvider)}`,
+                      )
+                    }
+                    type="button"
+                  >
+                    Continue on {selectedInstitute.name}
+                  </button>
+                </p>
+              ) : null}
+
               <label className="auth-field">
-                <span>{isSchool ? "Leaving year" : "Batch year"}</span>
-                <input max="2100" min="1900" name="batch" onChange={handleChange} placeholder={isSchool ? "Enter leaving year" : "Enter batch year"} required type="number" value={form.batch} />
+                <span>{tenantDisplay.yearLabel}</span>
+                <input max="2100" min="1900" name="batch" onChange={handleChange} placeholder={`Enter ${tenantDisplay.yearLabel.toLowerCase()}`} required type="number" value={form.batch} />
               </label>
 
               <label className="auth-field auth-field-span-2">
-                <span>{isSchool ? "Class / faculty" : "Department"}</span>
-                <input name="department" onChange={handleChange} placeholder={isSchool ? "Enter class / faculty" : "Enter department"} required value={form.department} />
+                <span>{tenantDisplay.educationLabel}</span>
+                <input name="department" onChange={handleChange} placeholder={`Enter ${tenantDisplay.educationLabel.toLowerCase()}`} required value={form.department} />
               </label>
 
               {isSchool ? (
@@ -451,11 +522,20 @@ function RegisterPage() {
 
               {mutation.isError ? <p className="auth-alert auth-alert-danger auth-field-full">{mutation.error.message}</p> : null}
               {institutesQuery.isError ? <p className="auth-alert auth-alert-danger auth-field-full">{institutesQuery.error.message}</p> : null}
+              {currentTenantQuery.isError ? <p className="auth-alert auth-alert-danger auth-field-full">{currentTenantQuery.error.message}</p> : null}
               {oauthSessionQuery.isError ? <p className="auth-alert auth-alert-danger auth-field-full">{oauthSessionQuery.error.message}</p> : null}
 
               <div className="auth-action-row auth-field-full">
                 <button className="button secondary auth-submit" onClick={() => setStep(1)} type="button">Back</button>
-                <button className="button primary auth-submit" disabled={mutation.isPending || institutesQuery.isLoading} type="submit">
+                <button
+                  className="button primary auth-submit"
+                  disabled={
+                    mutation.isPending ||
+                    institutesQuery.isLoading ||
+                    (tenant.isTenant && (currentTenantQuery.isLoading || !form.instituteId))
+                  }
+                  type="submit"
+                >
                   {mutation.isPending ? "Submitting..." : "Create Account"}
                 </button>
               </div>

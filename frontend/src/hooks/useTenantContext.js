@@ -3,6 +3,17 @@ import { useAuth } from "../context/AuthContext.jsx";
 function detectTenant() {
   const host = window.location.hostname.toLowerCase();
   const reservedHosts = new Set(["localhost", "127.0.0.1"]);
+  const tenantSubdomainOverride = String(window.localStorage.getItem("tenantSubdomain") || "").trim().toLowerCase();
+  const tenantDomainOverride = String(window.localStorage.getItem("tenantDomain") || "").trim().toLowerCase();
+
+  if (tenantSubdomainOverride || tenantDomainOverride) {
+    return {
+      host,
+      isTenant: true,
+      slug: tenantSubdomainOverride || null,
+      displayName: (tenantSubdomainOverride || tenantDomainOverride || "Portal").toUpperCase()
+    };
+  }
 
   if (reservedHosts.has(host)) {
     return {

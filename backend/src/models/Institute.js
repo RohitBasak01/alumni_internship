@@ -53,6 +53,46 @@ const featureFlagsSchema = new mongoose.Schema(
     enableCareerFields: {
       type: Boolean,
       default: true
+    },
+    allowStudentRegistrations: {
+      type: Boolean,
+      default: false
+    },
+    autoApproveAlumni: {
+      type: Boolean,
+      default: false
+    },
+    autoApproveEmailDomains: {
+      type: [String],
+      default: []
+    }
+  },
+  {
+    _id: false
+  }
+);
+
+const brandingSchema = new mongoose.Schema(
+  {
+    tagline: {
+      type: String,
+      trim: true
+    },
+    primaryColor: {
+      type: String,
+      trim: true
+    },
+    secondaryColor: {
+      type: String,
+      trim: true
+    },
+    accentColor: {
+      type: String,
+      trim: true
+    },
+    logoUrl: {
+      type: String,
+      trim: true
     }
   },
   {
@@ -110,6 +150,26 @@ const instituteSchema = new mongoose.Schema(
         enableSocialLinks: true,
         enableCareerFields: true
       })
+    },
+    branding: {
+      type: brandingSchema,
+      default: () => ({
+        tagline: "Build lifelong alumni relationships.",
+        primaryColor: "#2554d8",
+        secondaryColor: "#163795",
+        accentColor: "#eef3ff",
+        logoUrl: ""
+      })
+    },
+    website: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: ""
     },
     dataIsolationMode: {
       type: String,

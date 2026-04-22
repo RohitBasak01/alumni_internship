@@ -265,7 +265,7 @@ router.delete(
   async (req, res, next) => {
     try {
       const { Job } = getTenantModels(req);
-      const job = await Job.findOneAndDelete({
+      const job = await Job.findOne({
         _id: req.params.id,
         instituteId: req.tenant._id
       });
@@ -275,6 +275,8 @@ router.delete(
         error.statusCode = 404;
         throw error;
       }
+
+      await job.softDelete();
 
       res.json({ message: "Job deleted successfully" });
     } catch (error) {
@@ -360,7 +362,13 @@ router.post(
           jobTitle: job.title,
           applicantName: req.user.name,
           applicantEmail: req.user.email,
+          institutionType: req.tenant?.institutionType || "college",
           applicantProfile: {
+            leavingYear: applicantProfile?.leavingYear,
+            lastClassAttended: applicantProfile?.lastClassAttended,
+            currentInstitution: applicantProfile?.currentInstitution,
+            currentEducation: applicantProfile?.currentEducation,
+            occupation: applicantProfile?.occupation,
             company: applicantProfile?.company,
             designation: applicantProfile?.designation,
             batch: applicantProfile?.batch,
@@ -395,4 +403,3 @@ router.post(
 );
 
 export default router;
-

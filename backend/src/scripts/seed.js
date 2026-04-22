@@ -5,8 +5,9 @@ import { attachTenantDatabaseContext, buildTenantPersistenceConfig, getTenantMod
 import Institute from "../models/Institute.js";
 import User from "../models/User.js";
 import { hashPassword } from "../utils/auth.js";
+import { getDefaultBranding, getDefaultCommunityLabels, getDefaultFeatureFlags } from "../utils/tenantConfig.js";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const CENTRAL_MONGODB_URI =
   process.env.CENTRAL_MONGODB_URI ||
@@ -21,69 +22,59 @@ function daysAgo(days, extraHours = 0) {
   return new Date(Date.now() - (days * 24 + extraHours) * 60 * 60 * 1000);
 }
 
-async function seed() {
-  await mongoose.connect(CENTRAL_MONGODB_URI);
-
-  await Promise.all([User.deleteMany({}), Institute.deleteMany({})]);
-
+async function createInstitute({
+  name,
+  subdomain,
+  domain,
+  institutionType,
+  educationLevel,
+  subscriptionPlan,
+  primaryContactName,
+  primaryContactEmail,
+  billingAmount
+}) {
   const tenantConfig = buildTenantPersistenceConfig({
-    name: "SPIT Demo Institute",
-    subdomain: "spit",
+    name,
+    subdomain,
     dataIsolationMode: process.env.DEFAULT_TENANT_ISOLATION_MODE || "shared"
   });
 
-  const institute = await Institute.create({
-    name: "SPIT Demo Institute",
-    subdomain: "spit",
-    domain: "alumni.spit.ac.in",
+  return Institute.create({
+    name,
+    subdomain,
+    domain,
+    institutionType,
+    educationLevel,
+    communityLabels: getDefaultCommunityLabels(institutionType),
+    featureFlags: getDefaultFeatureFlags(institutionType),
+    branding: getDefaultBranding(institutionType),
     dataIsolationMode: process.env.DEFAULT_TENANT_ISOLATION_MODE || "shared",
     tenantDatabaseName: tenantConfig.databaseName,
     status: "active",
-    subscriptionPlan: "pro",
+    subscriptionPlan,
     subscriptionStatus: "active",
     subscriptionRenewsAt: new Date("2027-01-15T00:00:00.000Z"),
     lastPaymentAt: new Date("2026-01-15T00:00:00.000Z"),
     billingHistory: [
       {
-        plan: "pro",
+        plan: subscriptionPlan,
         status: "active",
-        amount: 15000,
+        amount: billingAmount,
         currency: "INR",
         paidAt: new Date("2026-01-15T00:00:00.000Z"),
         notes: "Initial annual subscription"
       }
     ],
-    primaryContactName: "Dr. Meera Joshi",
-    primaryContactEmail: "admin@spit.edu",
+    primaryContactName,
+    primaryContactEmail,
     primaryContactPhone: "9876543210"
   });
+}
 
-  const [superAdminPassword, instituteAdminPassword, alumniPassword] = await Promise.all([
-    hashPassword("Admin@123"),
-    hashPassword("Institute@123"),
-    hashPassword("Alumni@123")
-  ]);
-
-  const superAdmin = await User.create({
-    name: "Platform Super Admin",
-    email: "superadmin@alumninetwork.com",
-    passwordHash: superAdminPassword,
-    role: "super_admin",
-    isActive: true,
-    passwordSetupCompleted: true
-  });
-
+async function seedCollegeTenant(institute, passwords) {
   const tenantContext = {};
   await attachTenantDatabaseContext(tenantContext, institute);
-  const {
-    AlumniProfile,
-    AlumniPost,
-    Announcement,
-    Event,
-    Job,
-    Notification,
-    User: TenantUser
-  } = getTenantModels(tenantContext);
+  const { AlumniProfile, AlumniPost, Announcement, Event, Job, Notification, User: TenantUser } = getTenantModels(tenantContext);
 
   await Promise.all([
     TenantUser.deleteMany({ instituteId: institute._id }),
@@ -99,18 +90,18 @@ async function seed() {
     instituteId: institute._id,
     name: "SPIT Admin",
     email: "admin@spit.edu",
-    passwordHash: instituteAdminPassword,
+    passwordHash: passwords.instituteAdmin,
     role: "institute_admin",
     isActive: true,
     passwordSetupCompleted: true
   });
 
-  const [alumniUser, riyaUser, devUser] = await TenantUser.create([
+  const [aaravUser, riyaUser, devUser, snehaUser] = await TenantUser.create([
     {
       instituteId: institute._id,
       name: "Aarav Shah",
       email: "aarav@spit.edu",
-      passwordHash: alumniPassword,
+      passwordHash: passwords.collegeMember,
       role: "alumni",
       isActive: true,
       passwordSetupCompleted: true
@@ -119,7 +110,7 @@ async function seed() {
       instituteId: institute._id,
       name: "Riya Desai",
       email: "riya@spit.edu",
-      passwordHash: alumniPassword,
+      passwordHash: passwords.collegeMember,
       role: "alumni",
       isActive: true,
       passwordSetupCompleted: true
@@ -128,7 +119,16 @@ async function seed() {
       instituteId: institute._id,
       name: "Dev Mehta",
       email: "dev@spit.edu",
-      passwordHash: alumniPassword,
+      passwordHash: passwords.collegeMember,
+      role: "alumni",
+      isActive: true,
+      passwordSetupCompleted: true
+    },
+    {
+      instituteId: institute._id,
+      name: "Sneha Kulkarni",
+      email: "sneha@spit.edu",
+      passwordHash: passwords.collegeMember,
       role: "alumni",
       isActive: true,
       passwordSetupCompleted: true
@@ -138,7 +138,7 @@ async function seed() {
   await AlumniProfile.create([
     {
       instituteId: institute._id,
-      userId: alumniUser._id,
+      userId: aaravUser._id,
       batch: 2018,
       department: "Computer Engineering",
       company: "Open Systems Labs",
@@ -155,7 +155,7 @@ async function seed() {
       company: "Finverse",
       designation: "Product Manager",
       location: "Bengaluru",
-      bio: "Helping early-stage teams build products alumni actually love.",
+      bio: "Helping early-stage teams build products communities actually love.",
       skills: ["Product", "Community", "Growth"]
     },
     {
@@ -168,6 +168,17 @@ async function seed() {
       location: "Pune",
       bio: "Mentoring young engineers and working on embedded systems.",
       skills: ["Embedded", "Leadership", "Mentorship"]
+    },
+    {
+      instituteId: institute._id,
+      userId: snehaUser._id,
+      batch: 2019,
+      department: "Information Technology",
+      company: "CloudBridge",
+      designation: "Frontend Engineer",
+      location: "Hyderabad",
+      bio: "Building accessible product experiences and mentoring junior members.",
+      skills: ["React", "Accessibility", "Design Systems"]
     }
   ]);
 
@@ -179,12 +190,12 @@ async function seed() {
     {
       instituteId: institute._id,
       authorUserId: riyaUser._id,
-      title: "Anyone attending the July alumni mixer?",
-      content: "I am planning to attend the alumni mixer next month and would love to meet people working in product, community, and startup roles. If you are going, drop a comment and let us coordinate.",
-      likes: [alumniUser._id],
+      title: "Anyone attending the July community mixer?",
+      content: "I am planning to attend the community mixer next month and would love to meet people working in product, community, and startup roles. If you are going, drop a comment and let us coordinate.",
+      likes: [aaravUser._id],
       comments: [
         {
-          userId: alumniUser._id,
+          userId: aaravUser._id,
           content: "Count me in. Happy to connect before the event too.",
           createdAt: hoursAgo(2),
           updatedAt: hoursAgo(2)
@@ -198,15 +209,15 @@ async function seed() {
       authorUserId: devUser._id,
       title: "Open to mentoring final-year students",
       content: "I have a few slots this month for alumni or senior students who want guidance on career transitions into core engineering and leadership tracks. Feel free to reach out if this would help.",
-      likes: [alumniUser._id, riyaUser._id],
+      likes: [aaravUser._id, riyaUser._id],
       createdAt: mentoringPostCreatedAt,
       updatedAt: mentoringPostCreatedAt
     },
     {
       instituteId: institute._id,
-      authorUserId: alumniUser._id,
-      title: "Built a small tool for alumni event coordination",
-      content: "Spent the weekend building a simple workflow to coordinate RSVPs and volunteer signups for alumni events. Happy to share the approach if anyone else is solving something similar inside their communities.",
+      authorUserId: aaravUser._id,
+      title: "Built a small tool for event coordination",
+      content: "Spent the weekend building a simple workflow to coordinate RSVPs and volunteer signups for institution events. Happy to share the approach if anyone else is solving something similar inside their communities.",
       likes: [riyaUser._id],
       createdAt: toolPostCreatedAt,
       updatedAt: daysAgo(3, 18)
@@ -215,7 +226,7 @@ async function seed() {
 
   const announcement = await Announcement.create({
     instituteId: institute._id,
-    title: "Alumni Reunion 2026 registrations are now open",
+    title: "Community Reunion 2026 registrations are now open",
     content: "Secure your place for the annual reunion and volunteer mixer before June 15.",
     status: "published",
     createdBy: instituteAdmin._id,
@@ -238,7 +249,7 @@ async function seed() {
     instituteId: institute._id,
     title: "Frontend Developer",
     company: "Open Systems Labs",
-    description: "Hiring alumni with React and product engineering experience.",
+    description: "Hiring community members with React and product engineering experience.",
     postedBy: instituteAdmin._id,
     status: "published",
     applicationDeadline: daysAgo(-10),
@@ -249,7 +260,7 @@ async function seed() {
   await Notification.create([
     {
       instituteId: institute._id,
-      userId: alumniUser._id,
+      userId: aaravUser._id,
       actorUserId: riyaUser._id,
       category: "connections",
       type: "post_comment",
@@ -263,12 +274,12 @@ async function seed() {
     },
     {
       instituteId: institute._id,
-      userId: alumniUser._id,
+      userId: aaravUser._id,
       actorUserId: instituteAdmin._id,
       category: "jobs",
       type: "job_published",
       title: "New role: Frontend Developer",
-      message: "Open Systems Labs is hiring alumni from your network.",
+      message: "Open Systems Labs is hiring from your network.",
       entityType: "Job",
       entityId: job._id,
       linkTo: "/portal/jobs",
@@ -277,12 +288,12 @@ async function seed() {
     },
     {
       instituteId: institute._id,
-      userId: alumniUser._id,
+      userId: aaravUser._id,
       actorUserId: instituteAdmin._id,
       category: "events",
       type: "event_published",
       title: "New event: Global Alumni Meetup 2026",
-      message: "Mumbai Campus • 20 Jun 2026",
+      message: "Mumbai Campus | 20 Jun 2026",
       entityType: "Event",
       entityId: event._id,
       linkTo: "/portal/events",
@@ -291,7 +302,7 @@ async function seed() {
     },
     {
       instituteId: institute._id,
-      userId: alumniUser._id,
+      userId: aaravUser._id,
       actorUserId: instituteAdmin._id,
       category: "system",
       type: "announcement_published",
@@ -305,11 +316,217 @@ async function seed() {
     }
   ]);
 
+  return { instituteAdmin, aaravUser, snehaUser: snehaUser };
+}
+
+async function seedSchoolTenant(institute, passwords) {
+  const tenantContext = {};
+  await attachTenantDatabaseContext(tenantContext, institute);
+  const { AlumniProfile, Announcement, Event, Notification, User: TenantUser, CommunityGroup } = getTenantModels(tenantContext);
+
+  await Promise.all([
+    TenantUser.deleteMany({ instituteId: institute._id }),
+    AlumniProfile.deleteMany({ instituteId: institute._id }),
+    Announcement.deleteMany({ instituteId: institute._id }),
+    Event.deleteMany({ instituteId: institute._id }),
+    Notification.deleteMany({ instituteId: institute._id }),
+    CommunityGroup?.deleteMany ? CommunityGroup.deleteMany({ instituteId: institute._id }) : Promise.resolve()
+  ]);
+
+  const schoolAdmin = await TenantUser.create({
+    instituteId: institute._id,
+    name: "Greenwood Admin",
+    email: "admin@greenwoodschool.edu",
+    passwordHash: passwords.schoolAdmin,
+    role: "institute_admin",
+    isActive: true,
+    passwordSetupCompleted: true
+  });
+
+  const [mayaUser, rohanUser] = await TenantUser.create([
+    {
+      instituteId: institute._id,
+      name: "Maya Fernandes",
+      email: "maya@greenwoodschool.edu",
+      passwordHash: passwords.schoolMember,
+      role: "alumni",
+      isActive: true,
+      passwordSetupCompleted: true
+    },
+    {
+      instituteId: institute._id,
+      name: "Rohan Mehta",
+      email: "rohan@greenwoodschool.edu",
+      passwordHash: passwords.schoolMember,
+      role: "alumni",
+      isActive: true,
+      passwordSetupCompleted: true
+    }
+  ]);
+
+  await AlumniProfile.create([
+    {
+      instituteId: institute._id,
+      userId: mayaUser._id,
+      batch: null,
+      department: "",
+      leavingYear: 2020,
+      lastClassAttended: "Class 12 Science",
+      section: "Aster House",
+      currentEducation: "B.Sc. Psychology",
+      currentInstitution: "St. Xavier's College",
+      occupation: "Undergraduate Student",
+      location: "Goa",
+      bio: "Looking to reconnect with teachers and classmates from Greenwood.",
+      skills: [],
+      allowMentorRequests: false
+    },
+    {
+      instituteId: institute._id,
+      userId: rohanUser._id,
+      batch: null,
+      department: "",
+      leavingYear: 2019,
+      lastClassAttended: "Class 10",
+      section: "Blue House",
+      currentEducation: "",
+      currentInstitution: "Mehta Family Ventures",
+      occupation: "Operations Associate",
+      location: "Pune",
+      bio: "Happy to support school events and community initiatives.",
+      skills: [],
+      allowMentorRequests: false
+    }
+  ]);
+
+  const announcement = await Announcement.create({
+    instituteId: institute._id,
+    title: "Greenwood Homecoming Week Announced",
+    content: "Former students can now RSVP for homecoming assemblies, campus tours, and the founders' evening.",
+    status: "published",
+    createdBy: schoolAdmin._id,
+    createdAt: daysAgo(3),
+    updatedAt: daysAgo(3)
+  });
+
+  const event = await Event.create({
+    instituteId: institute._id,
+    title: "Greenwood Founders Day",
+    description: "A school-wide celebration inviting former students, teachers, and families back to campus.",
+    eventDate: new Date("2026-08-14T09:30:00.000Z"),
+    location: "Greenwood Main Quadrangle",
+    createdBy: schoolAdmin._id,
+    createdAt: daysAgo(1, 10),
+    updatedAt: daysAgo(1, 10)
+  });
+
+  await Notification.create([
+    {
+      instituteId: institute._id,
+      userId: mayaUser._id,
+      actorUserId: schoolAdmin._id,
+      category: "events",
+      type: "event_published",
+      title: event.title,
+      message: "Main Quadrangle | 14 Aug 2026",
+      entityType: "Event",
+      entityId: event._id,
+      linkTo: "/portal/events",
+      createdAt: daysAgo(1, 10),
+      updatedAt: daysAgo(1, 10)
+    },
+    {
+      instituteId: institute._id,
+      userId: mayaUser._id,
+      actorUserId: schoolAdmin._id,
+      category: "system",
+      type: "announcement_published",
+      title: announcement.title,
+      message: announcement.content,
+      entityType: "Announcement",
+      entityId: announcement._id,
+      linkTo: "/portal/announcements",
+      createdAt: daysAgo(3),
+      updatedAt: daysAgo(3)
+    }
+  ]);
+
+  if (CommunityGroup) {
+    await CommunityGroup.create([
+      {
+        instituteId: institute._id,
+        name: "Class of 2020",
+        description: "Reconnect with former students from the 2020 graduating class.",
+        groupType: "year",
+        audienceLabel: "Leaving Year 2020",
+        memberIds: [mayaUser._id, rohanUser._id],
+        createdBy: schoolAdmin._id
+      }
+    ]);
+  }
+
+  return { schoolAdmin, mayaUser, rohanUser };
+}
+
+async function seed() {
+  await mongoose.connect(CENTRAL_MONGODB_URI);
+
+  await Promise.all([User.deleteMany({}), Institute.deleteMany({})]);
+
+  const collegeInstitute = await createInstitute({
+    name: "SPIT Demo Institute",
+    subdomain: "spit",
+    domain: "alumni.spit.ac.in",
+    institutionType: "college",
+    educationLevel: "higher_ed",
+    subscriptionPlan: "pro",
+    primaryContactName: "Dr. Meera Joshi",
+    primaryContactEmail: "admin@spit.edu",
+    billingAmount: 15000
+  });
+
+  const schoolInstitute = await createInstitute({
+    name: "Greenwood School Network",
+    subdomain: "greenwood",
+    domain: "alumni.greenwoodschool.edu",
+    institutionType: "school",
+    educationLevel: "k12",
+    subscriptionPlan: "basic",
+    primaryContactName: "Anita D'Souza",
+    primaryContactEmail: "admin@greenwoodschool.edu",
+    billingAmount: 8000
+  });
+
+  const passwords = {
+    superAdmin: await hashPassword("Admin@123"),
+    instituteAdmin: await hashPassword("Institute@123"),
+    collegeMember: await hashPassword("Alumni@123"),
+    schoolAdmin: await hashPassword("School@123"),
+    schoolMember: await hashPassword("FormerStudent@123")
+  };
+
+  const superAdmin = await User.create({
+    name: "Platform Super Admin",
+    email: "superadmin@alumninetwork.com",
+    passwordHash: passwords.superAdmin,
+    role: "super_admin",
+    isActive: true,
+    passwordSetupCompleted: true
+  });
+
+  const collegeSeed = await seedCollegeTenant(collegeInstitute, passwords);
+  const schoolSeed = await seedSchoolTenant(schoolInstitute, passwords);
+
   console.log("Seed complete");
   console.log(`Super admin: ${superAdmin.email} / Admin@123`);
-  console.log(`Institute admin: ${instituteAdmin.email} / Institute@123`);
-  console.log(`Alumni: ${alumniUser.email} / Alumni@123`);
-  console.log(`Institute portal: ${institute.subdomain}.yourplatform.com`);
+  console.log(`College admin: ${collegeSeed.instituteAdmin.email} / Institute@123`);
+  console.log(`College member: ${collegeSeed.aaravUser.email} / Alumni@123`);
+  console.log(`College member: ${collegeSeed.snehaUser.email} / Alumni@123`);
+  console.log(`School admin: ${schoolSeed.schoolAdmin.email} / School@123`);
+  console.log(`School member: ${schoolSeed.mayaUser.email} / FormerStudent@123`);
+  console.log(`School member: ${schoolSeed.rohanUser.email} / FormerStudent@123`);
+  console.log(`College portal: ${collegeInstitute.subdomain}.yourplatform.com`);
+  console.log(`School portal: ${schoolInstitute.subdomain}.yourplatform.com`);
 
   await mongoose.disconnect();
 }

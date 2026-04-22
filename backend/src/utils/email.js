@@ -1,5 +1,42 @@
 import nodemailer from "nodemailer";
 
+function getInstitutionEmailLabels(institutionType = "college") {
+  const isSchool = institutionType === "school";
+
+  return {
+    isSchool,
+    portalName: isSchool ? "community portal" : "alumni portal",
+    memberLabel: isSchool ? "former student" : "alumni",
+    yearLabel: isSchool ? "Leaving Year" : "Batch",
+    educationLabel: isSchool ? "Last Class Attended" : "Department",
+    currentOrgLabel: isSchool ? "Current Institution" : "Company",
+    roleLabel: isSchool ? "Occupation" : "Position"
+  };
+}
+
+function buildProfileDetailRows(profile, institutionType = "college") {
+  const labels = getInstitutionEmailLabels(institutionType);
+  const rows = [
+    `<p><strong>Name:</strong> ${profile.name}</p>`,
+    `<p><strong>Email:</strong> <a href="mailto:${profile.email}">${profile.email}</a></p>`
+  ];
+
+  const yearValue = labels.isSchool ? profile.leavingYear || profile.batch : profile.batch;
+  const educationValue = labels.isSchool ? profile.lastClassAttended || profile.department : profile.department;
+  const currentOrgValue = labels.isSchool ? profile.currentInstitution : profile.company;
+  const roleValue = labels.isSchool ? profile.occupation || profile.currentEducation : profile.designation;
+
+  if (currentOrgValue) rows.push(`<p><strong>${labels.currentOrgLabel}:</strong> ${currentOrgValue}</p>`);
+  if (roleValue) rows.push(`<p><strong>${labels.roleLabel}:</strong> ${roleValue}</p>`);
+  if (yearValue) rows.push(`<p><strong>${labels.yearLabel}:</strong> ${yearValue}</p>`);
+  if (educationValue) rows.push(`<p><strong>${labels.educationLabel}:</strong> ${educationValue}</p>`);
+  if (profile.location) rows.push(`<p><strong>Location:</strong> ${profile.location}</p>`);
+  if (profile.bio) rows.push(`<p><strong>Bio:</strong> ${profile.bio}</p>`);
+  if (profile.skills && profile.skills.length) rows.push(`<p><strong>Skills:</strong> ${profile.skills.join(", ")}</p>`);
+
+  return rows.join("");
+}
+
 function getEmailConfig() {
   return {
     host: process.env.SMTP_HOST,
@@ -22,10 +59,12 @@ export async function sendInviteEmail({
   instituteName,
   inviteUrl,
   expiresAt,
-  portalRoleLabel = "alumni"
+  portalRoleLabel = "alumni",
+  institutionType = "college"
 }) {
   const config = getEmailConfig();
   const name = recipientName || alumniName || "there";
+  const labels = getInstitutionEmailLabels(institutionType);
 
   if (!hasSmtpConfig(config)) {
     console.log("SMTP not configured. Invite email was not sent.");
@@ -57,7 +96,7 @@ export async function sendInviteEmail({
     text: [
       `Hello ${name},`,
       "",
-      `You have been invited to join the ${instituteName} alumni portal as ${portalRoleLabel}.`,
+      `You have been invited to join the ${instituteName} ${labels.portalName} as ${portalRoleLabel}.`,
       `Set your password here: ${inviteUrl}`,
       `This link expires on ${new Date(expiresAt).toLocaleString()}.`,
       "",
@@ -65,9 +104,9 @@ export async function sendInviteEmail({
     ].join("\n"),
     html: `
       <div style="font-family: Arial, sans-serif; color: #14213d; line-height: 1.6;">
-        <h2>Welcome to ${instituteName} Alumni Portal</h2>
+        <h2>Welcome to the ${instituteName} ${labels.portalName}</h2>
         <p>Hello ${name},</p>
-        <p>You have been invited to join the alumni portal as ${portalRoleLabel}.</p>
+        <p>You have been invited to join the ${labels.portalName} as ${portalRoleLabel}.</p>
         <p>
           <a
             href="${inviteUrl}"
@@ -97,12 +136,14 @@ export async function sendApplicationEmail({
   jobTitle,
   applicantName,
   applicantEmail,
+  institutionType = "college",
   applicantProfile = {},
   coverLetter,
   resumeUrl,
   resumeFileName
 }) {
   const config = getEmailConfig();
+  const labels = getInstitutionEmailLabels(institutionType);
 
   if (!hasSmtpConfig(config)) {
     console.log("SMTP not configured. Application notification email was not sent.");
@@ -128,15 +169,14 @@ export async function sendApplicationEmail({
   const profileDetails = `
     <div style="background:#f8fbff;padding:12px;border-radius:8px;margin:16px 0;">
       <h3 style="margin:0 0 12px 0;">Applicant Profile</h3>
-      <p><strong>Name:</strong> ${applicantName}</p>
-      <p><strong>Email:</strong> <a href="mailto:${applicantEmail}">${applicantEmail}</a></p>
-      ${applicantProfile.company ? `<p><strong>Company:</strong> ${applicantProfile.company}</p>` : ""}
-      ${applicantProfile.designation ? `<p><strong>Position:</strong> ${applicantProfile.designation}</p>` : ""}
-      ${applicantProfile.batch ? `<p><strong>Batch:</strong> ${applicantProfile.batch}</p>` : ""}
-      ${applicantProfile.department ? `<p><strong>Department:</strong> ${applicantProfile.department}</p>` : ""}
-      ${applicantProfile.location ? `<p><strong>Location:</strong> ${applicantProfile.location}</p>` : ""}
-      ${applicantProfile.bio ? `<p><strong>Bio:</strong> ${applicantProfile.bio}</p>` : ""}
-      ${applicantProfile.skills && applicantProfile.skills.length ? `<p><strong>Skills:</strong> ${applicantProfile.skills.join(", ")}</p>` : ""}
+      ${buildProfileDetailRows(
+        {
+          ...applicantProfile,
+          name: applicantName,
+          email: applicantEmail
+        },
+        institutionType
+      )}
     </div>
   `;
 
@@ -188,7 +228,7 @@ export async function sendApplicationEmail({
         ${coverLetterSection}
         
         <p style="margin-top:24px;">You can contact the applicant directly at <a href="mailto:${applicantEmail}">${applicantEmail}</a></p>
-        <p style="color:#6b7280;font-size:14px;margin-top:24px;">This is an automated message from the Alumni Network portal.</p>
+        <p style="color:#6b7280;font-size:14px;margin-top:24px;">This is an automated message from the Alumni Network ${labels.portalName}.</p>
       </div>
     `,
     attachments: attachments
@@ -207,10 +247,12 @@ export async function sendConnectionRequestEmail({
   recipientName,
   requesterName,
   requesterEmail,
+  institutionType = "college",
   requesterProfile = {},
   message
 }) {
   const config = getEmailConfig();
+  const labels = getInstitutionEmailLabels(institutionType);
 
   if (!hasSmtpConfig(config)) {
     console.log("SMTP not configured. Connection request email was not sent.");
@@ -236,13 +278,14 @@ export async function sendConnectionRequestEmail({
   const profileDetails = `
     <div style="background:#f8fbff;padding:12px;border-radius:8px;margin:16px 0;">
       <h3 style="margin:0 0 12px 0;">Profile</h3>
-      <p><strong>Name:</strong> ${requesterName}</p>
-      <p><strong>Email:</strong> <a href="mailto:${requesterEmail}">${requesterEmail}</a></p>
-      ${requesterProfile.company ? `<p><strong>Company:</strong> ${requesterProfile.company}</p>` : ""}
-      ${requesterProfile.designation ? `<p><strong>Position:</strong> ${requesterProfile.designation}</p>` : ""}
-      ${requesterProfile.batch ? `<p><strong>Batch:</strong> ${requesterProfile.batch}</p>` : ""}
-      ${requesterProfile.department ? `<p><strong>Department:</strong> ${requesterProfile.department}</p>` : ""}
-      ${requesterProfile.location ? `<p><strong>Location:</strong> ${requesterProfile.location}</p>` : ""}
+      ${buildProfileDetailRows(
+        {
+          ...requesterProfile,
+          name: requesterName,
+          email: requesterEmail
+        },
+        institutionType
+      )}
     </div>
   `;
 
@@ -268,7 +311,7 @@ export async function sendConnectionRequestEmail({
             View Connection Requests
           </a>
         </p>
-        <p style="color:#6b7280;font-size:14px;margin-top:24px;">This is an automated message from the Alumni Network portal.</p>
+        <p style="color:#6b7280;font-size:14px;margin-top:24px;">This is an automated message from the Alumni Network ${labels.portalName}.</p>
       </div>
     `
   });
@@ -279,4 +322,56 @@ export async function sendConnectionRequestEmail({
     message: "Connection request email sent successfully.",
     previewUrl: nodemailer.getTestMessageUrl(info) || null
   };
+}
+export async function sendPasswordResetEmail({
+  to,
+  recipientName,
+  resetUrl,
+  expiresIn = "1 hour",
+  institutionType = "college"
+}) {
+  const config = getEmailConfig();
+  const name = recipientName || "there";
+  const labels = getInstitutionEmailLabels(institutionType);
+
+  if (!hasSmtpConfig(config)) {
+    console.log("SMTP not configured. Password reset email was not sent.");
+    console.log(`Recipient: ${to}`);
+    console.log(`Reset link: ${resetUrl}`);
+    return { delivered: false, mode: "log" };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass }
+  });
+
+  await transporter.sendMail({
+    from: config.from,
+    to,
+    subject: "Reset your password",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #14213d; line-height: 1.6;">
+        <h2>Password Reset Request</h2>
+        <p>Hello ${name},</p>
+        <p>You requested to reset your password. Click the button below to set a new password:</p>
+        <p>
+          <a
+            href="${resetUrl}"
+            style="display:inline-block;padding:12px 18px;background:#14213d;color:#ffffff;text-decoration:none;border-radius:8px;"
+          >
+            Reset Password
+          </a>
+        </p>
+        <p>If the button does not work, use this link:</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>This link expires in ${expiresIn}.</p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+      </div>
+    `
+  });
+
+  return { delivered: true, mode: "smtp" };
 }

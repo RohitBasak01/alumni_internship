@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { softDeletePlugin } from "../utils/softDeletePlugin.js";
 
 const alumniProfileSchema = new mongoose.Schema(
   {
@@ -119,12 +120,23 @@ const alumniProfileSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending"
+    },
+    registrationRejectedReason: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    registrationReviewedAt: {
+      type: Date,
+      default: null
     }
   },
   {
     timestamps: true
   }
 );
+
+alumniProfileSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("AlumniProfile", alumniProfileSchema);
 

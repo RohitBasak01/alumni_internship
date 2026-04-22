@@ -8,6 +8,7 @@ import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js"
 import { apiRateLimiter, authRateLimiter } from "./middleware/rateLimit.middleware.js";
 import { attachRequestContext, structuredRequestLogger } from "./middleware/requestContext.middleware.js";
 import { resolveTenant } from "./middleware/tenantResolver.middleware.js";
+import { csrfProtection } from "./middleware/csrf.middleware.js";
 import authRoutes from "./routes/auth.routes.js";
 import instituteRoutes from "./routes/institute.routes.js";
 import alumniRoutes from "./routes/alumni.routes.js";
@@ -27,13 +28,44 @@ import opsRoutes from "./routes/ops.routes.js";
 
 const app = express();
 
+function parseAllowedOrigins() {
+  const configured = String(
+    process.env.CORS_ALLOWED_ORIGINS || process.env.CLIENT_URL || process.env.FRONTEND_URL || ""
+  );
+  return configured
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = parseAllowedOrigins();
+
 app.use(
   cors({
-    origin: true,
+    origin(origin, callback) {
+      // Allow non-browser and same-origin requests without an Origin header.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (process.env.NODE_ENV !== "production" && allowedOrigins.length === 0) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("CORS origin denied"));
+    },
     credentials: true
   })
 );
 app.use(cookieParser());
+app.use(csrfProtection);
 app.use(express.json({ limit: "25mb" }));
 app.use(morgan("dev"));
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));

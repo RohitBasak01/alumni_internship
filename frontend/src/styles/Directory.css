@@ -1,0 +1,84 @@
+/* Alumni Directory & Member Management Styles */
+
+.member-directory-page,
+.member-directory-admin-grid,
+.member-approval-grid,
+.member-directory-grid,
+.member-directory-filter-grid,
+.member-directory-outreach,
+.member-notice-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.member-directory-grid.hero-grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+}
+
+.member-directory-grid.cards-grid,
+.member-directory-grid.admin-grid,
+.member-approval-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.member-directory-spotlight,
+.member-directory-card,
+.member-approval-card {
+  border: 1px solid var(--ui-border);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--ui-shadow-md);
+}
+
+.member-directory-spotlight {
+  display: grid;
+  gap: 1rem;
+  padding: 1.55rem;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 247, 255, 0.98) 100%);
+}
+
+.member-directory-card-meta,
+.member-approval-card-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.member-directory-card-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.member-directory-card-meta span,
+.member-approval-card-grid article span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.9);
+  color: var(--ui-brand);
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1180px) {
+  .member-directory-grid.hero-grid,
+  .member-directory-grid.cards-grid,
+  .member-directory-grid.admin-grid,
+  .member-approval-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .member-directory-grid.hero-grid,
+  .member-directory-grid.cards-grid,
+  .member-directory-grid.admin-grid,
+  .member-approval-grid,
+  .member-directory-filter-grid,
+  .member-directory-card-meta,
+  .member-approval-card-grid {
+    grid-template-columns: 1fr;
+  }
+}

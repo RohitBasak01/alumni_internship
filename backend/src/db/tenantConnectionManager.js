@@ -10,6 +10,7 @@ import GalleryItem from "../models/GalleryItem.js";
 import Job from "../models/Job.js";
 import JobApplication from "../models/JobApplication.js";
 import MentorshipRequest from "../models/MentorshipRequest.js";
+import Message from "../models/message.model.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 
@@ -27,7 +28,8 @@ const TENANT_MODEL_BUILDERS = {
   Job,
   JobApplication,
   MentorshipRequest,
-  Notification
+  Notification,
+  Message
 };
 
 function sanitizeDatabaseName(value = "") {

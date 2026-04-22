@@ -105,7 +105,7 @@ This starter includes:
 
 Alumni invites support SMTP delivery.
 
-Add these values to [backend/.env](c:\Users\hp\Desktop\internship_2\alumni-network\backend\.env):
+Add these values to [backend/.env](c:\Users\hp\Desktop\internship_2\alumni-network\backend.env):
 
 - `SMTP_HOST`
 - `SMTP_PORT`
@@ -148,3 +148,5 @@ If you want, the next step can be scaffolding the React frontend and wiring it t
 - `superadmin@alumninetwork.com` / `Admin@123`
 - `admin@spit.edu` / `Institute@123`
 - `aarav@spit.edu` / `Alumni@123`
+- `admin@greenwoodschool.edu` / `School@123`
+- `maya@greenwoodschool.edu` / `FormerStudent@123`

@@ -129,7 +129,7 @@ router.delete(
   async (req, res, next) => {
   try {
     const { Announcement } = getTenantModels(req);
-    const announcement = await Announcement.findOneAndDelete({
+    const announcement = await Announcement.findOne({
       _id: req.params.id,
       instituteId: req.tenant._id
     });
@@ -139,6 +139,8 @@ router.delete(
       error.statusCode = 404;
       throw error;
     }
+
+    await announcement.softDelete();
 
     res.json({ message: "Announcement deleted successfully" });
   } catch (error) {

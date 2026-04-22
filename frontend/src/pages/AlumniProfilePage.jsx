@@ -11,6 +11,7 @@ import {
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import { fetchMyAlumniProfile, updateMyAlumniProfile } from "../lib/api.js";
+import { getTenantDisplayConfig } from "../utils/tenantDisplay.js";
 
 const emptyForm = {
   name: "",
@@ -94,11 +95,13 @@ function buildForm(profile) {
 function AlumniProfilePage() {
   const auth = useAuth();
   const tenant = useTenantContext();
+  const tenantDisplay = getTenantDisplayConfig(tenant);
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const isSchool = tenant.institutionType === "school";
+  const isSchool = tenantDisplay.isSchool;
   const showCareerFields = tenant.featureFlags.enableCareerFields;
   const showSocialLinks = tenant.featureFlags.enableSocialLinks;
+  const showMentorship = tenant.featureFlags.enableMentorship !== false;
   const isEditMode = searchParams.get("mode") === "edit";
   const [form, setForm] = useState(emptyForm);
   const [skillInput, setSkillInput] = useState("");
@@ -153,13 +156,13 @@ function AlumniProfilePage() {
     profile?.bio ||
     (isSchool
       ? "Add a short introduction so other members of your school community can reconnect with you."
-      : "Share what you are building, where you work, and what kind of alumni conversations you enjoy.");
+      : "Share what you are building, where you work, and what kind of community conversations you enjoy.");
   const links = [
     { label: "LinkedIn", value: profile?.linkedinUrl || "" },
     { label: "Website", value: profile?.websiteUrl || "" },
     { label: "Twitter / X", value: profile?.twitterHandle || "" }
   ].filter((item) => item.value);
-  const displaySkills = skills.length ? skills : ["Profile", "Community", "Mentorship"];
+  const displaySkills = skills.length ? skills : showMentorship ? ["Profile", "Community", "Mentorship"] : ["Profile", "Community", "Network"];
   const connections = [
     { id: "1", name: "Sarah Chen", note: "Product leadership - Class of 2017" },
     { id: "2", name: "Marcus Miller", note: "Engineering manager - Class of 2019" },
@@ -214,12 +217,12 @@ function AlumniProfilePage() {
 
   if (!isAlumni) {
     return (
-      <SectionCard title="My Profile" subtitle="Portal Access">
-        <p className="muted">
-          This page is for alumni users. Institute admins can manage accounts from the members directory.
-        </p>
-      </SectionCard>
-    );
+        <SectionCard title="My Profile" subtitle="Portal Access">
+          <p className="muted">
+            This page is for member accounts. Institution admins can manage records from the members directory.
+          </p>
+        </SectionCard>
+      );
   }
 
   if (profileQuery.isLoading && !profileQuery.data) {
@@ -232,7 +235,7 @@ function AlumniProfilePage() {
         <aside className="member-profile-editor-rail">
           <div className="member-profile-editor-rail-copy">
             <p className="member-card-kicker">Profile editor</p>
-            <h2>Keep your alumni identity current.</h2>
+            <h2>Keep your member identity current.</h2>
             <p>
               Update the details that help people discover you, understand your journey, and reach out with confidence.
             </p>
@@ -260,7 +263,7 @@ function AlumniProfilePage() {
         <form className="member-profile-editor-body" onSubmit={handleSubmit}>
           <PortalPageHeader
             title="Edit profile"
-            subtitle="Every update improves how you appear across the alumni network."
+            subtitle={`Every update improves how you appear across the ${tenantDisplay.memberPlural.toLowerCase()} network.`}
             actions={
               <div className="member-inline-actions">
                 <Link className="button secondary" to="/portal/profile">
@@ -280,7 +283,7 @@ function AlumniProfilePage() {
           <PortalMetricGrid>
             <PortalMetricCard title="Completion" value={completionPercent} valueSuffix="%" icon="CM" />
             <PortalMetricCard title="Visibility" value={form.profileVisibility.replaceAll("_", " ")} icon="VS" />
-            <PortalMetricCard title="Mentorship" value={form.allowMentorRequests ? "Open" : "Paused"} icon="MT" />
+            <PortalMetricCard title={showMentorship ? "Mentorship" : "Access"} value={showMentorship ? (form.allowMentorRequests ? "Open" : "Paused") : "Profile only"} icon="MT" />
           </PortalMetricGrid>
 
           <SectionCard title="Personal details" subtitle="How people recognize you" id="profile-info">
@@ -298,7 +301,7 @@ function AlumniProfilePage() {
 
           <SectionCard
             title={isSchool ? "Current journey" : "Professional details"}
-            subtitle="The details alumni use when they search for you"
+            subtitle={`The details ${tenantDisplay.memberPlural.toLowerCase()} use when they search for you`}
             id="experience"
           >
             <div className="member-form-grid member-form-grid-two">
@@ -364,7 +367,7 @@ function AlumniProfilePage() {
               <div className="member-note-card">
                 <strong>Need a correction?</strong>
                 <p>
-                  Contact your institute admin if your academic record needs an update. These fields are managed from your verified alumni record.
+                  Contact your institution admin if your academic record needs an update. These fields are managed from your verified member record.
                 </p>
               </div>
             </div>
@@ -425,16 +428,18 @@ function AlumniProfilePage() {
                 <input checked={form.showEmail} name="showEmail" onChange={handleChange} type="checkbox" />
                 <div>
                   <strong>Show my email on my profile</strong>
-                  <p>Let other alumni contact you directly from your profile card.</p>
+                  <p>Let other members contact you directly from your profile card.</p>
                 </div>
               </label>
-              <label className="member-toggle-row">
-                <input checked={form.allowMentorRequests} name="allowMentorRequests" onChange={handleChange} type="checkbox" />
-                <div>
-                  <strong>Allow mentorship and networking requests</strong>
-                  <p>Pause inbound requests anytime if you need to quiet your inbox.</p>
-                </div>
-              </label>
+              {showMentorship ? (
+                <label className="member-toggle-row">
+                  <input checked={form.allowMentorRequests} name="allowMentorRequests" onChange={handleChange} type="checkbox" />
+                  <div>
+                    <strong>Allow mentorship and networking requests</strong>
+                    <p>Pause inbound requests anytime if you need to quiet your inbox.</p>
+                  </div>
+                </label>
+              ) : null}
             </div>
           </SectionCard>
         </form>
@@ -446,7 +451,7 @@ function AlumniProfilePage() {
     <div className="member-profile-page">
       <PortalPageHeader
         title="My profile"
-        subtitle="Your professional identity across the institute network."
+        subtitle={isSchool ? "Your verified identity across the school community." : "Your professional identity across the institute network."}
         actions={
           <Link className="button primary" to="/portal/profile?mode=edit">
             Edit profile
@@ -473,7 +478,7 @@ function AlumniProfilePage() {
           <div className="member-profile-tags">
             <span>{isSchool ? lastClassAttended : profileDepartment}</span>
             <span>{isSchool ? currentInstitution || "Current journey pending" : profileIndustry}</span>
-            <span>{form.allowMentorRequests ? "Open to mentorship" : "Mentorship paused"}</span>
+            <span>{showMentorship ? (form.allowMentorRequests ? "Open to mentorship" : "Mentorship paused") : "Profile only"}</span>
           </div>
         </section>
 
@@ -485,7 +490,7 @@ function AlumniProfilePage() {
       </div>
 
       <div className="member-profile-content-grid">
-        <SectionCard title="About" subtitle="What alumni should know about you">
+        <SectionCard title="About" subtitle={`What ${tenantDisplay.memberPlural.toLowerCase()} should know about you`}>
           <p className="member-reading-copy">{profileBio}</p>
         </SectionCard>
 
@@ -551,7 +556,7 @@ function AlumniProfilePage() {
           </SectionCard>
         ) : null}
 
-        <SectionCard title="Network" subtitle="Suggested alumni you may know">
+        <SectionCard title="Network" subtitle={`Suggested ${tenantDisplay.memberPlural.toLowerCase()} you may know`}>
           <div className="member-people-list">
             {connections.map((item) => (
               <article className="member-person-card" key={item.id}>

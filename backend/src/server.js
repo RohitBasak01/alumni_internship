@@ -2,10 +2,12 @@ import dotenv from "dotenv";
 import http from "node:http";
 import mongoose from "mongoose";
 import { Server as SocketIoServer } from "socket.io";
-
+import jwt from "jsonwebtoken";
+import cookie from "cookie";
 import app from "./app.js";
+import { getJwtSecret, AUTH_COOKIE_NAME } from "./utils/auth.js";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const PORT = process.env.PORT || 5000;
 const CENTRAL_MONGODB_URI =
@@ -14,11 +16,66 @@ const CENTRAL_MONGODB_URI =
   "mongodb://127.0.0.1:27017/alumni-network";
 const ENABLE_DEV_MOCK_MODE = process.env.ENABLE_DEV_MOCK_MODE === "true";
 
+function parseAllowedOrigins() {
+  const configured = String(
+    process.env.CORS_ALLOWED_ORIGINS || process.env.CLIENT_URL || process.env.FRONTEND_URL || ""
+  );
+  return configured
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function validateRuntimeEnv() {
+  getJwtSecret();
+
+  if (process.env.NODE_ENV === "production" && parseAllowedOrigins().length === 0) {
+    throw new Error("CORS_ALLOWED_ORIGINS (or CLIENT_URL/FRONTEND_URL) is required in production.");
+  }
+}
+
+const allowedOrigins = parseAllowedOrigins();
+
 const httpServer = http.createServer(app);
 const io = new SocketIoServer(httpServer, {
   cors: {
-    origin: true,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (process.env.NODE_ENV !== "production" && allowedOrigins.length === 0) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Socket CORS origin denied"));
+    },
     credentials: true
+  }
+});
+
+// Socket Authentication Middleware
+io.use((socket, next) => {
+  try {
+    const cookies = cookie.parse(socket.request.headers.cookie || "");
+    const token = cookies[AUTH_COOKIE_NAME];
+
+    if (!token) {
+      return next(new Error("Authentication error: Token missing"));
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret());
+    socket.user = decoded; // Attach user info to socket
+    next();
+  } catch (err) {
+    next(new Error("Authentication error: Invalid token"));
   }
 });
 
@@ -79,12 +136,22 @@ io.on("connection", (socket) => {
 
 async function startServer() {
   try {
+    validateRuntimeEnv();
+
     await mongoose.connect(CENTRAL_MONGODB_URI, {
       serverSelectionTimeoutMS: 10000
     });
     app.locals.mockMode = false;
     app.locals.centralDatabaseUri = CENTRAL_MONGODB_URI;
     console.log("Central MongoDB connected");
+
+    httpServer.on("error", (error) => {
+      console.error("HTTP Server error:", error);
+    });
+
+    process.on("unhandledRejection", (reason, promise) => {
+      console.error("Unhandled Rejection:", reason);
+    });
 
     httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

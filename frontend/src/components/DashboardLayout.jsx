@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import { fetchNotificationSummary } from "../lib/api.js";
+import { getTenantDisplayConfig } from "../utils/tenantDisplay.js";
 
 function buildAdminLinks(tenant) {
   const links = [
@@ -79,6 +80,7 @@ function buildMemberLinks(tenant) {
 
 function DashboardLayout() {
   const tenant = useTenantContext();
+  const tenantDisplay = getTenantDisplayConfig(tenant);
   const auth = useAuth();
   const isAlumni = auth.user?.role === "alumni";
   const notificationsQuery = useQuery({
@@ -111,7 +113,13 @@ function DashboardLayout() {
 
   return (
     <section className={isAlumni ? "member-workspace" : "admin-shell"}>
-      <aside className={isAlumni ? "member-rail" : "admin-sidebar"}>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:rounded-xl focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg"
+      >
+        Skip to content
+      </a>
+      <aside className={isAlumni ? "member-rail" : "admin-sidebar"} aria-label="Sidebar navigation">
         <div className={isAlumni ? "member-rail-brand" : "admin-sidebar-brand"}>
           <div className={isAlumni ? "member-rail-mark" : "admin-sidebar-mark"}>AN</div>
           <div>
@@ -123,7 +131,7 @@ function DashboardLayout() {
         <div className={isAlumni ? "member-rail-context" : "admin-sidebar-section"}>
           {isAlumni ? (
             <>
-              <span>Member workspace</span>
+              <span>{tenantDisplay.workspaceLabel}</span>
               <strong>{auth.user?.institute?.name || tenant.displayName}</strong>
             </>
           ) : (
@@ -162,11 +170,11 @@ function DashboardLayout() {
           <div className={isAlumni ? "member-rail-user" : "admin-sidebar-user"}>
             <div className={isAlumni ? "member-rail-avatar" : "admin-sidebar-avatar"}>{auth.user?.name?.slice(0, 1) || "A"}</div>
             <div>
-              <strong>{auth.user?.name || (isAlumni ? "Portal User" : "Institute Admin")}</strong>
+              <strong>{auth.user?.name || (isAlumni ? "Portal User" : tenantDisplay.adminLabel)}</strong>
               <small>{isAlumni ? auth.user?.institute?.name || tenant.displayName : tenant.communityLabels.adminLabel}</small>
             </div>
           </div>
-          <button className="button secondary compact" onClick={() => void auth.logout()} type="button">
+          <button className="button secondary compact" onClick={() => void auth.logout()} type="button" aria-label="Log out of your account">
             Logout
           </button>
         </div>
@@ -175,7 +183,7 @@ function DashboardLayout() {
       <div className={isAlumni ? "member-stage" : "admin-main"}>
         <header className={isAlumni ? "member-topbar" : "admin-topbar"}>
           <div>
-            <p className={isAlumni ? "member-topbar-eyebrow" : "auth-panel-kicker"}>{isAlumni ? "Alumni portal" : "Institute operations"}</p>
+            <p className={isAlumni ? "member-topbar-eyebrow" : "auth-panel-kicker"}>{isAlumni ? tenantDisplay.portalLabel : "Institution operations"}</p>
             <h1>{tenant.displayName || "AlumNet"}</h1>
           </div>
 
@@ -190,7 +198,7 @@ function DashboardLayout() {
           </div>
         </header>
 
-        <main className={isAlumni ? "member-content" : "admin-stage"}>
+        <main id="main-content" className={isAlumni ? "member-content" : "admin-stage"}>
           <Outlet />
         </main>
       </div>

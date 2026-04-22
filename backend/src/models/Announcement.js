@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { softDeletePlugin } from "../utils/softDeletePlugin.js";
 
 const announcementSchema = new mongoose.Schema(
   {
@@ -54,5 +55,7 @@ const announcementSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+announcementSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("Announcement", announcementSchema);

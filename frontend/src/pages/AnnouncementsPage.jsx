@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PortalPageHeader, PortalSegmentedTabs } from "../components/PortalPrimitives.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useTenantContext } from "../hooks/useTenantContext.js";
 import { createAnnouncement, deleteAnnouncement, fetchAnnouncements, updateAnnouncement } from "../lib/api.js";
+import { getTenantDisplayConfig } from "../utils/tenantDisplay.js";
 
 const initialForm = {
   title: "",
@@ -34,12 +36,14 @@ function formatRelativeTime(value) {
 
 function AnnouncementsPage() {
   const auth = useAuth();
+  const tenant = useTenantContext();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [showComposer, setShowComposer] = useState(false);
   const [activeTab, setActiveTab] = useState("published");
   const isAdmin = auth.user?.role === "institute_admin";
+  const tenantDisplay = getTenantDisplayConfig(tenant);
 
   const { data = [], isLoading, isError, error } = useQuery({
     queryKey: ["announcements"],
@@ -104,7 +108,7 @@ function AnnouncementsPage() {
       <PortalPageHeader
         className="notifications-header"
         title="Updates"
-        subtitle="Institute announcements, notices, and official updates for the alumni community."
+        subtitle={`Announcements, notices, and official updates for the ${tenantDisplay.memberPlural.toLowerCase()} community.`}
         actions={
           isAdmin ? (
             <div className="notifications-header-actions">
@@ -131,10 +135,17 @@ function AnnouncementsPage() {
       ) : null}
 
       {isAdmin && showComposer ? (
-        <SectionCard title={editingId ? "Edit update" : "Create update"} subtitle="Institute admin composer">
+        <SectionCard title={editingId ? "Edit update" : "Create update"} subtitle={`${tenantDisplay.adminLabel} composer`}>
           <form className="form-grid" onSubmit={handleSubmit}>
             <input name="title" onChange={handleChange} placeholder="Update title" value={form.title} />
-            <textarea className="textarea" name="content" onChange={handleChange} placeholder="Share an update with alumni" rows="5" value={form.content} />
+            <textarea
+              className="textarea"
+              name="content"
+              onChange={handleChange}
+              placeholder={`Share an update with ${tenantDisplay.memberPlural.toLowerCase()}`}
+              rows="5"
+              value={form.content}
+            />
             <select className="select" name="status" onChange={handleChange} value={form.status}>
               <option value="published">Published</option>
               <option value="draft">Draft</option>
@@ -171,7 +182,7 @@ function AnnouncementsPage() {
                     <button className="button secondary compact" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(item._id)} type="button">Delete</button>
                   </>
                 ) : (
-                  <span className="member-status-pill status-active">Institute update</span>
+                  <span className="member-status-pill status-active">{tenantDisplay.adminLabel} update</span>
                 )}
               </div>
             </div>

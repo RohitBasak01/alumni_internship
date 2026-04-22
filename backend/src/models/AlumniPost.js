@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { softDeletePlugin } from "../utils/softDeletePlugin.js";
 
 const postCommentSchema = new mongoose.Schema(
   {
@@ -88,5 +89,7 @@ const alumniPostSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+alumniPostSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("AlumniPost", alumniPostSchema);

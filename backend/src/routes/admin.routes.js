@@ -431,14 +431,15 @@ router.post("/institutes/:id/resend-admin-invite", protect, authorize("super_adm
     const { inviteUrl, expiresAt } = issueInviteToken(adminUser);
     await adminUser.save();
 
-    const emailDelivery = await sendInviteEmail({
-      to: adminUser.email,
-      recipientName: adminUser.name,
-      instituteName: institute.name,
-      inviteUrl,
-      expiresAt,
-      portalRoleLabel: "institute admin"
-    });
+      const emailDelivery = await sendInviteEmail({
+        to: adminUser.email,
+        recipientName: adminUser.name,
+        instituteName: institute.name,
+        inviteUrl,
+        expiresAt,
+        portalRoleLabel: "institute admin",
+        institutionType: institute.institutionType || "college"
+      });
 
     res.json({
       invite: {
