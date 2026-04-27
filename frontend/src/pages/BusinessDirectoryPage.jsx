@@ -5,7 +5,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { PortalSearchField } from "../components/PortalPrimitives.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { createBusinessListing, deleteBusinessListing, fetchBusinessListings } from "../lib/api.js";
+import {
+  createBusinessListing,
+  deleteBusinessListing,
+  fetchBusinessListings,
+  fetchCitiesByState,
+  fetchCountries,
+  fetchStatesByCountry,
+} from "../lib/api.js";
 
 const initialForm = {
   businessName: "",
@@ -14,25 +21,145 @@ const initialForm = {
   industry: "",
   product: "",
   service: "",
+  country: "",
+  state: "",
+  city: "",
   location: "",
   contactEmail: "",
-  contactCountry: "Country",
+  contactCountry: "",
   contactNumber: "",
   isManagementTeam: "yes",
   logoUrl: "",
-  termsAccepted: false
+  termsAccepted: false,
 };
 
-const industryOptions = [
-  "Advertising & Marketing",
-  "Technology",
-  "Finance",
-  "Education",
-  "Healthcare",
-  "Retail",
-  "Consulting",
-  "Other"
-];
+const INDUSTRY_CATALOG = {
+  "Advertising & Marketing": {
+    products: [
+      "Ad Platform",
+      "CRM",
+      "Campaign Automation",
+      "Analytics Dashboard",
+      "Creative Toolkit",
+    ],
+    services: [
+      "Brand Strategy",
+      "SEO",
+      "Social Media Management",
+      "Performance Marketing",
+      "Content Production",
+    ],
+  },
+  Technology: {
+    products: [
+      "SaaS Platform",
+      "Mobile App",
+      "Developer Tools",
+      "Cybersecurity Suite",
+      "Cloud Infrastructure",
+    ],
+    services: [
+      "Custom Software Development",
+      "Cloud Migration",
+      "DevOps Consulting",
+      "Data Engineering",
+      "Tech Support",
+    ],
+  },
+  Finance: {
+    products: [
+      "Payment Gateway",
+      "Lending Platform",
+      "Investment App",
+      "Risk Engine",
+      "Accounting Software",
+    ],
+    services: [
+      "Financial Advisory",
+      "Tax Planning",
+      "Compliance Services",
+      "Bookkeeping",
+      "Insurance Advisory",
+    ],
+  },
+  Education: {
+    products: [
+      "LMS",
+      "Assessment Platform",
+      "Virtual Classroom",
+      "Skill Certification Portal",
+      "Student CRM",
+    ],
+    services: [
+      "Curriculum Design",
+      "Corporate Training",
+      "Career Counseling",
+      "Tutoring",
+      "Admissions Consulting",
+    ],
+  },
+  Healthcare: {
+    products: [
+      "EHR System",
+      "Telemedicine App",
+      "Hospital Management Suite",
+      "Diagnostic Device",
+      "Patient Portal",
+    ],
+    services: [
+      "Clinical Consulting",
+      "Remote Care",
+      "Diagnostics",
+      "Wellness Programs",
+      "Medical Staffing",
+    ],
+  },
+  Retail: {
+    products: [
+      "POS System",
+      "E-commerce Storefront",
+      "Inventory Platform",
+      "Loyalty App",
+      "Warehouse Automation",
+    ],
+    services: [
+      "Retail Consulting",
+      "Visual Merchandising",
+      "Supply Chain Services",
+      "Last-mile Delivery",
+      "Franchise Support",
+    ],
+  },
+  Consulting: {
+    products: [
+      "Process Toolkit",
+      "Benchmark Platform",
+      "Project Dashboard",
+      "Knowledge Base",
+      "Workflow Suite",
+    ],
+    services: [
+      "Management Consulting",
+      "Operations Consulting",
+      "HR Consulting",
+      "Digital Transformation",
+      "Strategy Advisory",
+    ],
+  },
+  Other: {
+    products: ["General Product"],
+    services: ["General Service"],
+  },
+};
+
+const industryOptions = Object.keys(INDUSTRY_CATALOG);
+
+function buildLocationValue(country, state, city) {
+  return [city, state, country]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
 
 function BusinessDirectoryPage() {
   const location = useLocation();
@@ -47,10 +174,29 @@ function BusinessDirectoryPage() {
   const [logoFileName, setLogoFileName] = useState("No file chosen");
 
   const isAdmin = auth.user?.role === "institute_admin";
+  const selectedIndustryCatalog =
+    INDUSTRY_CATALOG[form.industry] || INDUSTRY_CATALOG.Other;
+
+  const countriesQuery = useQuery({
+    queryKey: ["location-countries"],
+    queryFn: fetchCountries,
+  });
+
+  const statesQuery = useQuery({
+    queryKey: ["location-states", form.country],
+    queryFn: () => fetchStatesByCountry(form.country),
+    enabled: Boolean(form.country),
+  });
+
+  const citiesQuery = useQuery({
+    queryKey: ["location-cities", form.country, form.state],
+    queryFn: () => fetchCitiesByState(form.country, form.state),
+    enabled: Boolean(form.country) && Boolean(form.state),
+  });
 
   const listingsQuery = useQuery({
     queryKey: ["business-listings"],
-    queryFn: fetchBusinessListings
+    queryFn: fetchBusinessListings,
   });
 
   const createMutation = useMutation({
@@ -60,14 +206,14 @@ function BusinessDirectoryPage() {
       setForm(initialForm);
       setLogoFileName("No file chosen");
       navigate("/portal/business-directory");
-    }
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteBusinessListing,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["business-listings"] });
-    }
+    },
   });
 
   const listings = listingsQuery.data || [];
@@ -76,24 +222,78 @@ function BusinessDirectoryPage() {
     const trimmed = query.trim().toLowerCase();
 
     return listings.filter((item) => {
-      const text = `${item.businessName} ${item.description} ${item.industry} ${item.product || ""} ${item.service || ""} ${item.location}`.toLowerCase();
+      const text =
+        `${item.businessName} ${item.description} ${item.industry} ${item.product || ""} ${item.service || ""} ${item.location}`.toLowerCase();
       const matchesSearch = trimmed ? text.includes(trimmed) : true;
-      const matchesIndustry = industryFilter ? item.industry === industryFilter : true;
-      const matchesProduct = productFilter ? item.product === productFilter : true;
-      const matchesService = serviceFilter ? item.service === serviceFilter : true;
-      return matchesSearch && matchesIndustry && matchesProduct && matchesService;
+      const matchesIndustry = industryFilter
+        ? item.industry === industryFilter
+        : true;
+      const matchesProduct = productFilter
+        ? item.product === productFilter
+        : true;
+      const matchesService = serviceFilter
+        ? item.service === serviceFilter
+        : true;
+      return (
+        matchesSearch && matchesIndustry && matchesProduct && matchesService
+      );
     });
   }, [listings, query, industryFilter, productFilter, serviceFilter]);
 
-  const productOptions = [...new Set(listings.map((item) => item.product).filter(Boolean))];
-  const serviceOptions = [...new Set(listings.map((item) => item.service).filter(Boolean))];
+  const productOptions = [
+    ...new Set(listings.map((item) => item.product).filter(Boolean)),
+  ];
+  const serviceOptions = [
+    ...new Set(listings.map((item) => item.service).filter(Boolean)),
+  ];
   const isAddPage = location.pathname.endsWith("/business-directory/add");
 
   function handleChange(event) {
     const { name, type, value, checked } = event.target;
+
+    if (name === "industry") {
+      setForm((current) => ({
+        ...current,
+        industry: value,
+        product: "",
+        service: "",
+      }));
+      return;
+    }
+
+    if (name === "country") {
+      setForm((current) => ({
+        ...current,
+        country: value,
+        state: "",
+        city: "",
+        location: buildLocationValue(value, "", ""),
+      }));
+      return;
+    }
+
+    if (name === "state") {
+      setForm((current) => ({
+        ...current,
+        state: value,
+        city: "",
+        location: buildLocationValue(current.country, value, ""),
+      }));
+      return;
+    }
+
+    if (name === "city") {
+      setForm((current) => ({
+        ...current,
+        city: value,
+        location: buildLocationValue(current.country, current.state, value),
+      }));
+      return;
+    }
+
     setForm((current) => ({
       ...current,
-      [name]: type === "checkbox" ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   }
 
@@ -106,7 +306,9 @@ function BusinessDirectoryPage() {
       return;
     }
 
-    const isImage = ["image/png", "image/jpeg", "image/jpg"].includes(file.type);
+    const isImage = ["image/png", "image/jpeg", "image/jpg"].includes(
+      file.type,
+    );
 
     if (!isImage) {
       setLogoFileName("Invalid file type");
@@ -120,7 +322,10 @@ function BusinessDirectoryPage() {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setForm((current) => ({ ...current, logoUrl: String(reader.result || "") }));
+      setForm((current) => ({
+        ...current,
+        logoUrl: String(reader.result || ""),
+      }));
       setLogoFileName(file.name);
     };
     reader.readAsDataURL(file);
@@ -136,13 +341,13 @@ function BusinessDirectoryPage() {
       industry: form.industry,
       product: form.product,
       service: form.service,
-      location: form.location,
+      location: buildLocationValue(form.country, form.state, form.city),
       contactEmail: form.contactEmail,
       contactCountry: form.contactCountry,
       contactNumber: form.contactNumber,
       isManagementTeam: form.isManagementTeam === "yes",
       logoUrl: form.logoUrl,
-      termsAccepted: form.termsAccepted
+      termsAccepted: form.termsAccepted,
     });
   }
 
@@ -161,7 +366,10 @@ function BusinessDirectoryPage() {
           title="Add Business Listing"
           subtitle="Business Directory"
           action={
-            <Link className="button secondary compact" to="/portal/business-directory">
+            <Link
+              className="button secondary compact"
+              to="/portal/business-directory"
+            >
               Back to Directory
             </Link>
           }
@@ -169,7 +377,12 @@ function BusinessDirectoryPage() {
           <form className="form-grid" onSubmit={handleSubmit}>
             <label>
               <span>Business Name *</span>
-              <input name="businessName" onChange={handleChange} required value={form.businessName} />
+              <input
+                name="businessName"
+                onChange={handleChange}
+                required
+                value={form.businessName}
+              />
             </label>
 
             <label className="full">
@@ -188,47 +401,171 @@ function BusinessDirectoryPage() {
 
             <label>
               <span>Website</span>
-              <input name="website" onChange={handleChange} placeholder="https://example.com" type="url" value={form.website} />
+              <input
+                name="website"
+                onChange={handleChange}
+                placeholder="https://example.com"
+                type="url"
+                value={form.website}
+              />
             </label>
 
             <label>
               <span>Industry</span>
-              <select className="select" name="industry" onChange={handleChange} value={form.industry}>
+              <select
+                className="select"
+                name="industry"
+                onChange={handleChange}
+                value={form.industry}
+              >
                 <option value="">Select industry</option>
                 {industryOptions.map((industry) => (
-                  <option key={industry} value={industry}>{industry}</option>
+                  <option key={industry} value={industry}>
+                    {industry}
+                  </option>
                 ))}
               </select>
             </label>
 
             <label>
               <span>Product</span>
-              <input name="product" onChange={handleChange} placeholder="Product category" value={form.product} />
+              <select
+                className="select"
+                disabled={!form.industry}
+                name="product"
+                onChange={handleChange}
+                value={form.product}
+              >
+                <option value="">
+                  {form.industry
+                    ? "Select product category"
+                    : "Select industry first"}
+                </option>
+                {selectedIndustryCatalog.products.map((productOption) => (
+                  <option key={productOption} value={productOption}>
+                    {productOption}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
               <span>Service</span>
-              <input name="service" onChange={handleChange} placeholder="Service category" value={form.service} />
+              <select
+                className="select"
+                disabled={!form.industry}
+                name="service"
+                onChange={handleChange}
+                value={form.service}
+              >
+                <option value="">
+                  {form.industry
+                    ? "Select service category"
+                    : "Select industry first"}
+                </option>
+                {selectedIndustryCatalog.services.map((serviceOption) => (
+                  <option key={serviceOption} value={serviceOption}>
+                    {serviceOption}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
-              <span>Location</span>
-              <input name="location" onChange={handleChange} placeholder="City, State, Country" value={form.location} />
+              <span>Country</span>
+              <select
+                className="select"
+                name="country"
+                onChange={handleChange}
+                value={form.country}
+              >
+                <option value="">Select country</option>
+                {(countriesQuery.data || []).map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>State</span>
+              <select
+                className="select"
+                disabled={!form.country || statesQuery.isLoading}
+                name="state"
+                onChange={handleChange}
+                value={form.state}
+              >
+                <option value="">
+                  {form.country ? "Select state" : "Select country first"}
+                </option>
+                {(statesQuery.data || []).map((stateItem) => (
+                  <option key={stateItem} value={stateItem}>
+                    {stateItem}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>City</span>
+              <select
+                className="select"
+                disabled={!form.country || !form.state || citiesQuery.isLoading}
+                name="city"
+                onChange={handleChange}
+                value={form.city}
+              >
+                <option value="">
+                  {form.state ? "Select city" : "Select state first"}
+                </option>
+                {(citiesQuery.data || []).map((cityItem) => (
+                  <option key={cityItem} value={cityItem}>
+                    {cityItem}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
               <span>Contact Email</span>
-              <input name="contactEmail" onChange={handleChange} placeholder="test@example.com" required type="email" value={form.contactEmail} />
+              <input
+                name="contactEmail"
+                onChange={handleChange}
+                placeholder="test@example.com"
+                required
+                type="email"
+                value={form.contactEmail}
+              />
             </label>
 
             <div className="form-grid two-column">
               <label>
                 <span>Contact Country</span>
-                <input name="contactCountry" onChange={handleChange} value={form.contactCountry} />
+                <select
+                  className="select"
+                  name="contactCountry"
+                  onChange={handleChange}
+                  value={form.contactCountry}
+                >
+                  <option value="">Country</option>
+                  {(countriesQuery.data || []).map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 <span>Contact Number</span>
-                <input name="contactNumber" onChange={handleChange} placeholder="Eg: 9876543210" required value={form.contactNumber} />
+                <input
+                  name="contactNumber"
+                  onChange={handleChange}
+                  placeholder="Eg: 9876543210"
+                  required
+                  value={form.contactNumber}
+                />
               </label>
             </div>
 
@@ -236,37 +573,76 @@ function BusinessDirectoryPage() {
               <span>Are you part of the company's management team?</span>
               <div className="inline-actions">
                 <label>
-                  <input checked={form.isManagementTeam === "yes"} name="isManagementTeam" onChange={handleChange} type="radio" value="yes" /> Yes
+                  <input
+                    checked={form.isManagementTeam === "yes"}
+                    name="isManagementTeam"
+                    onChange={handleChange}
+                    type="radio"
+                    value="yes"
+                  />{" "}
+                  Yes
                 </label>
                 <label>
-                  <input checked={form.isManagementTeam === "no"} name="isManagementTeam" onChange={handleChange} type="radio" value="no" /> No
+                  <input
+                    checked={form.isManagementTeam === "no"}
+                    name="isManagementTeam"
+                    onChange={handleChange}
+                    type="radio"
+                    value="no"
+                  />{" "}
+                  No
                 </label>
               </div>
             </label>
 
             <label className="full">
               <span>Logo</span>
-              <input accept="image/png,image/jpeg,image/jpg" onChange={handleLogoChange} type="file" />
+              <input
+                accept="image/png,image/jpeg,image/jpg"
+                onChange={handleLogoChange}
+                type="file"
+              />
               <small>{logoFileName}</small>
-              <small>Square images of 200x200px look best. Only png, jpg images with max file size 2MB are allowed.</small>
+              <small>
+                Square images of 200x200px look best. Only png, jpg images with
+                max file size 2MB are allowed.
+              </small>
             </label>
 
             <label className="full inline-actions">
-              <input checked={form.termsAccepted} name="termsAccepted" onChange={handleChange} type="checkbox" />
-              <span>I consent and agree to the terms and conditions by applying for this business post.</span>
+              <input
+                checked={form.termsAccepted}
+                name="termsAccepted"
+                onChange={handleChange}
+                type="checkbox"
+              />
+              <span>
+                I consent and agree to the terms and conditions by applying for
+                this business post.
+              </span>
             </label>
 
             <div className="inline-actions">
-              <button className="button primary" disabled={createMutation.isPending} type="submit">
+              <button
+                className="button primary"
+                disabled={createMutation.isPending}
+                type="submit"
+              >
                 {createMutation.isPending ? "Submitting..." : "Submit"}
               </button>
-              <button className="button secondary compact" onClick={() => navigate("/portal/business-directory")} type="button">
+              <button
+                className="button secondary compact"
+                onClick={() => navigate("/portal/business-directory")}
+                type="button"
+              >
                 Cancel
               </button>
             </div>
           </form>
 
-          {createMutation.isError ? <p className="error-text">{createMutation.error.message}</p> : null}
+          {createMutation.isError ? (
+            <p className="error-text">{createMutation.error.message}</p>
+          ) : null}
         </SectionCard>
       </div>
     );
@@ -276,8 +652,13 @@ function BusinessDirectoryPage() {
     <div className="grid gap-6">
       <section className="rounded-[24px] border border-slate-200/70 bg-white/95 p-6 shadow-[0_10px_24px_rgba(20,33,61,0.05)]">
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h1 className="m-0 text-[1.8rem] font-semibold tracking-[-0.03em] text-slate-900">Business Directory</h1>
-          <Link className="button primary compact" to="/portal/business-directory/add">
+          <h1 className="m-0 text-[1.8rem] font-semibold tracking-[-0.03em] text-slate-900">
+            Business Directory
+          </h1>
+          <Link
+            className="button primary compact"
+            to="/portal/business-directory/add"
+          >
             + Add a Business Listing
           </Link>
         </div>
@@ -291,22 +672,40 @@ function BusinessDirectoryPage() {
         />
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <select className="select" onChange={(event) => setIndustryFilter(event.target.value)} value={industryFilter}>
+          <select
+            className="select"
+            onChange={(event) => setIndustryFilter(event.target.value)}
+            value={industryFilter}
+          >
             <option value="">Industries</option>
             {industryOptions.map((industry) => (
-              <option key={industry} value={industry}>{industry}</option>
+              <option key={industry} value={industry}>
+                {industry}
+              </option>
             ))}
           </select>
-          <select className="select" onChange={(event) => setProductFilter(event.target.value)} value={productFilter}>
+          <select
+            className="select"
+            onChange={(event) => setProductFilter(event.target.value)}
+            value={productFilter}
+          >
             <option value="">Products</option>
             {productOptions.map((product) => (
-              <option key={product} value={product}>{product}</option>
+              <option key={product} value={product}>
+                {product}
+              </option>
             ))}
           </select>
-          <select className="select" onChange={(event) => setServiceFilter(event.target.value)} value={serviceFilter}>
+          <select
+            className="select"
+            onChange={(event) => setServiceFilter(event.target.value)}
+            value={serviceFilter}
+          >
             <option value="">Services</option>
             {serviceOptions.map((service) => (
-              <option key={service} value={service}>{service}</option>
+              <option key={service} value={service}>
+                {service}
+              </option>
             ))}
           </select>
           <div className="flex items-center justify-end text-sm font-semibold text-slate-700">
@@ -314,36 +713,72 @@ function BusinessDirectoryPage() {
           </div>
         </div>
 
-        {listingsQuery.isLoading ? <p className="muted">Loading business listings...</p> : null}
-        {listingsQuery.isError ? <p className="error-text">{listingsQuery.error.message}</p> : null}
+        {listingsQuery.isLoading ? (
+          <p className="muted">Loading business listings...</p>
+        ) : null}
+        {listingsQuery.isError ? (
+          <p className="error-text">{listingsQuery.error.message}</p>
+        ) : null}
 
         {!listingsQuery.isLoading && !filteredListings.length ? (
-          <p className="mt-10 text-center text-3xl font-bold tracking-widest text-slate-400">...</p>
+          <p className="mt-10 text-center text-3xl font-bold tracking-widest text-slate-400">
+            ...
+          </p>
         ) : (
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filteredListings.map((item) => (
-              <article className="rounded-[24px] border border-slate-200/70 bg-white p-5 shadow-[0_10px_24px_rgba(20,33,61,0.05)]" key={item._id}>
+              <article
+                className="rounded-[24px] border border-slate-200/70 bg-white p-5 shadow-[0_10px_24px_rgba(20,33,61,0.05)]"
+                key={item._id}
+              >
                 <div className="mb-3 flex items-center gap-3">
                   {item.logoUrl ? (
-                    <img alt={item.businessName} className="h-12 w-12 rounded-lg border border-slate-200 object-cover" src={item.logoUrl} />
+                    <img
+                      alt={item.businessName}
+                      className="h-12 w-12 rounded-lg border border-slate-200 object-cover"
+                      src={item.logoUrl}
+                    />
                   ) : (
-                    <div className="grid h-12 w-12 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-500">LOGO</div>
+                    <div className="grid h-12 w-12 place-items-center rounded-lg border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-500">
+                      LOGO
+                    </div>
                   )}
                   <div>
-                    <h4 className="m-0 text-[1.08rem] font-semibold text-slate-900">{item.businessName}</h4>
-                    <p className="m-0 text-sm text-slate-500">{item.industry || "Industry not specified"}</p>
-                    <p className="m-0 text-xs text-slate-500">{item.product || "-"} | {item.service || "-"}</p>
+                    <h4 className="m-0 text-[1.08rem] font-semibold text-slate-900">
+                      {item.businessName}
+                    </h4>
+                    <p className="m-0 text-sm text-slate-500">
+                      {item.industry || "Industry not specified"}
+                    </p>
+                    <p className="m-0 text-xs text-slate-500">
+                      {item.product || "-"} | {item.service || "-"}
+                    </p>
                   </div>
                 </div>
 
-                <p className="mb-3 text-sm text-slate-700">{item.description}</p>
-                <p className="mb-1 text-xs text-slate-500">Location: {item.location || "Not specified"}</p>
-                <p className="mb-1 text-xs text-slate-500">Contact: {item.contactEmail}</p>
-                <p className="mb-1 text-xs text-slate-500">Phone: {item.contactCountry} {item.contactNumber}</p>
-                <p className="mb-3 text-xs text-slate-500">Management Team: {item.isManagementTeam ? "Yes" : "No"}</p>
+                <p className="mb-3 text-sm text-slate-700">
+                  {item.description}
+                </p>
+                <p className="mb-1 text-xs text-slate-500">
+                  Location: {item.location || "Not specified"}
+                </p>
+                <p className="mb-1 text-xs text-slate-500">
+                  Contact: {item.contactEmail}
+                </p>
+                <p className="mb-1 text-xs text-slate-500">
+                  Phone: {item.contactCountry} {item.contactNumber}
+                </p>
+                <p className="mb-3 text-xs text-slate-500">
+                  Management Team: {item.isManagementTeam ? "Yes" : "No"}
+                </p>
 
                 {item.website ? (
-                  <a className="mb-3 inline-block text-sm font-semibold text-brand-600 hover:underline" href={item.website} rel="noreferrer" target="_blank">
+                  <a
+                    className="mb-3 inline-block text-sm font-semibold text-brand-600 hover:underline"
+                    href={item.website}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
                     Visit Website
                   </a>
                 ) : null}
@@ -364,7 +799,9 @@ function BusinessDirectoryPage() {
           </div>
         )}
 
-        {deleteMutation.isError ? <p className="error-text">{deleteMutation.error.message}</p> : null}
+        {deleteMutation.isError ? (
+          <p className="error-text">{deleteMutation.error.message}</p>
+        ) : null}
       </section>
     </div>
   );

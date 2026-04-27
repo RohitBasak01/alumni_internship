@@ -1,39 +1,95 @@
-import { useState, useMemo, useEffect, useCallback, useRef, useDeferredValue } from "react";
-import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  fetchMentorshipRequests,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+  useDeferredValue,
+} from "react";
+import {
+  useMutation,
+  useQuery,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  fetchAlumniConversations,
   fetchAlumni,
-  updateMentorshipRequest,
-  sendMentorshipMessage,
-  toggleMentorshipMessageReaction,
-  markMentorshipConversationRead,
-  setMentorshipTyping,
-  createGroupConversation,
+  updateAlumniConversationRequest,
+  sendAlumniConversationMessage,
+  toggleAlumniConversationReaction,
+  markAlumniConversationRead,
+  setAlumniConversationTyping,
+  createAlumniConversationGroup,
   leaveGroupConversation,
-  editMentorshipMessage,
-  deleteMentorshipMessage,
+  editAlumniConversationMessage,
+  deleteAlumniConversationMessage,
   updateGroupMemberRole,
   muteGroupMember,
   unmuteGroupMember,
   removeGroupMember,
   uploadMentorshipAttachment,
-  fetchMentorshipMessages,
+  fetchAlumniConversationMessages,
 } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { isEncryptedEnvelope } from "../lib/e2ee.js";
 
-const initialGroupForm = { groupName: "", initialMessage: "", memberUserIds: [] };
+const initialGroupForm = {
+  groupName: "",
+  initialMessage: "",
+  memberUserIds: [],
+};
+
+function upsertConversationMessage(oldData, nextMessage) {
+  if (!oldData) {
+    return { pages: [[nextMessage]], pageParams: [undefined] };
+  }
+
+  const pages = oldData.pages.map((page) =>
+    page.map((message) => {
+      if (String(message._id) === String(nextMessage._id)) {
+        return nextMessage;
+      }
+      if (
+        nextMessage.clientId &&
+        message.clientId &&
+        String(message.clientId) === String(nextMessage.clientId)
+      ) {
+        return nextMessage;
+      }
+      return message;
+    }),
+  );
+
+  const exists = pages.some((page) =>
+    page.some((message) => String(message._id) === String(nextMessage._id)),
+  );
+
+  if (!exists) {
+    const lastPageIdx = pages.length - 1;
+    pages[lastPageIdx] = [...pages[lastPageIdx], nextMessage];
+  }
+
+  return { ...oldData, pages };
+}
 
 export function useMentorship() {
   const auth = useAuth();
   const queryClient = useQueryClient();
+  const invalidateConversationLists = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
+    queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+  }, [queryClient]);
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState(null);
   const [isMobileThreadListOpen, setIsMobileThreadListOpen] = useState(true);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(max-width: 760px)").matches : false
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 760px)").matches
+      : false,
   );
-  const [pendingMessagesByConversation, setPendingMessagesByConversation] = useState({});
+  const [pendingMessagesByConversation, setPendingMessagesByConversation] =
+    useState({});
   const [groupForm, setGroupForm] = useState(initialGroupForm);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const deferredSearch = useDeferredValue(search);
@@ -49,9 +105,14 @@ export function useMentorship() {
     return () => mediaQuery.removeEventListener("change", handle);
   }, []);
 
-  const { data: rawData = [], isLoading, isError, error } = useQuery({
-    queryKey: ["mentorship-requests"],
-    queryFn: fetchMentorshipRequests,
+  const {
+    data: rawData = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["alumni-conversations"],
+    queryFn: fetchAlumniConversations,
     enabled: auth.user?.role === "alumni",
     refetchInterval: 10000,
   });
@@ -59,18 +120,19 @@ export function useMentorship() {
   const { data: alumni = [] } = useQuery({
     queryKey: ["alumni"],
     queryFn: fetchAlumni,
-    enabled: auth.user?.role === "alumni"
+    enabled: auth.user?.role === "alumni",
   });
 
-  const { 
-    data: messagesInfiniteData, 
-    isLoading: isMessagesLoading, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage 
+  const {
+    data: messagesInfiniteData,
+    isLoading: isMessagesLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["mentorship-messages", activeId],
-    queryFn: ({ pageParam }) => fetchMentorshipMessages(activeId, { before: pageParam }),
+    queryKey: ["alumni-conversation-messages", activeId],
+    queryFn: ({ pageParam }) =>
+      fetchAlumniConversationMessages(activeId, { before: pageParam }),
     enabled: !!activeId,
     getNextPageParam: (lastPage) => {
       if (!lastPage || lastPage.length < 50) return undefined;
@@ -80,26 +142,73 @@ export function useMentorship() {
   });
 
   const messagesData = useMemo(() => {
-    return messagesInfiniteData?.pages.flatMap(page => page) || [];
+    return messagesInfiniteData?.pages.flatMap((page) => page) || [];
   }, [messagesInfiniteData]);
 
   const conversations = useMemo(() => {
     return rawData.map((item) => {
-      const latestMessage = item.messages?.[item.messages.length - 1] || null;
+      const latestMessage =
+        item.latestMessage || item.messages?.[item.messages.length - 1] || null;
+      const latestSenderId = latestMessage?.senderId?._id || latestMessage?.senderId || null;
+      const latestSenderName = latestMessage?.senderId?.name || null;
+      const latestReadBy = Array.isArray(latestMessage?.readBy)
+        ? latestMessage.readBy.map((entry) => entry?._id || entry).filter(Boolean)
+        : [];
+      const currentUserId = auth.user?.id ? String(auth.user.id) : null;
+      const latestIsUnread = Boolean(
+        latestMessage &&
+          currentUserId &&
+          String(latestSenderId || "") !== currentUserId &&
+          !latestReadBy.some((entry) => String(entry) === currentUserId),
+      );
+      const unreadCount =
+        activeId === item._id
+          ? messagesData.filter((message) => {
+              const senderId = String(
+                message.sender?._id ||
+                  message.senderId?._id ||
+                  message.senderId ||
+                  "",
+              );
+              if (!senderId || senderId === currentUserId) {
+                return false;
+              }
+              return !Array.isArray(message.readBy)
+                ? true
+                : !message.readBy.some(
+                    (entry) => String(entry?._id || entry) === currentUserId,
+                  );
+            }).length
+          : latestIsUnread
+            ? 1
+            : 0;
       const latestPreview = latestMessage
         ? isEncryptedEnvelope(latestMessage.content)
           ? "Encrypted message"
-          : latestMessage.content?.trim() || (latestMessage.attachments?.length ? "Attachment" : "No messages yet")
+          : latestMessage.content?.trim() ||
+            (latestMessage.attachments?.length
+              ? "Attachment"
+              : "No messages yet")
         : item.message || "No messages yet";
+      const previewText =
+        item.conversationType === "group" && latestSenderName && latestPreview !== "Encrypted message"
+          ? `${latestSenderName}: ${latestPreview}`
+          : latestPreview;
 
       const common = {
         _id: item._id,
-        preview: latestPreview,
+        preview: previewText,
         status: item.status || "active",
-        when: new Date(item.updatedAt || item.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        when: new Date(item.updatedAt || item.createdAt).toLocaleDateString(
+          undefined,
+          { month: "short", day: "numeric" },
+        ),
         messages: activeId === item._id ? messagesData : [],
         createdAt: item.createdAt,
-        e2ee: item.e2ee || { participantKeys: [], envelopes: [] }
+        e2ee: item.e2ee || { participantKeys: [], envelopes: [] },
+        typingMembers: item.typingMembers || [],
+        isUnread: latestIsUnread,
+        unreadCount: Number(item.unreadCount ?? unreadCount ?? 0),
       };
 
       if (item.conversationType === "group") {
@@ -126,63 +235,169 @@ export function useMentorship() {
         mentor: item.mentor,
       };
     });
-  }, [auth.user?.id, rawData]);
+  }, [activeId, auth.user?.id, messagesData, rawData]);
 
   const filteredConversations = useMemo(() => {
     if (!deferredSearch) return conversations;
     const q = deferredSearch.toLowerCase();
-    return conversations.filter(c => 
-      c.name.toLowerCase().includes(q) || 
-      c.preview.toLowerCase().includes(q) ||
-      (c.type === "group" && (c.members || []).some(m => m.name?.toLowerCase().includes(q)))
+    return conversations.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.preview.toLowerCase().includes(q) ||
+        (c.type === "group" &&
+          (c.members || []).some((m) => m.name?.toLowerCase().includes(q))),
     );
   }, [conversations, deferredSearch]);
 
-  const activeConversation = useMemo(() => 
-    filteredConversations.find(c => c._id === activeId) || filteredConversations[0] || null
-  , [filteredConversations, activeId]);
+  const activeConversation = useMemo(
+    () =>
+      filteredConversations.find((c) => c._id === activeId) ||
+      filteredConversations[0] ||
+      null,
+    [filteredConversations, activeId],
+  );
+
+  useEffect(() => {
+    if (!activeId && filteredConversations.length > 0) {
+      setActiveId(filteredConversations[0]._id);
+    }
+  }, [activeId, filteredConversations]);
 
   // Mutations
+  const sendMessageMutation = useMutation({
     mutationFn: ({ id, content, clientId, attachments, replyToMessageId }) =>
-      sendMentorshipMessage(id, { content, clientId, attachments, replyToMessageId }),
+      sendAlumniConversationMessage(id, {
+        content,
+        clientId,
+        attachments,
+        replyToMessageId,
+      }),
     onSuccess: (newMessage, variables) => {
-      queryClient.setQueryData(["mentorship-messages", variables.id], (old) => {
-        if (!old) return { pages: [[newMessage]], pageParams: [undefined] };
-        const lastPageIdx = old.pages.length - 1;
-        const newPages = [...old.pages];
-        newPages[lastPageIdx] = [...newPages[lastPageIdx], newMessage];
-        return { ...old, pages: newPages };
-      });
-      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
-    }
+      queryClient.setQueryData(["alumni-conversation-messages", variables.id], (old) =>
+        upsertConversationMessage(old, newMessage),
+      );
+      invalidateConversationLists();
+    },
   });
 
   const reactionMutation = useMutation({
-    mutationFn: ({ id, messageId, emoji }) => toggleMentorshipMessageReaction(id, messageId, { emoji }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] })
+    mutationFn: ({ id, messageId, emoji }) =>
+      toggleAlumniConversationReaction(id, messageId, { emoji }),
+    onSuccess: (updatedMessage, variables) => {
+      queryClient.setQueryData(["alumni-conversation-messages", variables.id], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) =>
+            page.map((message) =>
+              String(message._id) === String(updatedMessage._id) ? updatedMessage : message,
+            ),
+          ),
+        };
+      });
+      invalidateConversationLists();
+    },
+  });
+
+  const editMessageMutation = useMutation({
+    mutationFn: ({ requestId, messageId, content }) =>
+      editAlumniConversationMessage(requestId, messageId, { content }),
+    onSuccess: (updatedMessage, variables) => {
+      queryClient.setQueryData(["alumni-conversation-messages", variables.requestId], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) =>
+            page.map((message) =>
+              String(message._id) === String(updatedMessage._id) ? updatedMessage : message,
+            ),
+          ),
+        };
+      });
+      invalidateConversationLists();
+    },
+  });
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: ({ requestId, messageId }) => deleteAlumniConversationMessage(requestId, messageId),
+    onSuccess: (updatedMessage, variables) => {
+      queryClient.setQueryData(["alumni-conversation-messages", variables.requestId], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) =>
+            page.map((message) =>
+              String(message._id) === String(updatedMessage._id) ? updatedMessage : message,
+            ),
+          ),
+        };
+      });
+      invalidateConversationLists();
+    },
   });
 
   const markReadMutation = useMutation({
-    mutationFn: markMentorshipConversationRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] })
+    mutationFn: markAlumniConversationRead,
+    onSuccess: () =>
+      invalidateConversationLists(),
   });
 
   const createGroupMutation = useMutation({
-    mutationFn: createGroupConversation,
+    mutationFn: createAlumniConversationGroup,
     onSuccess: (conversation) => {
-      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+      invalidateConversationLists();
       setActiveId(conversation._id);
       if (isMobileViewport) setIsMobileThreadListOpen(false);
       setGroupForm(initialGroupForm);
       setIsCreateGroupOpen(false);
-    }
+    },
+  });
+
+  const updateGroupMemberRoleMutation = useMutation({
+    mutationFn: ({ conversationId, userId, role }) =>
+      updateGroupMemberRole(conversationId, userId, { role }),
+    onSuccess: () => {
+      invalidateConversationLists();
+    },
+  });
+
+  const muteGroupMemberMutation = useMutation({
+    mutationFn: ({ conversationId, userId, muteMinutes }) =>
+      muteGroupMember(conversationId, userId, { muteMinutes }),
+    onSuccess: () => {
+      invalidateConversationLists();
+    },
+  });
+
+  const unmuteGroupMemberMutation = useMutation({
+    mutationFn: ({ conversationId, userId }) =>
+      unmuteGroupMember(conversationId, userId),
+    onSuccess: () => {
+      invalidateConversationLists();
+    },
+  });
+
+  const removeGroupMemberMutation = useMutation({
+    mutationFn: ({ conversationId, userId }) =>
+      removeGroupMember(conversationId, userId),
+    onSuccess: () => {
+      invalidateConversationLists();
+    },
+  });
+
+  const leaveGroupMutation = useMutation({
+    mutationFn: leaveGroupConversation,
+    onSuccess: () => {
+      invalidateConversationLists();
+      setActiveId(null);
+    },
   });
 
   // Helper functions
   const removePendingMessage = useCallback((conversationId, matcher) => {
-    setPendingMessagesByConversation(curr => {
+    setPendingMessagesByConversation((curr) => {
       const pending = curr[conversationId] || [];
-      const updated = pending.filter(m => !matcher(m));
+      const updated = pending.filter((m) => !matcher(m));
       if (!updated.length) {
         const next = { ...curr };
         delete next[conversationId];
@@ -192,13 +407,16 @@ export function useMentorship() {
     });
   }, []);
 
-  const updatePendingMessage = useCallback((conversationId, matcher, updater) => {
-    setPendingMessagesByConversation(curr => {
-      const pending = curr[conversationId] || [];
-      const updated = pending.map(m => matcher(m) ? updater(m) : m);
-      return { ...curr, [conversationId]: updated };
-    });
-  }, []);
+  const updatePendingMessage = useCallback(
+    (conversationId, matcher, updater) => {
+      setPendingMessagesByConversation((curr) => {
+        const pending = curr[conversationId] || [];
+        const updated = pending.map((m) => (matcher(m) ? updater(m) : m));
+        return { ...curr, [conversationId]: updated };
+      });
+    },
+    [],
+  );
 
   return {
     auth,
@@ -224,13 +442,22 @@ export function useMentorship() {
     setPendingMessagesByConversation,
     sendMessageMutation,
     reactionMutation,
+    editMessageMutation,
+    deleteMessageMutation,
     markReadMutation,
     createGroupMutation,
+    updateGroupMemberRoleMutation,
+    muteGroupMemberMutation,
+    unmuteGroupMemberMutation,
+    removeGroupMemberMutation,
+    leaveGroupMutation,
     removePendingMessage,
     updatePendingMessage,
     isMessagesLoading,
     fetchNextPage,
     hasNextPage,
-    isFetchingNextPage
+    isFetchingNextPage,
   };
 }
+
+export const useAlumniConversations = useMentorship;

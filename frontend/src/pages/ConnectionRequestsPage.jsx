@@ -323,7 +323,8 @@ function ConnectionRequestsPage() {
                 disabled={sendRequestMutation.isPending || requestMessage.trim().length < 10}
                 onClick={() =>
                   sendRequestMutation.mutate({
-                    mentorUserId: selectedForRequest.userId?._id || selectedForRequest.userId,
+                    recipientUserId:
+                      selectedForRequest.userId?._id || selectedForRequest.userId,
                     message: requestMessage
                   })
                 }

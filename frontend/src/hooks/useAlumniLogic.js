@@ -13,14 +13,30 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 
 const initialInviteForm = {
-  name: "", email: "", batch: "", department: "", leavingYear: "", 
-  lastClassAttended: "", section: "", currentEducation: "", 
-  currentInstitution: "", occupation: "", company: "", designation: "", location: ""
+  name: "",
+  email: "",
+  batch: "",
+  department: "",
+  leavingYear: "",
+  lastClassAttended: "",
+  section: "",
+  currentEducation: "",
+  currentInstitution: "",
+  occupation: "",
+  company: "",
+  designation: "",
+  location: "",
 };
 
 const initialFilters = {
-  q: "", batch: "", department: "", leavingYear: "", 
-  lastClassAttended: "", section: "", company: "", skill: ""
+  q: "",
+  batch: "",
+  department: "",
+  leavingYear: "",
+  lastClassAttended: "",
+  section: "",
+  company: "",
+  skill: "",
 };
 
 export function useAlumniLogic() {
@@ -34,15 +50,24 @@ export function useAlumniLogic() {
   const [mentorshipMessages, setMentorshipMessages] = useState({});
   const deferredSearch = useDeferredValue(filters.q);
 
-  const appliedFilters = useMemo(() => ({
-    ...filters, q: deferredSearch
-  }), [filters, deferredSearch]);
+  const appliedFilters = useMemo(
+    () => ({
+      ...filters,
+      q: deferredSearch,
+    }),
+    [filters, deferredSearch],
+  );
 
   const alumniQuery = useQuery({
     queryKey: ["alumni", appliedFilters],
-    queryFn: () => fetchAlumni(Object.fromEntries(
-      Object.entries(appliedFilters).filter(([, v]) => String(v || "").trim() !== "")
-    ))
+    queryFn: () =>
+      fetchAlumni(
+        Object.fromEntries(
+          Object.entries(appliedFilters).filter(
+            ([, v]) => String(v || "").trim() !== "",
+          ),
+        ),
+      ),
   });
 
   const inviteMutation = useMutation({
@@ -51,26 +76,33 @@ export function useAlumniLogic() {
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
       setInviteForm(initialInviteForm);
       setIsInvitePanelOpen(false);
-    }
+    },
   });
 
   const approveMutation = useMutation({
     mutationFn: approveAlumniRegistration,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] }),
   });
 
   const mentorshipMutation = useMutation({
     mutationFn: createMentorshipRequest,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] })
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] }),
   });
 
   const isAdmin = auth.user?.role === "institute_admin";
   const selfUserId = auth.user?.id || auth.user?._id;
   const data = alumniQuery.data || [];
-  
-  const directoryEntries = useMemo(() => 
-    isAdmin ? data : data.filter(item => (item.userId?._id || item.userId) !== selfUserId)
-  , [data, isAdmin, selfUserId]);
+
+  const directoryEntries = useMemo(
+    () =>
+      isAdmin
+        ? data
+        : data.filter(
+            (item) => (item.userId?._id || item.userId) !== selfUserId,
+          ),
+    [data, isAdmin, selfUserId],
+  );
 
   return {
     auth,
@@ -91,13 +123,31 @@ export function useAlumniLogic() {
       invite: inviteMutation,
       approve: approveMutation,
       mentorship: mentorshipMutation,
-      resend: useMutation({ mutationFn: resendAlumniInvite, onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] }) }),
-      revoke: useMutation({ mutationFn: ({ profileId, rejectionReason }) => revokeAlumniInvite(profileId, { rejectionReason }), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] }) }),
+      resend: useMutation({
+        mutationFn: resendAlumniInvite,
+        onSuccess: () =>
+          queryClient.invalidateQueries({ queryKey: ["alumni"] }),
+      }),
+      revoke: useMutation({
+        mutationFn: ({ profileId, rejectionReason }) =>
+          revokeAlumniInvite(profileId, { rejectionReason }),
+        onSuccess: () =>
+          queryClient.invalidateQueries({ queryKey: ["alumni"] }),
+      }),
     },
     derived: {
       directoryEntries,
-      pendingApprovals: data.filter(item => (item.registrationReviewStatus || "pending") === "pending"),
-      activeMembers: directoryEntries.filter(item => item.isActive),
-    }
+      pendingApprovals: data.filter(
+        (item) => (item.registrationReviewStatus || "pending") === "pending",
+      ),
+      activeMembers: directoryEntries.filter((item) => {
+        const userStatus = item?.userId?.isActive;
+        if (typeof userStatus === "boolean") {
+          return userStatus;
+        }
+
+        return Boolean(item?.isActive);
+      }),
+    },
   };
 }

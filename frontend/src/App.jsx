@@ -8,15 +8,23 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 const AlumniProfilePage = lazy(() => import("./pages/AlumniProfilePage.jsx"));
 const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage.jsx"));
-const BusinessDirectoryPage = lazy(() => import("./pages/BusinessDirectoryPage.jsx"));
-const CommunityGroupsPage = lazy(() => import("./pages/CommunityGroupsPage.jsx"));
-const ConnectionRequestsPage = lazy(() => import("./pages/ConnectionRequestsPage.jsx"));
+const BusinessDirectoryPage = lazy(
+  () => import("./pages/BusinessDirectoryPage.jsx"),
+);
+const CommunityGroupsPage = lazy(
+  () => import("./pages/CommunityGroupsPage.jsx"),
+);
+const ConnectionRequestsPage = lazy(
+  () => import("./pages/ConnectionRequestsPage.jsx"),
+);
 const CreateEventPage = lazy(() => import("./pages/CreateEventPage.jsx"));
 const EventsPage = lazy(() => import("./pages/EventsPage.jsx"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage.jsx"));
 const GalleryPage = lazy(() => import("./pages/GalleryPage.jsx"));
 const HomePage = lazy(() => import("./pages/HomePage.jsx"));
-const InstitutionSettingsPage = lazy(() => import("./pages/InstitutionSettingsPage.jsx"));
+const InstitutionSettingsPage = lazy(
+  () => import("./pages/InstitutionSettingsPage.jsx"),
+);
 const JobsPage = lazy(() => import("./pages/JobsPage.jsx"));
 const LegalPage = lazy(() => import("./pages/LegalPage.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
@@ -28,7 +36,9 @@ const RegisterPage = lazy(() => import("./pages/RegisterPage.jsx"));
 const SetupPasswordPage = lazy(() => import("./pages/SetupPasswordPage.jsx"));
 const SuperAdminPage = lazy(() => import("./pages/SuperAdminPage.jsx"));
 const TenantAlumniPage = lazy(() => import("./pages/TenantAlumniPage.jsx"));
-const TenantDashboardPage = lazy(() => import("./pages/TenantDashboardPage.jsx"));
+const TenantDashboardPage = lazy(
+  () => import("./pages/TenantDashboardPage.jsx"),
+);
 
 function App() {
   return (
@@ -40,7 +50,10 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/setup-password/:token" element={<SetupPasswordPage />} />
+          <Route
+            path="/setup-password/:token"
+            element={<SetupPasswordPage />}
+          />
           <Route path="/legal/:type" element={<LegalPage />} />
           <Route
             path="/super-admin"
@@ -53,19 +66,33 @@ function App() {
           <Route
             path="/portal/*"
             element={
-              <ProtectedRoute allow={(user) => user?.role === "institute_admin" || user?.role === "alumni"}>
+              <ProtectedRoute
+                allow={(user) =>
+                  user?.role === "institute_admin" || user?.role === "alumni"
+                }
+              >
                 <DashboardLayout />
               </ProtectedRoute>
             }
           >
             <Route index element={<TenantDashboardPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="announcements" element={<Navigate replace to="/portal/newsroom" />} />
+            <Route
+              path="announcements"
+              element={<Navigate replace to="/portal/newsroom" />}
+            />
             <Route path="newsroom" element={<NewsroomPage />} />
             <Route path="settings" element={<InstitutionSettingsPage />} />
             <Route path="alumni" element={<TenantAlumniPage />} />
-            <Route path="approvals" element={<Navigate replace to="/portal/alumni" />} />
-            <Route path="mentorship" element={<MentorshipPage />} />
+            <Route
+              path="approvals"
+              element={<Navigate replace to="/portal/alumni" />}
+            />
+            <Route path="messages" element={<MentorshipPage />} />
+            <Route
+              path="mentorship"
+              element={<Navigate replace to="/portal/messages" />}
+            />
             <Route path="connections" element={<ConnectionRequestsPage />} />
             <Route path="groups" element={<CommunityGroupsPage />} />
             <Route path="profile" element={<AlumniProfilePage />} />
@@ -73,8 +100,14 @@ function App() {
             <Route path="events/create" element={<CreateEventPage />} />
             <Route path="jobs" element={<JobsPage />} />
             <Route path="gallery" element={<GalleryPage />} />
-            <Route path="business-directory" element={<BusinessDirectoryPage />} />
-            <Route path="business-directory/add" element={<BusinessDirectoryPage />} />
+            <Route
+              path="business-directory"
+              element={<BusinessDirectoryPage />}
+            />
+            <Route
+              path="business-directory/add"
+              element={<BusinessDirectoryPage />}
+            />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

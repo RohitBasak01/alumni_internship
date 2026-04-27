@@ -21,29 +21,52 @@ export function useMentorshipSocket(auth, conversations) {
 
     socket.on("connect", () => setIsRealtimeConnected(true));
     socket.on("disconnect", () => setIsRealtimeConnected(false));
+    const upsertMessage = (conversationId, nextMessage) => {
+      if (!conversationId || !nextMessage?._id) return;
+      queryClient.setQueryData(["alumni-conversation-messages", conversationId], (old) => {
+        if (!old) return old;
+        const newPages = old.pages.map((page) =>
+          page.map((message) => {
+            if (message._id === nextMessage._id) {
+              return nextMessage;
+            }
+            if (
+              nextMessage.clientId &&
+              message.clientId &&
+              String(message.clientId) === String(nextMessage.clientId)
+            ) {
+              return nextMessage;
+            }
+            return message;
+          }),
+        );
+        const lastPageIdx = newPages.length - 1;
+        const alreadyExists = newPages.some((page) =>
+          page.some((message) => String(message._id) === String(nextMessage._id)),
+        );
+
+        if (!alreadyExists && lastPageIdx >= 0) {
+          newPages[lastPageIdx] = [...newPages[lastPageIdx], nextMessage];
+        }
+
+        return { ...old, pages: newPages };
+      });
+    };
+
     socket.on("mentorship:message", (payload = {}) => {
       const conversationId = String(payload?.conversationId || "").trim();
       if (!conversationId) return;
-
-      queryClient.setQueryData(["mentorship-messages", conversationId], (old) => {
-        if (!old) return old;
-        const lastPageIdx = old.pages.length - 1;
-        const newPages = [...old.pages];
-        // Only append if it doesn't already exist (avoid duplicates from sender's mutation)
-        if (!newPages[lastPageIdx].some(m => m._id === payload.message?._id)) {
-          newPages[lastPageIdx] = [...newPages[lastPageIdx], payload.message];
-        }
-        return { ...old, pages: newPages };
-      });
-      
+      upsertMessage(conversationId, payload.message);
+      queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
       queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
     });
 
     socket.on("mentorship:update", (payload = {}) => {
       const conversationId = String(payload?.conversationId || "").trim();
-      // Only invalidate if it's a conversation we know about
-      const knownIds = new Set(conversations.map(c => String(c._id)));
-      if (conversationId && !knownIds.has(conversationId)) return;
+      if (payload?.type === "message" && payload?.message) {
+        upsertMessage(conversationId, payload.message);
+      }
+      queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
       queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
     });
 
@@ -77,3 +100,5 @@ export function useMentorshipSocket(auth, conversations) {
 
   return { isRealtimeConnected, socket: socketRef.current };
 }
+
+export const useAlumniConversationSocket = useMentorshipSocket;

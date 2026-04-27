@@ -7,136 +7,151 @@ const alumniProfileSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Institute",
       required: true,
-      index: true
+      index: true,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
     gender: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     dateOfBirth: {
       type: Date,
-      default: null
+      default: null,
     },
     mobileNumber: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     authProvider: {
       type: String,
       enum: ["google", "linkedin", "email", ""],
-      default: ""
-    },    batch: {
+      default: "",
+    },
+    batch: {
       type: Number,
-      default: null
+      default: null,
     },
     department: {
       type: String,
       default: "",
-      trim: true
+      trim: true,
     },
     leavingYear: {
       type: Number,
-      default: null
+      default: null,
     },
     lastClassAttended: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     section: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     currentEducation: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     currentInstitution: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     occupation: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     company: {
       type: String,
-      trim: true
+      trim: true,
     },
     designation: {
       type: String,
-      trim: true
+      trim: true,
     },
     location: {
       type: String,
-      trim: true
+      trim: true,
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    state: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: "",
     },
     industry: {
       type: String,
-      trim: true
+      trim: true,
     },
     bio: {
       type: String,
-      trim: true
+      trim: true,
     },
     skills: [String],
     linkedinUrl: {
       type: String,
-      trim: true
+      trim: true,
     },
     websiteUrl: {
       type: String,
-      trim: true
+      trim: true,
     },
     twitterHandle: {
       type: String,
-      trim: true
+      trim: true,
     },
     profileVisibility: {
       type: String,
       enum: ["public", "institute_only", "private"],
-      default: "institute_only"
+      default: "institute_only",
     },
     showEmail: {
       type: Boolean,
-      default: false
+      default: false,
     },
     allowMentorRequests: {
       type: Boolean,
-      default: true
+      default: true,
     },
     registrationReviewStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
-      default: "pending"
+      default: "pending",
     },
     registrationRejectedReason: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     registrationReviewedAt: {
       type: Date,
-      default: null
-    }
+      default: null,
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 alumniProfileSchema.plugin(softDeletePlugin);
 
 export default mongoose.model("AlumniProfile", alumniProfileSchema);
-

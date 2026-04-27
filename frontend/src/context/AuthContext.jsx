@@ -12,12 +12,20 @@ export function AuthProvider({ children }) {
     queryKey: ["current-user"],
     queryFn: fetchCurrentUser,
     enabled: !sessionDisabled,
-    retry: false
+    retry: false,
   });
 
   const sessionErrorStatus = sessionQuery.error?.response?.status || null;
+  const isUnauthorizedSessionError =
+    Boolean(sessionQuery.error) &&
+    (sessionErrorStatus === 401 || sessionErrorStatus === 403);
+  const currentUser = isUnauthorizedSessionError
+    ? null
+    : sessionQuery.data || null;
   const hasRecoverableSessionError =
-    Boolean(sessionQuery.error) && sessionErrorStatus !== 401 && sessionErrorStatus !== 403;
+    Boolean(sessionQuery.error) &&
+    sessionErrorStatus !== 401 &&
+    sessionErrorStatus !== 403;
 
   function login(user) {
     setSessionDisabled(false);
@@ -45,14 +53,14 @@ export function AuthProvider({ children }) {
   }
 
   const value = {
-    user: sessionQuery.data || null,
-    isAuthenticated: Boolean(sessionQuery.data),
+    user: currentUser,
+    isAuthenticated: Boolean(currentUser),
     isLoading: sessionQuery.isLoading,
     sessionError: hasRecoverableSessionError ? sessionQuery.error : null,
     login,
     logout,
     refreshSession,
-    clearSession
+    clearSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

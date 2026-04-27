@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
 
-import { attachTenantDatabaseContext, getTenantModels } from "../db/tenantConnectionManager.js";
+import {
+  attachTenantDatabaseContext,
+  getTenantModels,
+} from "../db/tenantConnectionManager.js";
 import Institute from "../models/Institute.js";
 import User from "../models/User.js";
 import { AUTH_COOKIE_NAME, getJwtSecret } from "../utils/auth.js";
@@ -10,9 +13,7 @@ export async function protect(req, _res, next) {
     const authHeader = req.headers.authorization;
     const token =
       req.cookies?.[AUTH_COOKIE_NAME] ||
-      (authHeader?.startsWith("Bearer ")
-        ? authHeader.split(" ")[1]
-        : null);
+      (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null);
 
     if (!token) {
       const error = new Error("Authentication required");
@@ -38,8 +39,27 @@ export async function protect(req, _res, next) {
         .select("-passwordHash")
         .populate("instituteId", "name status subdomain domain");
     } else {
-      const TenantUser = getTenantModels(req).User;
+      let TenantUser = getTenantModels(req).User;
       user = await TenantUser.findById(decoded.userId).select("-passwordHash");
+
+      // If tenant hint/header is stale, fall back to tenant from JWT claims.
+      if (
+        !user &&
+        decoded.instituteId &&
+        (!institute ||
+          institute._id?.toString?.() !== String(decoded.instituteId))
+      ) {
+        const tokenInstitute = await Institute.findById(decoded.instituteId);
+        if (tokenInstitute) {
+          req.tenant = tokenInstitute;
+          institute = tokenInstitute;
+          await attachTenantDatabaseContext(req, tokenInstitute);
+          TenantUser = getTenantModels(req).User;
+          user = await TenantUser.findById(decoded.userId).select(
+            "-passwordHash",
+          );
+        }
+      }
 
       if (user && institute) {
         user.instituteId = institute;
@@ -91,7 +111,9 @@ export async function protect(req, _res, next) {
 export function authorize(...roles) {
   return (req, _res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      const error = new Error("You do not have permission to access this resource");
+      const error = new Error(
+        "You do not have permission to access this resource",
+      );
       error.statusCode = 403;
       return next(error);
     }
@@ -104,10 +126,9 @@ export async function requireTenantAccess(req, _res, next) {
   try {
     if (!req.tenant && req.user?.instituteId) {
       const instituteId = req.user.instituteId?._id || req.user.instituteId;
-      const institute =
-        req.user.instituteId?.status
-          ? req.user.instituteId
-          : await Institute.findById(instituteId);
+      const institute = req.user.instituteId?.status
+        ? req.user.instituteId
+        : await Institute.findById(instituteId);
 
       if (institute) {
         req.tenant = institute;
@@ -125,7 +146,9 @@ export async function requireTenantAccess(req, _res, next) {
       return next();
     }
 
-    const userInstituteId = req.user.instituteId?._id?.toString?.() || req.user.instituteId?.toString?.();
+    const userInstituteId =
+      req.user.instituteId?._id?.toString?.() ||
+      req.user.instituteId?.toString?.();
 
     if (!userInstituteId || userInstituteId !== req.tenant._id.toString()) {
       const error = new Error("Tenant access denied");

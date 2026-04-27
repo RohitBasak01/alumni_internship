@@ -25,6 +25,40 @@ const api = axios.create({
   withCredentials: true,
 });
 
+let csrfWarmupPromise = null;
+
+function readCsrfTokenFromCookie() {
+  if (typeof document === "undefined") {
+    return "";
+  }
+
+  return (
+    document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("csrfToken="))
+      ?.split("=")[1] || ""
+  );
+}
+
+async function ensureCsrfTokenCookie() {
+  const existingToken = readCsrfTokenFromCookie();
+  if (existingToken) {
+    return existingToken;
+  }
+
+  if (!csrfWarmupPromise) {
+    csrfWarmupPromise = api
+      .get("/auth/oauth/session")
+      .catch(() => null)
+      .finally(() => {
+        csrfWarmupPromise = null;
+      });
+  }
+
+  await csrfWarmupPromise;
+  return readCsrfTokenFromCookie();
+}
+
 function getConfiguredTenantContext() {
   const browserHost =
     typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
@@ -76,7 +110,9 @@ function getConfiguredTenantContext() {
 }
 
 function isLocalHost(hostname) {
-  const normalizedHost = String(hostname || "").trim().toLowerCase();
+  const normalizedHost = String(hostname || "")
+    .trim()
+    .toLowerCase();
   return normalizedHost === "localhost" || normalizedHost === "127.0.0.1";
 }
 
@@ -103,24 +139,25 @@ export function resolveApiAssetUrl(assetUrl) {
   return `${getApiOrigin()}/${value}`;
 }
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const { tenantSubdomain, tenantDomain } = getConfiguredTenantContext();
   const baseUrl = String(config.baseURL || api.defaults.baseURL || "");
   const isLocalApi = /localhost|127\.0\.0\.1/i.test(baseUrl);
+  const method = String(config.method || "get").toUpperCase();
+  const isSafeMethod =
+    method === "GET" || method === "HEAD" || method === "OPTIONS";
 
   if (!config.headers) {
     config.headers = {};
   }
 
-  // Handle CSRF Token
-  if (typeof document !== "undefined") {
-    const csrfToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("csrfToken="))
-      ?.split("=")[1];
-    if (csrfToken) {
-      config.headers["x-csrf-token"] = csrfToken;
-    }
+  let csrfToken = readCsrfTokenFromCookie();
+  if (!isSafeMethod && !csrfToken) {
+    csrfToken = await ensureCsrfTokenCookie();
+  }
+
+  if (csrfToken) {
+    config.headers["x-csrf-token"] = csrfToken;
   }
 
   if (isLocalApi && tenantSubdomain) {
@@ -155,8 +192,12 @@ api.interceptors.response.use(
 
 export function buildTenantPortalUrl(institute, path = "/login") {
   const targetPath = path.startsWith("/") ? path : `/${path}`;
-  const normalizedDomain = String(institute?.domain || "").trim().toLowerCase();
-  const normalizedSubdomain = String(institute?.subdomain || "").trim().toLowerCase();
+  const normalizedDomain = String(institute?.domain || "")
+    .trim()
+    .toLowerCase();
+  const normalizedSubdomain = String(institute?.subdomain || "")
+    .trim()
+    .toLowerCase();
 
   if (typeof window !== "undefined") {
     const currentUrl = new URL(window.location.href);
@@ -193,8 +234,12 @@ export function redirectToTenantPortal(institute, path = "/login") {
     return false;
   }
 
-  const normalizedDomain = String(institute?.domain || "").trim().toLowerCase();
-  const normalizedSubdomain = String(institute?.subdomain || "").trim().toLowerCase();
+  const normalizedDomain = String(institute?.domain || "")
+    .trim()
+    .toLowerCase();
+  const normalizedSubdomain = String(institute?.subdomain || "")
+    .trim()
+    .toLowerCase();
 
   if (normalizedSubdomain) {
     window.localStorage.setItem("tenantSubdomain", normalizedSubdomain);
@@ -262,9 +307,95 @@ export async function submitPortalOnboarding(payload) {
   return data;
 }
 
+async function readLocationApiResponse(response) {
+  let payload = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.msg || "Failed to fetch location data");
+  }
+
+  if (payload?.error) {
+    throw new Error(payload?.msg || "Location service returned an error");
+  }
+
+  return payload?.data;
+}
+
+export async function fetchCountries() {
+  const response = await fetch(
+    "https://countriesnow.space/api/v0.1/countries/positions",
+  );
+  const data = await readLocationApiResponse(response);
+  const list = Array.isArray(data) ? data : [];
+
+  return list
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export async function fetchStatesByCountry(country) {
+  if (!country) {
+    return [];
+  }
+
+  const response = await fetch(
+    "https://countriesnow.space/api/v0.1/countries/states",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country }),
+    },
+  );
+
+  const data = await readLocationApiResponse(response);
+  const states = Array.isArray(data?.states) ? data.states : [];
+
+  return states
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export async function fetchCitiesByState(country, state) {
+  if (!country || !state) {
+    return [];
+  }
+
+  const response = await fetch(
+    "https://countriesnow.space/api/v0.1/countries/state/cities",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country, state }),
+    },
+  );
+
+  const data = await readLocationApiResponse(response);
+  const list = Array.isArray(data) ? data : [];
+
+  return list
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+}
+
 export async function login(payload) {
   const { data } = await api.post("/auth/login", payload);
-  return data;
+  if (data?.user) {
+    return data;
+  }
+
+  return {
+    ...data,
+    user: data,
+  };
 }
 
 export async function logout() {
@@ -383,7 +514,10 @@ export async function copyAlumniInviteLink(profileId) {
 }
 
 export async function revokeAlumniInvite(profileId, payload = {}) {
-  const { data } = await api.post(`/alumni/${profileId}/revoke-invite`, payload);
+  const { data } = await api.post(
+    `/alumni/${profileId}/revoke-invite`,
+    payload,
+  );
   return data;
 }
 
@@ -621,13 +755,23 @@ export async function updateMentorshipRequest(id, payload) {
   return data;
 }
 
+export const updateAlumniConversationRequest = updateMentorshipRequest;
+
 export function sendMentorshipMessage(id, payload) {
-  return api.post(`/mentorship/${id}/messages`, payload).then((res) => res.data);
+  return api
+    .post(`/mentorship/${id}/messages`, payload)
+    .then((res) => res.data);
 }
 
+export const sendAlumniConversationMessage = sendMentorshipMessage;
+
 export function fetchMentorshipMessages(id, params = {}) {
-  return api.get(`/mentorship/${id}/messages`, { params }).then((res) => res.data);
+  return api
+    .get(`/mentorship/${id}/messages`, { params })
+    .then((res) => res.data);
 }
+
+export const fetchAlumniConversationMessages = fetchMentorshipMessages;
 
 export async function upsertMentorshipE2eePublicKey(payload) {
   const { data } = await api.put("/mentorship/e2ee/public-key", payload);
@@ -639,12 +783,16 @@ export async function syncMentorshipConversationEnvelopes(id, payload) {
   return data;
 }
 
-export async function uploadMentorshipAttachment(file) {
+export async function uploadMentorshipAttachment(file, options = {}) {
   const formData = new FormData();
   formData.append("file", file);
   const { data } = await api.post("/mentorship/uploads", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
+    },
+    onUploadProgress: (event) => {
+      if (!options.onUploadProgress || !event.total) return;
+      options.onUploadProgress(Math.round((event.loaded / event.total) * 100));
     },
   });
   return data;
@@ -655,10 +803,14 @@ export async function markMentorshipConversationRead(id) {
   return data;
 }
 
+export const markAlumniConversationRead = markMentorshipConversationRead;
+
 export async function setMentorshipTyping(id, payload) {
   const { data } = await api.post(`/mentorship/${id}/typing`, payload);
   return data;
 }
+
+export const setAlumniConversationTyping = setMentorshipTyping;
 
 export async function editMentorshipMessage(requestId, messageId, payload) {
   const { data } = await api.patch(
@@ -668,12 +820,16 @@ export async function editMentorshipMessage(requestId, messageId, payload) {
   return data;
 }
 
+export const editAlumniConversationMessage = editMentorshipMessage;
+
 export async function deleteMentorshipMessage(requestId, messageId) {
   const { data } = await api.delete(
     `/mentorship/${requestId}/messages/${messageId}`,
   );
   return data;
 }
+
+export const deleteAlumniConversationMessage = deleteMentorshipMessage;
 
 export async function toggleMentorshipMessageReaction(
   requestId,
@@ -686,6 +842,8 @@ export async function toggleMentorshipMessageReaction(
   );
   return data;
 }
+
+export const toggleAlumniConversationReaction = toggleMentorshipMessageReaction;
 
 export async function updateGroupMemberRole(requestId, userId, payload) {
   const { data } = await api.patch(
@@ -726,12 +884,18 @@ export async function fetchMentorshipRequests() {
   return data;
 }
 
+export const fetchAlumniConversations = fetchMentorshipRequests;
+
 export async function createMentorshipRequest(payload) {
   const { data } = await api.post("/mentorship", payload);
   return data;
 }
 
+export const createAlumniConversationRequest = createMentorshipRequest;
+
 export async function createGroupConversation(payload) {
   const { data } = await api.post("/mentorship/groups", payload);
   return data;
 }
+
+export const createAlumniConversationGroup = createGroupConversation;

@@ -44,6 +44,7 @@ export function useMentorshipE2EE(auth, activeConversation) {
           algorithm: "RSA-OAEP"
         });
 
+        await queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
         await queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
       } catch (err) {
         if (!isCancelled) setError("Unable to initialize secure messaging keys.");
@@ -127,6 +128,7 @@ export function useMentorshipE2EE(auth, activeConversation) {
             }
             if (envelopes.length) {
               await syncMentorshipConversationEnvelopes(conversationId, { envelopes });
+              await queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
               await queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
             }
           }
@@ -202,3 +204,5 @@ export function useMentorshipE2EE(auth, activeConversation) {
     verifySecret,
   };
 }
+
+export const useAlumniConversationE2EE = useMentorshipE2EE;

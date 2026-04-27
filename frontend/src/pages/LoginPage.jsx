@@ -85,18 +85,30 @@ function LoginPage() {
     queryFn: fetchPublicInstitutes,
     enabled: true,
   });
-  const emailDomain = String(form.email || "").split("@")[1]?.trim().toLowerCase() || "";
+  const emailDomain =
+    String(form.email || "")
+      .split("@")[1]
+      ?.trim()
+      .toLowerCase() || "";
   const suggestedInstitute = !tenant.isTenant
     ? (publicInstitutesQuery.data || []).find((item) => {
-        const itemSubdomain = String(item?.subdomain || "").trim().toLowerCase();
-        const itemDomain = String(item?.domain || "").trim().toLowerCase();
+        const itemSubdomain = String(item?.subdomain || "")
+          .trim()
+          .toLowerCase();
+        const itemDomain = String(item?.domain || "")
+          .trim()
+          .toLowerCase();
         if (!emailDomain) {
           return false;
         }
         if (itemSubdomain && emailDomain.includes(itemSubdomain)) {
           return true;
         }
-        if (itemDomain && (itemDomain.includes(emailDomain) || emailDomain.includes(itemDomain.replace(/^alumni\./, "")))) {
+        if (
+          itemDomain &&
+          (itemDomain.includes(emailDomain) ||
+            emailDomain.includes(itemDomain.replace(/^alumni\./, "")))
+        ) {
           return true;
         }
         return false;
@@ -106,16 +118,33 @@ function LoginPage() {
   const demoAccounts = tenant.isTenant
     ? allDemoAccounts.filter(
         (account) =>
-          String(account.tenantSubdomain || "").trim().toLowerCase() ===
-          String(tenantProfile?.subdomain || tenant.slug || "").trim().toLowerCase(),
+          String(account.tenantSubdomain || "")
+            .trim()
+            .toLowerCase() ===
+          String(tenantProfile?.subdomain || tenant.slug || "")
+            .trim()
+            .toLowerCase(),
       )
     : allDemoAccounts;
   const redirectTo =
     location.state?.from?.pathname ||
     (auth.user?.role === "super_admin" ? "/super-admin" : "/portal");
   const oauthError = searchParams.get("error");
-  const tenantStatus = tenantProfileQuery.error?.data?.details?.portalStatus || null;
-  const tenantName = tenantProfileQuery.error?.data?.details?.instituteName || "";
+  const tenantStatus =
+    tenantProfileQuery.error?.data?.details?.portalStatus || null;
+  const tenantName =
+    tenantProfileQuery.error?.data?.details?.instituteName || "";
+
+  const mutation = useMutation({
+    mutationFn: login,
+    onSuccess: (data) => {
+      auth.login(data.user);
+      navigate(
+        location.state?.from?.pathname ||
+          (data.user.role === "super_admin" ? "/super-admin" : "/portal"),
+      );
+    },
+  });
 
   if (auth.isAuthenticated) {
     return <Navigate replace to={redirectTo} />;
@@ -130,17 +159,6 @@ function LoginPage() {
       />
     );
   }
-
-  const mutation = useMutation({
-    mutationFn: login,
-    onSuccess: (data) => {
-      auth.login(data.user);
-      navigate(
-        location.state?.from?.pathname ||
-          (data.user.role === "super_admin" ? "/super-admin" : "/portal"),
-      );
-    },
-  });
 
   function handleChange(event) {
     const { name, value, type, checked } = event.target;
@@ -357,7 +375,9 @@ function LoginPage() {
                 Looks like you belong to {suggestedInstitute.name}.{" "}
                 <button
                   className="auth-inline-button"
-                  onClick={() => redirectToTenantPortal(suggestedInstitute, "/login")}
+                  onClick={() =>
+                    redirectToTenantPortal(suggestedInstitute, "/login")
+                  }
                   type="button"
                 >
                   Open institution portal

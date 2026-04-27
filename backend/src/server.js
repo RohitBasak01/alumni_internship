@@ -108,11 +108,17 @@ app.locals.emitMentorshipEvent = (payload) => {
   if (scopedConversationIds.length) {
     for (const conversationId of scopedConversationIds) {
       io.to(toConversationRoom(conversationId)).emit("mentorship:update", eventPayload);
+      if (eventPayload.type === "message" && eventPayload.message) {
+        io.to(toConversationRoom(conversationId)).emit("mentorship:message", eventPayload);
+      }
     }
     return;
   }
 
   io.emit("mentorship:update", eventPayload);
+  if (eventPayload.type === "message" && eventPayload.message) {
+    io.emit("mentorship:message", eventPayload);
+  }
 };
 
 io.on("connection", (socket) => {

@@ -11,6 +11,8 @@ export function MentorshipComposer({
   attachmentInputRef,
   replyToMessage,
   clearReplyToMessage,
+  editingMessage,
+  cancelEditingMessage,
   isQuickMenuOpen,
   setIsQuickMenuOpen,
   isEmojiPickerOpen,
@@ -22,28 +24,67 @@ export function MentorshipComposer({
 }) {
   return (
     <div className="member-message-composer-wrap">
-      {replyToMessage && (
-        <div className="member-compose-reply">
+      {editingMessage ? (
+        <div className="member-compose-reply mode-editing">
           <div className="member-compose-reply-copy">
-            <span>Replying to <strong>{replyToMessage.senderName}</strong></span>
-            <p>{replyToMessage.content}</p>
+            <span>
+              Editing{" "}
+              <strong>{editingMessage.sender?.name || "message"}</strong>
+            </span>
+            <p>{draftMessage || "Update the message and send when ready."}</p>
           </div>
-          <button className="member-message-action icon-only" onClick={clearReplyToMessage} type="button">
+          <button
+            className="member-compose-reply-dismiss"
+            onClick={cancelEditingMessage}
+            aria-label="Cancel edit"
+            title="Cancel edit"
+            type="button"
+          >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-      )}
+      ) : null}
 
-      {composerAttachments.length > 0 && (
+      {replyToMessage ? (
+        <div className="member-compose-reply">
+          <div className="member-compose-reply-copy">
+            <span>
+              Replying to <strong>{replyToMessage.senderName}</strong>
+            </span>
+            <p>{replyToMessage.content}</p>
+          </div>
+          <button
+            className="member-compose-reply-dismiss"
+            onClick={clearReplyToMessage}
+            aria-label="Back out"
+            title="Back out"
+            type="button"
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      ) : null}
+
+      {composerAttachments.length > 0 ? (
         <div className="member-compose-attachments">
           {composerAttachments.map((file) => (
             <div key={file.id} className="member-compose-attachment">
-              <span className="material-symbols-outlined">
-                {file.isImage ? "image" : "description"}
-              </span>
+              {file.isImage ? (
+                <img
+                  alt={file.name}
+                  className="member-compose-attachment-thumb"
+                  src={file.previewUrl || file.url}
+                />
+              ) : (
+                <span className="material-symbols-outlined">description</span>
+              )}
               <div className="member-compose-attachment-copy">
                 <strong>{file.name}</strong>
-                <small>{(file.size / 1024).toFixed(1)} KB</small>
+                <small>
+                  {file.isUploading
+                    ? `Uploading ${file.progress || 0}%`
+                    : `${(file.size / 1024).toFixed(1)} KB`}
+                </small>
               </div>
               <button
                 className="member-message-action icon-only"
@@ -55,14 +96,14 @@ export function MentorshipComposer({
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
-      {attachmentUploadError && (
+      {attachmentUploadError ? (
         <div className="member-composer-error">
           <span className="material-symbols-outlined">error</span>
           <p>{attachmentUploadError}</p>
         </div>
-      )}
+      ) : null}
 
       <div className="member-message-composer">
         <div className="member-composer-toolbar">
@@ -91,56 +132,82 @@ export function MentorshipComposer({
             >
               <span className="material-symbols-outlined">mood</span>
             </button>
-            {isEmojiPickerOpen && (
-              <div className="member-toolbar-popover compact">
+            {isEmojiPickerOpen ? (
+              <div className="member-toolbar-popover compact emoji-grid">
                 {reactionChoices.map((emoji) => (
-                  <button key={emoji} onClick={() => handleReactionInsert(emoji)} type="button">
+                  <button
+                    key={emoji}
+                    onClick={() => handleReactionInsert(emoji)}
+                    type="button"
+                  >
                     {emoji}
                   </button>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="member-composer-menu-wrap">
             <button
               className="member-message-action icon-only"
               onClick={() => setIsQuickMenuOpen(!isQuickMenuOpen)}
-              title="Quick actions"
+              title="Quick inserts"
               type="button"
             >
-              <span className="material-symbols-outlined">bolt</span>
+              <span className="material-symbols-outlined">auto_awesome</span>
             </button>
-            {isQuickMenuOpen && (
+            {isQuickMenuOpen ? (
               <div className="member-toolbar-popover">
                 {quickInsertActions.map((action) => (
-                  <button key={action.id} onClick={() => handleQuickInsert(action)} type="button">
-                    <span className="material-symbols-outlined">subdirectory_arrow_right</span>
+                  <button
+                    key={action.id}
+                    onClick={() => handleQuickInsert(action)}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined">
+                      {action.icon || "subdirectory_arrow_right"}
+                    </span>
                     {action.label}
                   </button>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
-        <textarea
-          disabled={!canSendMessage}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
+        <div className="member-message-composer-input">
+          <textarea
+            disabled={!canSendMessage}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder={
+              canSendMessage
+                ? editingMessage
+                  ? "Edit your message..."
+                  : "Write to your alumni network..."
+                : "Messaging disabled"
             }
-          }}
-          placeholder={canSendMessage ? "Write a message..." : "Messaging disabled"}
-          rows="1"
-          value={draftMessage}
-          onChange={(e) => setDraftMessage(e.target.value)}
-        />
+            rows="1"
+            value={draftMessage}
+            onChange={(event) => setDraftMessage(event.target.value)}
+          />
+          <small className="member-composer-hint">
+            Press <kbd>Enter</kbd> to send. Use <kbd>Shift</kbd> +{" "}
+            <kbd>Enter</kbd> for a new line.
+          </small>
+        </div>
 
         <button
           className="member-send-button"
-          disabled={!canSendMessage || (!draftMessage.trim() && !composerAttachments.length) || isUploadingAttachments}
+          disabled={
+            !canSendMessage ||
+            (!draftMessage.trim() && !composerAttachments.length) ||
+            isUploadingAttachments
+          }
           onClick={handleSendMessage}
           type="button"
         >

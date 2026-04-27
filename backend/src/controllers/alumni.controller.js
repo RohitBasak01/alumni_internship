@@ -23,7 +23,7 @@ function issueInviteToken(user) {
 
   return {
     inviteUrl: buildInviteUrl(rawInviteToken),
-    expiresAt: user.inviteTokenExpiresAt
+    expiresAt: user.inviteTokenExpiresAt,
   };
 }
 
@@ -36,27 +36,80 @@ function buildRegex(value) {
  */
 export const getAlumni = asyncHandler(async (req, res) => {
   const { AlumniProfile } = getTenantModels(req);
-  const { q, batch, department, company, skill, leavingYear, lastClassAttended, section, location } = req.query;
-  const isInstituteAdmin = req.user.role === "institute_admin";
-  
+  const {
+    q,
+    batch,
+    department,
+    company,
+    skill,
+    leavingYear,
+    lastClassAttended,
+    section,
+    location,
+  } = req.query;
+  const searchText = String(q || "").trim();
+
   const profileFilter = { instituteId: req.tenant?._id };
   if (batch) profileFilter.batch = Number(batch);
   if (leavingYear) profileFilter.leavingYear = Number(leavingYear);
-  
-  // ... Simplified filter construction for brevity ...
+
+  if (department) profileFilter.department = buildRegex(String(department));
+  if (company) profileFilter.company = buildRegex(String(company));
+  if (lastClassAttended)
+    profileFilter.lastClassAttended = buildRegex(String(lastClassAttended));
+  if (section) profileFilter.section = buildRegex(String(section));
+  if (location) profileFilter.location = buildRegex(String(location));
+  if (skill) profileFilter.skills = { $in: [buildRegex(String(skill))] };
 
   const alumni = await AlumniProfile.find(profileFilter)
     .populate("userId", "name email isActive passwordSetupCompleted")
     .sort({ createdAt: -1 });
 
-  res.json(alumni); // In production, we'd apply the mapping/filtering from the route here
+  if (!searchText) {
+    return res.json(alumni);
+  }
+
+  const queryRegex = buildRegex(searchText);
+  const filtered = alumni.filter((entry) => {
+    const userName = String(entry?.userId?.name || "");
+    const userEmail = String(entry?.userId?.email || "");
+
+    const searchableProfileFields = [
+      entry?.company,
+      entry?.designation,
+      entry?.location,
+      entry?.currentInstitution,
+      entry?.currentEducation,
+      entry?.occupation,
+      entry?.department,
+      entry?.lastClassAttended,
+      entry?.section,
+      entry?.bio,
+    ].map((value) => String(value || ""));
+
+    const skillValues = Array.isArray(entry?.skills)
+      ? entry.skills.map((value) => String(value || ""))
+      : [];
+
+    if (queryRegex.test(userName) || queryRegex.test(userEmail)) {
+      return true;
+    }
+
+    if (searchableProfileFields.some((value) => queryRegex.test(value))) {
+      return true;
+    }
+
+    return skillValues.some((value) => queryRegex.test(value));
+  });
+
+  res.json(filtered);
 });
 
 export const getMyProfile = asyncHandler(async (req, res) => {
   const { AlumniProfile } = getTenantModels(req);
   const profile = await AlumniProfile.findOne({
     instituteId: req.tenant._id,
-    userId: req.user._id
+    userId: req.user._id,
   }).populate("userId", "name email");
 
   if (!profile) {
@@ -70,7 +123,7 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
   const { AlumniProfile, User } = getTenantModels(req);
   const profile = await AlumniProfile.findOne({
     instituteId: req.tenant._id,
-    userId: req.user._id
+    userId: req.user._id,
   });
   const user = await User.findById(req.user._id);
 
@@ -81,7 +134,7 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
   // Update logic (extracted from route)
   user.name = req.body.name?.trim?.() || user.name;
   Object.assign(profile, req.body); // Simplified for extraction
-  
+
   await user.save();
   await profile.save();
 
@@ -95,17 +148,21 @@ export const inviteAlumni = asyncHandler(async (req, res) => {
 
   const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
-    return res.status(409).json({ message: "An account with that email already exists" });
+    return res
+      .status(409)
+      .json({ message: "An account with that email already exists" });
   }
 
   const user = await User.create({
     instituteId: req.tenant._id,
     name: name.trim(),
     email: normalizedEmail,
-    passwordHash: await hashPassword(`Pending@${crypto.randomBytes(4).toString("hex")}`),
+    passwordHash: await hashPassword(
+      `Pending@${crypto.randomBytes(4).toString("hex")}`,
+    ),
     role: "alumni",
     isActive: false,
-    passwordSetupCompleted: false
+    passwordSetupCompleted: false,
   });
 
   const { inviteUrl, expiresAt } = issueInviteToken(user);
@@ -115,7 +172,7 @@ export const inviteAlumni = asyncHandler(async (req, res) => {
     instituteId: req.tenant._id,
     userId: user._id,
     ...req.body,
-    registrationReviewStatus: "pending"
+    registrationReviewStatus: "pending",
   });
 
   await sendInviteEmail({
@@ -124,8 +181,9 @@ export const inviteAlumni = asyncHandler(async (req, res) => {
     instituteName: req.tenant.name,
     inviteUrl,
     expiresAt,
-    portalRoleLabel: req.tenant?.institutionType === "school" ? "former student" : "alumni",
-    institutionType: req.tenant?.institutionType || "college"
+    portalRoleLabel:
+      req.tenant?.institutionType === "school" ? "former student" : "alumni",
+    institutionType: req.tenant?.institutionType || "college",
   });
 
   res.status(201).json({ profile });
