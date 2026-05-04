@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { formatRelativeTime, countWords } from "../utils/formatters.js";
+import RichTextEditor from "./RichTextEditor.jsx";
 
 const composerFormatOptions = [
   { value: "paragraph", label: "Paragraph" },
@@ -56,6 +57,20 @@ export function PostComposer({
     console.log("Formatting", type);
   }
 
+  function handleAttachmentAdd(attachment) {
+    setComposer(curr => ({
+      ...curr,
+      attachments: [...(curr.attachments || []), attachment]
+    }));
+  }
+
+  function handleRemoveAttachment(url) {
+    setComposer(curr => ({
+      ...curr,
+      attachments: (curr.attachments || []).filter(a => a.url !== url)
+    }));
+  }
+
   return (
     <form className="alumni-composer" onSubmit={(e) => { e.preventDefault(); createPostMutation.mutate(composer); }}>
       <div className="member-profile-spotlight-top alumni-composer-head">
@@ -95,33 +110,6 @@ export function PostComposer({
 
         {composerMode === "write" ? (
           <>
-            <div className="alumni-editor-toolbar" role="toolbar" aria-label="Formatting tools">
-              <div className="alumni-editor-toolbar-group">
-                <label className="alumni-editor-menu">
-                  <span className="alumni-editor-menu-label">Formats</span>
-                  <select className="alumni-editor-select alumni-editor-select-menu" defaultValue="paragraph">
-                    {composerFormatOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="alumni-editor-toolbar-divider" />
-              <div className="alumni-editor-toolbar-group">
-                {composerToolbarTools.map((tool) => (
-                  <button
-                    key={tool.id}
-                    className="alumni-editor-tool icon-only"
-                    type="button"
-                    title={tool.label}
-                    aria-label={tool.label}
-                  >
-                    <span className="material-symbols-outlined">{tool.icon}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="alumni-editor-document">
               <div className="alumni-editor-document-meta">
                 <span>Untitled post</span>
@@ -133,23 +121,66 @@ export function PostComposer({
                 onChange={(e) => handleComposerChange("title", e.target.value)}
                 placeholder="Optional headline"
               />
-              <textarea
-                ref={composerTextareaRef}
-                className="textarea alumni-composer-textarea"
-                value={composer.content}
-                onChange={(e) => handleComposerChange("content", e.target.value)}
-                placeholder="Start writing your update here..."
-                rows="10"
-              />
+              <div className="alumni-composer-rich-editor">
+                <RichTextEditor
+                  value={composer.content}
+                  onChange={(html) => handleComposerChange("content", html)}
+                  onAttachmentAdd={handleAttachmentAdd}
+                  placeholder="Start writing your update here..."
+                />
+              </div>
+
+              {composer.attachments?.length > 0 && (
+                <div className="alumni-composer-attachments-list mt-4 flex flex-wrap gap-2">
+                  {composer.attachments.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200">
+                      <span className="material-symbols-outlined text-brand-600 text-[18px]">picture_as_pdf</span>
+                      <span className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{file.name}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => handleRemoveAttachment(file.url)}
+                        className="text-slate-400 hover:text-red-600 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         ) : (
           <div className="alumni-editor-preview" role="region" aria-label="Post preview">
-            {composer.title ? <h3>{composer.title}</h3> : null}
+            <div className="alumni-editor-document-meta mb-6">
+              <span>Preview Mode</span>
+              <span>{wordCount} words</span>
+            </div>
+            {composer.title ? (
+              <h2 className="text-[1.65rem] font-extrabold tracking-tight text-slate-900 mb-4">
+                {composer.title}
+              </h2>
+            ) : null}
             {composer.content.trim() ? (
-              <div className="alumni-editor-preview-markdown">{renderComposerPreviewBlocks(composer.content)}</div>
+              <div 
+                className="alumni-editor-preview-content prose prose-slate max-w-none"
+                dangerouslySetInnerHTML={{ __html: composer.content }}
+              />
             ) : (
               <p className="muted">Nothing to preview yet.</p>
+            )}
+
+            {composer.attachments?.length > 0 && (
+              <div className="alumni-composer-attachments-preview mt-8 pt-6 border-t border-slate-100">
+                <h4 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">Attachments</h4>
+                <div className="flex flex-wrap gap-3">
+                  {composer.attachments.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-3 px-4 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700">
+                      <span className="material-symbols-outlined text-brand-600">picture_as_pdf</span>
+                      {file.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

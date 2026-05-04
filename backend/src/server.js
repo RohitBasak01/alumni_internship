@@ -9,6 +9,8 @@ import { getJwtSecret, AUTH_COOKIE_NAME } from "./utils/auth.js";
 
 dotenv.config({ override: true });
 
+const onlineUsers = new Map(); // userId -> socketId
+
 const PORT = process.env.PORT || 5000;
 const CENTRAL_MONGODB_URI =
   process.env.CENTRAL_MONGODB_URI ||
@@ -67,14 +69,19 @@ io.use((socket, next) => {
     const cookies = cookie.parse(socket.request.headers.cookie || "");
     const token = cookies[AUTH_COOKIE_NAME];
 
+    console.log(`[Socket Auth] Connection attempt from ${socket.id}, Token present: ${!!token}`);
+
     if (!token) {
+      console.log(`[Socket Auth] Token missing for socket ${socket.id}`);
       return next(new Error("Authentication error: Token missing"));
     }
 
     const decoded = jwt.verify(token, getJwtSecret());
     socket.user = decoded; // Attach user info to socket
+    console.log(`[Socket Auth] Authentication successful for socket ${socket.id}, user: ${decoded.id || decoded._id}`);
     next();
   } catch (err) {
+    console.error(`[Socket Auth] Authentication error for socket ${socket.id}:`, err.message);
     next(new Error("Authentication error: Invalid token"));
   }
 });
@@ -122,6 +129,66 @@ app.locals.emitMentorshipEvent = (payload) => {
 };
 
 io.on("connection", (socket) => {
+  const userId = socket.user?.userId || socket.user?.id || socket.user?._id;
+  console.log(`[Socket] New connection: ${socket.id}, userId: ${userId}`);
+  
+  if (userId) {
+    onlineUsers.set(String(userId), socket.id);
+    console.log(`[Socket] User ${userId} is now online`);
+    io.emit("rtc:user-status", { userId, status: "online" });
+  }
+
+  // --- WebRTC Signaling ---
+  socket.on("rtc:call-user", ({ targetUserId, signalData, fromName, conversationId, callType }) => {
+    const targetSocketId = onlineUsers.get(String(targetUserId));
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("rtc:incoming-call", {
+        fromUserId: userId,
+        fromName,
+        signalData,
+        conversationId,
+        callType
+      });
+    } else {
+      socket.emit("rtc:call-error", { message: "User is offline" });
+    }
+  });
+
+  socket.on("rtc:answer-call", ({ targetUserId, signalData }) => {
+    const targetSocketId = onlineUsers.get(String(targetUserId));
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("rtc:call-accepted", { signalData, fromUserId: userId });
+    }
+  });
+
+  socket.on("rtc:reject-call", ({ targetUserId }) => {
+    const targetSocketId = onlineUsers.get(String(targetUserId));
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("rtc:call-rejected", { fromUserId: userId });
+    }
+  });
+
+  socket.on("rtc:signal", ({ targetUserId, signalData }) => {
+    const targetSocketId = onlineUsers.get(String(targetUserId));
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("rtc:signal", { fromUserId: userId, signalData });
+    }
+  });
+
+  socket.on("rtc:end-call", ({ targetUserId }) => {
+    const targetSocketId = onlineUsers.get(String(targetUserId));
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("rtc:call-ended", { fromUserId: userId });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (userId) {
+      onlineUsers.delete(String(userId));
+      io.emit("rtc:user-status", { userId, status: "offline" });
+    }
+  });
+
   socket.on("mentorship:subscribe", (payload = {}) => {
     const conversationIds = normalizeConversationIds(payload.conversationIds);
     for (const conversationId of conversationIds) {

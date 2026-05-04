@@ -206,754 +206,412 @@ function AlumniProfilePage() {
   const profile = profileQuery.data;
   const profileName = profile?.name || auth.user?.name || "Community Member";
   const profileBatch = profile?.batch || "-";
-  const profileDepartment =
-    profile?.department ||
-    (isSchool ? "School Community" : "Department pending");
+  const profileDepartment = profile?.department || (isSchool ? "School Community" : "Department pending");
   const leavingYear = profile?.leavingYear || "-";
   const lastClassAttended = profile?.lastClassAttended || "-";
   const currentEducation = profile?.currentEducation || "";
   const currentInstitution = profile?.currentInstitution || "";
   const occupation = profile?.occupation || "";
   const profileCompany = profile?.company || "Independent";
-  const profileRole =
-    profile?.designation || (isSchool ? "Community Member" : "Alumni Member");
+  const profileRole = profile?.designation || (isSchool ? "Community Member" : "Alumni Member");
   const profileIndustry = profile?.industry || "Not added yet";
-  const profileLocation =
-    buildLocationValue(profile?.country, profile?.state, profile?.city) ||
-    profile?.location ||
-    "Location not added";
-  const profileBio =
-    profile?.bio ||
-    (isSchool
-      ? "Add a short introduction so other members of your school community can reconnect with you."
-      : "Share what you are building, where you work, and what kind of community conversations you enjoy.");
-  const links = [
-    { label: "LinkedIn", value: profile?.linkedinUrl || "" },
-    { label: "Website", value: profile?.websiteUrl || "" },
-    { label: "Twitter / X", value: profile?.twitterHandle || "" },
-  ].filter((item) => item.value);
-  const displaySkills = skills.length
-    ? skills
-    : showMentorship
-      ? ["Profile", "Community", "Mentorship"]
-      : ["Profile", "Community", "Network"];
+  const profileLocation = buildLocationValue(profile?.country, profile?.state, profile?.city) || profile?.location || "Location not added";
+  const profileBio = profile?.bio || (isSchool ? "Add a short introduction so other members of your school community can reconnect with you." : "Share what you are building, where you work, and what kind of community conversations you enjoy.");
+  const displaySkills = skills.length ? skills : (showMentorship ? ["Profile", "Community", "Mentorship"] : ["Profile", "Community", "Network"]);
+
   const connections = [
     { id: "1", name: "Sarah Chen", note: "Product leadership - Class of 2017" },
-    {
-      id: "2",
-      name: "Marcus Miller",
-      note: "Engineering manager - Class of 2019",
-    },
+    { id: "2", name: "Marcus Miller", note: "Engineering manager - Class of 2019" },
     { id: "3", name: "Elena Rossi", note: "Founder network - Class of 2018" },
   ];
 
   function handleChange(event) {
     const { name, value, type, checked } = event.target;
-
     if (name === "country") {
-      setForm((current) => ({
-        ...current,
-        country: value,
-        state: "",
-        city: "",
-        location: buildLocationValue(value, "", ""),
-      }));
+      setForm(c => ({ ...c, country: value, state: "", city: "", location: buildLocationValue(value, "", "") }));
       return;
     }
-
     if (name === "state") {
-      setForm((current) => ({
-        ...current,
-        state: value,
-        city: "",
-        location: buildLocationValue(current.country, value, ""),
-      }));
+      setForm(c => ({ ...c, state: value, city: "", location: buildLocationValue(c.country, value, "") }));
       return;
     }
-
     if (name === "city") {
-      setForm((current) => ({
-        ...current,
-        city: value,
-        location: buildLocationValue(current.country, current.state, value),
-      }));
+      setForm(c => ({ ...c, city: value, location: buildLocationValue(c.country, c.state, value) }));
       return;
     }
-
-    setForm((current) => ({
-      ...current,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  }
-
-  function syncSkills(nextSkills) {
-    setForm((current) => ({ ...current, skills: nextSkills.join(", ") }));
+    setForm(c => ({ ...c, [name]: type === "checkbox" ? checked : value }));
   }
 
   function handleSkillAdd(event) {
     event.preventDefault();
     const nextSkill = skillInput.trim();
-
-    if (
-      !nextSkill ||
-      skills.some((skill) => skill.toLowerCase() === nextSkill.toLowerCase())
-    ) {
-      return;
-    }
-
-    syncSkills([...skills, nextSkill]);
+    if (!nextSkill || skills.some(s => s.toLowerCase() === nextSkill.toLowerCase())) return;
+    setForm(c => ({ ...c, skills: [...skills, nextSkill].join(", ") }));
     setSkillInput("");
   }
 
   function handleSkillRemove(skillToRemove) {
-    syncSkills(skills.filter((skill) => skill !== skillToRemove));
+    setForm(c => ({ ...c, skills: skills.filter(s => s !== skillToRemove).join(", ") }));
   }
 
   function handleSubmit(event) {
     event.preventDefault();
-    updateMutation.mutate({
-      ...form,
-      location: buildLocationValue(form.country, form.state, form.city),
-      skills,
-    });
+    updateMutation.mutate({ ...form, location: buildLocationValue(form.country, form.state, form.city), skills });
   }
 
   function jumpToSection(sectionId) {
     const element = document.getElementById(sectionId);
-    if (!element) {
-      return;
-    }
-
+    if (!element) return;
     setActiveSection(sectionId);
     element.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   if (!isAlumni) {
     return (
-      <SectionCard title="My Profile" subtitle="Portal Access">
-        <p className="muted">
-          This page is for member accounts. Institution admins can manage
-          records from the members directory.
-        </p>
-      </SectionCard>
+      <div className="premium-card p-12 text-center">
+        <span className="material-symbols-outlined text-6xl text-slate-300 mb-6">lock</span>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Restricted</h2>
+        <p className="text-slate-500">This area is for verified alumni members only.</p>
+      </div>
     );
   }
 
   if (profileQuery.isLoading && !profileQuery.data) {
-    return <p>Loading your profile...</p>;
+    return (
+      <div className="flex items-center justify-center p-20">
+        <div className="animate-spin h-8 w-8 border-4 border-brand-600 border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   if (isEditMode) {
     return (
-      <div className="member-profile-editor">
-        <aside className="member-profile-editor-rail">
-          <div className="member-profile-editor-rail-copy">
-            <p className="member-card-kicker">Profile editor</p>
-            <h2>Keep your member identity current.</h2>
-            <p>
-              Update the details that help people discover you, understand your
-              journey, and reach out with confidence.
-            </p>
-          </div>
-          <nav
-            className="member-profile-editor-nav"
-            aria-label="Profile edit sections"
-          >
-            {profileSections.map((section) => (
-              <button
-                key={section.id}
-                className={
-                  activeSection === section.id
-                    ? "member-profile-editor-link active"
-                    : "member-profile-editor-link"
-                }
-                onClick={() => jumpToSection(section.id)}
-                type="button"
-              >
-                <span>{section.icon}</span>
-                <strong>{section.label}</strong>
-              </button>
-            ))}
-          </nav>
-          <div className="member-profile-editor-summary">
-            <span>Profile completion</span>
-            <strong>{completionPercent}%</strong>
-            <p>{completion} of 6 key details filled in.</p>
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Left Sidebar Nav */}
+        <aside className="lg:w-80 space-y-6">
+          <div className="premium-card p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-12 w-12 rounded-full bg-brand-600 text-white flex items-center justify-center text-xl font-bold">
+                {profileName.charAt(0)}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 truncate w-40">{profileName}</h3>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Member Editor</p>
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              {profileSections.map(section => (
+                <button
+                  key={section.id}
+                  onClick={() => jumpToSection(section.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                    activeSection === section.id 
+                      ? "bg-brand-50 text-brand-600 shadow-sm" 
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-xs">
+                    {section.icon}
+                  </span>
+                  {section.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Profile Strength</span>
+                <span className="text-sm font-bold text-brand-600">{completionPercent}%</span>
+              </div>
+              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-brand-600 transition-all duration-500" style={{ width: `${completionPercent}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 font-medium">{completion} of 6 essential fields completed.</p>
+            </div>
           </div>
         </aside>
 
-        <form className="member-profile-editor-body" onSubmit={handleSubmit}>
-          <PortalPageHeader
-            title="Edit profile"
-            subtitle={`Every update improves how you appear across the ${tenantDisplay.memberPlural.toLowerCase()} network.`}
-            actions={
-              <div className="member-inline-actions">
-                <Link className="button secondary" to="/portal/profile">
-                  Back to profile
-                </Link>
-                <button
-                  className="button primary"
-                  disabled={updateMutation.isPending}
-                  type="submit"
-                >
-                  {updateMutation.isPending ? "Saving..." : "Save changes"}
+        {/* Main Editor Form */}
+        <div className="flex-1">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-200 shadow-sm sticky top-24 z-30">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Edit Profile</h2>
+                <p className="text-sm text-slate-500">Updates will be visible to your community instantly.</p>
+              </div>
+              <div className="flex gap-3">
+                <Link to="/portal/profile" className="btn-secondary py-2 px-6">Cancel</Link>
+                <button disabled={updateMutation.isPending} type="submit" className="btn-primary py-2 px-6">
+                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
                 </button>
               </div>
-            }
-          />
-
-          {profileQuery.isError ? (
-            <p className="error-text">{profileQuery.error.message}</p>
-          ) : null}
-          {updateMutation.isSuccess ? (
-            <p className="success-text">Profile updated successfully.</p>
-          ) : null}
-          {updateMutation.isError ? (
-            <p className="error-text">{updateMutation.error.message}</p>
-          ) : null}
-
-          <PortalMetricGrid>
-            <PortalMetricCard
-              title="Completion"
-              value={completionPercent}
-              valueSuffix="%"
-              icon="CM"
-            />
-            <PortalMetricCard
-              title="Visibility"
-              value={form.profileVisibility.replaceAll("_", " ")}
-              icon="VS"
-            />
-            <PortalMetricCard
-              title={showMentorship ? "Mentorship" : "Access"}
-              value={
-                showMentorship
-                  ? form.allowMentorRequests
-                    ? "Open"
-                    : "Paused"
-                  : "Profile only"
-              }
-              icon="MT"
-            />
-          </PortalMetricGrid>
-
-          <SectionCard
-            title="Personal details"
-            subtitle="How people recognize you"
-            id="profile-info"
-          >
-            <div className="member-form-grid member-form-grid-two">
-              <label className="member-form-field member-form-field-full">
-                <span>Full name</span>
-                <input name="name" onChange={handleChange} value={form.name} />
-              </label>
-              <label className="member-form-field member-form-field-full">
-                <span>Bio</span>
-                <textarea
-                  className="textarea member-form-textarea"
-                  name="bio"
-                  onChange={handleChange}
-                  rows="5"
-                  value={form.bio}
-                />
-              </label>
             </div>
-          </SectionCard>
 
-          <SectionCard
-            title={isSchool ? "Current journey" : "Professional details"}
-            subtitle={`The details ${tenantDisplay.memberPlural.toLowerCase()} use when they search for you`}
-            id="experience"
-          >
-            <div className="member-form-grid member-form-grid-two">
-              {isSchool ? (
-                <>
-                  <label className="member-form-field">
-                    <span>Current education</span>
-                    <input
-                      name="currentEducation"
-                      onChange={handleChange}
-                      value={form.currentEducation}
-                    />
-                  </label>
-                  <label className="member-form-field">
-                    <span>Current institution</span>
-                    <input
-                      name="currentInstitution"
-                      onChange={handleChange}
-                      value={form.currentInstitution}
-                    />
-                  </label>
-                  <label className="member-form-field">
-                    <span>Occupation</span>
-                    <input
-                      name="occupation"
-                      onChange={handleChange}
-                      value={form.occupation}
-                    />
-                  </label>
-                </>
-              ) : (
-                <>
-                  <label className="member-form-field">
-                    <span>Current company</span>
-                    <input
-                      name="company"
-                      onChange={handleChange}
-                      value={form.company}
-                    />
-                  </label>
-                  <label className="member-form-field">
-                    <span>Job title</span>
-                    <input
-                      name="designation"
-                      onChange={handleChange}
-                      value={form.designation}
-                    />
-                  </label>
-                  <label className="member-form-field">
-                    <span>Industry</span>
-                    <select
-                      name="industry"
-                      onChange={handleChange}
-                      value={form.industry}
-                    >
-                      <option value="">Select an industry</option>
-                      {industryOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
+            {updateMutation.isSuccess && (
+              <div className="p-4 bg-green-50 border border-green-100 rounded-2xl text-green-600 text-sm font-bold flex gap-2">
+                <span className="material-symbols-outlined">check_circle</span>
+                Profile updated successfully.
+              </div>
+            )}
+
+            <div className="space-y-8">
+              <section id="profile-info" className="premium-card p-8">
+                <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-brand-600">person</span>
+                  Personal Identity
+                </h3>
+                <div className="grid gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Display Name</label>
+                    <input name="name" onChange={handleChange} value={form.name} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Biography</label>
+                    <textarea name="bio" onChange={handleChange} value={form.bio} rows="4" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" placeholder="Tell the community about yourself..." />
+                  </div>
+                </div>
+              </section>
+
+              <section id="experience" className="premium-card p-8">
+                <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-brand-600">work</span>
+                  {isSchool ? "Current Journey" : "Professional Experience"}
+                </h3>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {isSchool ? (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Current Education</label>
+                        <input name="currentEducation" onChange={handleChange} value={form.currentEducation} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Current Institution</label>
+                        <input name="currentInstitution" onChange={handleChange} value={form.currentInstitution} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Company / Organization</label>
+                        <input name="company" onChange={handleChange} value={form.company} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Job Title / Designation</label>
+                        <input name="designation" onChange={handleChange} value={form.designation} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                      </div>
+                    </>
+                  )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Country</label>
+                    <select name="country" onChange={handleChange} value={form.country} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all">
+                      <option value="">Select Country</option>
+                      {(countriesQuery.data || []).map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                  </label>
-                </>
-              )}
-              <label className="member-form-field">
-                <span>Country</span>
-                <select
-                  name="country"
-                  onChange={handleChange}
-                  value={form.country}
-                >
-                  <option value="">Select a country</option>
-                  {(countriesQuery.data || []).map((country) => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="member-form-field">
-                <span>State</span>
-                <select
-                  disabled={!form.country || statesQuery.isLoading}
-                  name="state"
-                  onChange={handleChange}
-                  value={form.state}
-                >
-                  <option value="">
-                    {form.country ? "Select a state" : "Select country first"}
-                  </option>
-                  {(statesQuery.data || []).map((stateItem) => (
-                    <option key={stateItem} value={stateItem}>
-                      {stateItem}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="member-form-field">
-                <span>City</span>
-                <select
-                  disabled={
-                    !form.country || !form.state || citiesQuery.isLoading
-                  }
-                  name="city"
-                  onChange={handleChange}
-                  value={form.city}
-                >
-                  <option value="">
-                    {form.state ? "Select a city" : "Select state first"}
-                  </option>
-                  {(citiesQuery.data || []).map((cityItem) => (
-                    <option key={cityItem} value={cityItem}>
-                      {cityItem}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Education record"
-            subtitle="These are tied to your institute record"
-            id="education"
-          >
-            <div className="member-form-grid member-form-grid-two">
-              <label className="member-form-field">
-                <span>Institute</span>
-                <input
-                  readOnly
-                  value={
-                    auth.user?.institute?.name ||
-                    tenant.displayName ||
-                    "Institute"
-                  }
-                />
-              </label>
-              <label className="member-form-field">
-                <span>{isSchool ? "Last class attended" : "Department"}</span>
-                <input
-                  readOnly
-                  value={isSchool ? lastClassAttended : profileDepartment}
-                />
-              </label>
-              <label className="member-form-field">
-                <span>{isSchool ? "Leaving year" : "Batch"}</span>
-                <input readOnly value={isSchool ? leavingYear : profileBatch} />
-              </label>
-              <div className="member-note-card">
-                <strong>Need a correction?</strong>
-                <p>
-                  Contact your institution admin if your academic record needs
-                  an update. These fields are managed from your verified member
-                  record.
-                </p>
-              </div>
-            </div>
-          </SectionCard>
-
-          {showSocialLinks ? (
-            <SectionCard
-              title="Online presence"
-              subtitle="Optional links that help people know more about you"
-            >
-              <div className="member-form-grid">
-                <label className="member-form-field">
-                  <span>LinkedIn</span>
-                  <input
-                    name="linkedinUrl"
-                    onChange={handleChange}
-                    placeholder="https://linkedin.com/in/yourprofile"
-                    value={form.linkedinUrl}
-                  />
-                </label>
-                <label className="member-form-field">
-                  <span>Website</span>
-                  <input
-                    name="websiteUrl"
-                    onChange={handleChange}
-                    placeholder="https://yourportfolio.dev"
-                    value={form.websiteUrl}
-                  />
-                </label>
-                <label className="member-form-field">
-                  <span>Twitter / X</span>
-                  <input
-                    name="twitterHandle"
-                    onChange={handleChange}
-                    placeholder="@yourhandle"
-                    value={form.twitterHandle}
-                  />
-                </label>
-              </div>
-            </SectionCard>
-          ) : null}
-
-          {showCareerFields ? (
-            <SectionCard
-              title="Skills"
-              subtitle="Add keywords that improve discovery across the network"
-            >
-              <div className="member-skill-editor">
-                <div className="member-skill-list">
-                  {skills.map((skill) => (
-                    <button
-                      className="member-skill-chip"
-                      key={skill}
-                      onClick={() => handleSkillRemove(skill)}
-                      type="button"
-                    >
-                      <span>{skill}</span>
-                      <span aria-hidden="true">x</span>
-                    </button>
-                  ))}
-                  {!skills.length ? (
-                    <p className="muted">No skills added yet.</p>
-                  ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Location (City)</label>
+                    <input name="city" onChange={handleChange} value={form.city} placeholder="e.g. New York" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                  </div>
                 </div>
-                <div className="member-skill-input-row">
-                  <input
-                    onChange={(event) => setSkillInput(event.target.value)}
-                    placeholder="Add a skill"
-                    value={skillInput}
-                  />
-                  <button
-                    className="button secondary"
-                    onClick={handleSkillAdd}
-                    type="button"
-                  >
-                    Add skill
-                  </button>
-                </div>
-              </div>
-            </SectionCard>
-          ) : null}
+              </section>
 
-          <SectionCard
-            title="Privacy and outreach"
-            subtitle="Choose how visible and reachable you want to be"
-            id="privacy"
-          >
-            <div className="member-form-grid">
-              <label className="member-form-field member-form-field-full">
-                <span>Profile visibility</span>
-                <select
-                  name="profileVisibility"
-                  onChange={handleChange}
-                  value={form.profileVisibility}
-                >
-                  <option value="public">Everyone on the platform</option>
-                  <option value="institute_only">
-                    Only members from my institute
-                  </option>
-                  <option value="private">Only me</option>
-                </select>
-              </label>
-              <label className="member-toggle-row">
-                <input
-                  checked={form.showEmail}
-                  name="showEmail"
-                  onChange={handleChange}
-                  type="checkbox"
-                />
-                <div>
-                  <strong>Show my email on my profile</strong>
-                  <p>
-                    Let other members contact you directly from your profile
-                    card.
-                  </p>
+              <section id="education" className="premium-card p-8 opacity-75 grayscale-[0.5]">
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-brand-600">school</span>
+                    Academic Foundation
+                  </h3>
+                  <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold uppercase rounded-lg">Verified Data</span>
                 </div>
-              </label>
-              {showMentorship ? (
-                <label className="member-toggle-row">
-                  <input
-                    checked={form.allowMentorRequests}
-                    name="allowMentorRequests"
-                    onChange={handleChange}
-                    type="checkbox"
-                  />
-                  <div>
-                    <strong>Allow mentorship and networking requests</strong>
-                    <p>
-                      Pause inbound requests anytime if you need to quiet your
-                      inbox.
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Department</p>
+                    <p className="font-bold text-slate-900">{profileDepartment}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Graduation Year</p>
+                    <p className="font-bold text-slate-900">{isSchool ? leavingYear : profileBatch}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Record Status</p>
+                    <p className="font-bold text-green-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">verified</span>
+                      Active
                     </p>
                   </div>
-                </label>
-              ) : null}
+                </div>
+                <p className="mt-6 p-4 bg-slate-50 rounded-xl text-xs text-slate-500 leading-relaxed italic">
+                  Academic details are synced from the institution's master database. To request changes, please contact the alumni relations office.
+                </p>
+              </section>
+
+              <section id="privacy" className="premium-card p-8">
+                <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-brand-600">shield</span>
+                  Privacy & Connectivity
+                </h3>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Profile Visibility</label>
+                    <select name="profileVisibility" onChange={handleChange} value={form.profileVisibility} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all">
+                      <option value="public">Global (Visible to all users)</option>
+                      <option value="institute_only">Restricted (Members of my institution only)</option>
+                      <option value="private">Private (Only visible to myself)</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer group">
+                    <input type="checkbox" name="allowMentorRequests" checked={form.allowMentorRequests} onChange={handleChange} className="w-5 h-5 rounded-lg text-brand-600 focus:ring-brand-500" />
+                    <div>
+                      <p className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">Enable Networking Requests</p>
+                      <p className="text-xs text-slate-500">Allow other alumni to reach out for mentorship or professional connections.</p>
+                    </div>
+                  </label>
+                </div>
+              </section>
             </div>
-          </SectionCard>
-        </form>
+          </form>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="member-profile-page">
-      <PortalPageHeader
-        title="My profile"
-        subtitle={
-          isSchool
-            ? "Your verified identity across the school community."
-            : "Your professional identity across the institute network."
-        }
-        actions={
-          <Link className="button primary" to="/portal/profile?mode=edit">
-            Edit profile
-          </Link>
-        }
-      />
-
-      <div className="member-profile-grid">
-        <section className="member-profile-hero">
-          <div className="member-profile-identity">
-            <div className="member-profile-avatar">
-              {profileName.slice(0, 1)}
+    <div className="space-y-8 pb-20">
+      {/* Profile Hero Header */}
+      <div className="premium-card overflow-hidden">
+        <div className="h-48 bg-gradient-to-r from-brand-600 to-indigo-700 relative">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+        </div>
+        <div className="px-8 pb-8 relative">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 -mt-12">
+            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+              <div className="relative">
+                <div className="h-40 w-40 rounded-[2.5rem] bg-white p-2 shadow-2xl ring-8 ring-white/40">
+                  <div className="h-full w-full rounded-[2rem] bg-brand-600 text-white flex items-center justify-center text-5xl font-black shadow-inner">
+                    {profileName.charAt(0)}
+                  </div>
+                </div>
+                <div className="absolute -bottom-1 -right-1 h-10 w-10 bg-green-500 border-4 border-white rounded-full flex items-center justify-center shadow-lg" title="Active Member">
+                  <span className="material-symbols-outlined text-white text-lg">check</span>
+                </div>
+              </div>
+              
+              <div className="space-y-2 md:pt-10">
+                <div className="flex items-center gap-3 justify-center md:justify-start">
+                  <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none">{profileName}</h1>
+                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-brand-50 text-brand-600 shadow-sm" title="Verified Member">
+                    <span className="material-symbols-outlined text-lg font-bold">verified</span>
+                  </div>
+                </div>
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-slate-500 font-bold">
+                  <p className="flex items-center gap-2 justify-center md:justify-start">
+                    <span className="material-symbols-outlined text-base">school</span>
+                    {isSchool ? `Class of ${leavingYear}` : `Batch ${profileBatch}`}
+                  </p>
+                  <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  <p className="flex items-center gap-2 justify-center md:justify-start text-brand-600">
+                    <span className="material-symbols-outlined text-base">hub</span>
+                    {auth.user?.institute?.name || tenant.displayName}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="member-card-kicker">Verified member</p>
-              <h2>{profileName}</h2>
-              <p>
-                {isSchool
-                  ? `Leaving year ${leavingYear}`
-                  : `Class of ${profileBatch}`}{" "}
-                at {auth.user?.institute?.name || tenant.displayName}
-              </p>
+            
+            <div className="md:pt-10">
+              <Link to="/portal/profile?mode=edit" className="btn-primary flex items-center gap-2 shadow-xl px-8 py-4">
+                <span className="material-symbols-outlined text-lg">edit</span>
+                Update Profile
+              </Link>
             </div>
           </div>
-          <p className="member-profile-hero-role">
-            {isSchool
-              ? currentEducation || occupation || "Community member"
-              : `${profileRole} at ${profileCompany}`}
-          </p>
-          <p className="member-profile-hero-location">{profileLocation}</p>
-          <div className="member-profile-tags">
-            <span>{isSchool ? lastClassAttended : profileDepartment}</span>
-            <span>
-              {isSchool
-                ? currentInstitution || "Current journey pending"
-                : profileIndustry}
-            </span>
-            <span>
-              {showMentorship
-                ? form.allowMentorRequests
-                  ? "Open to mentorship"
-                  : "Mentorship paused"
-                : "Profile only"}
-            </span>
-          </div>
-        </section>
-
-        <PortalMetricGrid className="member-profile-metrics">
-          <PortalMetricCard
-            title="Completion"
-            value={completionPercent}
-            valueSuffix="%"
-            icon="CM"
-          />
-          <PortalMetricCard
-            title="Skills"
-            value={displaySkills.length}
-            icon="SK"
-          />
-          <PortalMetricCard
-            title="Visibility"
-            value={form.profileVisibility.replaceAll("_", " ")}
-            icon="VS"
-          />
-        </PortalMetricGrid>
+        </div>
       </div>
 
-      <div className="member-profile-content-grid">
-        <SectionCard
-          title="About"
-          subtitle={`What ${tenantDisplay.memberPlural.toLowerCase()} should know about you`}
-        >
-          <p className="member-reading-copy">{profileBio}</p>
-        </SectionCard>
-
-        <SectionCard
-          title={isSchool ? "Current snapshot" : "Professional snapshot"}
-          subtitle="The quick version"
-        >
-          <div className="member-detail-stack">
-            <article>
-              <span>{isSchool ? "Current path" : "Current role"}</span>
-              <strong>
-                {isSchool
-                  ? currentEducation || occupation || "Community member"
-                  : profileRole}
-              </strong>
-              <p>
-                {isSchool
-                  ? currentInstitution || "Institution not added"
-                  : profileCompany}
-              </p>
-            </article>
-            <article>
-              <span>{isSchool ? "Last class attended" : "Industry"}</span>
-              <strong>{isSchool ? lastClassAttended : profileIndustry}</strong>
-            </article>
-            <article>
-              <span>Location</span>
-              <strong>{profileLocation}</strong>
-            </article>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Education" subtitle="Verified institute record">
-          <div className="member-detail-stack">
-            <article>
-              <span>Institute</span>
-              <strong>
-                {auth.user?.institute?.name ||
-                  tenant.displayName ||
-                  "Institute"}
-              </strong>
-            </article>
-            <article>
-              <span>{isSchool ? "Last class attended" : "Department"}</span>
-              <strong>
-                {isSchool ? lastClassAttended : profileDepartment}
-              </strong>
-            </article>
-            <article>
-              <span>{isSchool ? "Leaving year" : "Graduation batch"}</span>
-              <strong>{isSchool ? leavingYear : profileBatch}</strong>
-            </article>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Skills and expertise"
-          subtitle="How people find you in the directory"
-        >
-          <div className="member-chip-cloud">
-            {displaySkills.map((skill) => (
-              <span className="member-chip-pill" key={skill}>
-                {skill}
-              </span>
-            ))}
-          </div>
-        </SectionCard>
-
-        {showSocialLinks ? (
-          <SectionCard
-            title="Online presence"
-            subtitle="Optional profile links"
-          >
-            <div className="member-link-stack">
-              {links.length ? (
-                links.map((item) => (
-                  <a
-                    className="member-link-row"
-                    href={item.value}
-                    key={item.label}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    <strong>{item.label}</strong>
-                    <span>{item.value}</span>
-                  </a>
-                ))
-              ) : (
-                <p className="muted">No public links added yet.</p>
-              )}
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Left Column: Details */}
+        <div className="lg:col-span-2 space-y-8">
+          <section className="premium-card p-8">
+            <h3 className="text-xl font-bold text-slate-900 mb-4 tracking-tight">Professional Bio</h3>
+            <p className="text-lg text-slate-600 leading-relaxed whitespace-pre-wrap">{profileBio}</p>
+            
+            <div className="mt-8 flex flex-wrap gap-2">
+              {displaySkills.map(skill => (
+                <span key={skill} className="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-sm font-bold border border-slate-100 hover:border-brand-200 hover:text-brand-600 transition-all cursor-default">
+                  {skill}
+                </span>
+              ))}
             </div>
-          </SectionCard>
-        ) : null}
+          </section>
 
-        <SectionCard
-          title="Network"
-          subtitle={`Suggested ${tenantDisplay.memberPlural.toLowerCase()} you may know`}
-        >
-          <div className="member-people-list">
-            {connections.map((item) => (
-              <article className="member-person-card" key={item.id}>
-                <div className="member-person-avatar">
-                  {item.name.slice(0, 1)}
+          <section className="premium-card p-8">
+            <h3 className="text-xl font-bold text-slate-900 mb-6 tracking-tight">Identity & Career</h3>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="flex gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined">work</span>
                 </div>
-                <div className="member-person-copy">
-                  <strong>{item.name}</strong>
-                  <p>{item.note}</p>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Current Role</p>
+                  <p className="font-bold text-slate-900">{profileRole}</p>
+                  <p className="text-sm text-slate-500 font-semibold">{profileCompany}</p>
                 </div>
-              </article>
-            ))}
-          </div>
-        </SectionCard>
+              </div>
+              <div className="flex gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined">location_on</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Base Location</p>
+                  <p className="font-bold text-slate-900">{profileLocation}</p>
+                  <p className="text-sm text-slate-500 font-semibold">{profileIndustry}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Right Column: Sidebar info */}
+        <div className="space-y-8">
+          <section className="premium-card p-6">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Profile Status</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+                <span className="text-sm font-bold text-slate-600">Visibility</span>
+                <span className="text-xs font-black text-brand-600 uppercase bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
+                  {form.profileVisibility.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+                <span className="text-sm font-bold text-slate-600">Requests</span>
+                <span className={`text-xs font-black uppercase bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm ${form.allowMentorRequests ? 'text-green-600' : 'text-slate-400'}`}>
+                  {form.allowMentorRequests ? 'Active' : 'Disabled'}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section className="premium-card p-6">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Suggested Peers</h3>
+            <div className="space-y-4">
+              {connections.map(person => (
+                <div key={person.id} className="flex items-center gap-3 group cursor-pointer">
+                  <div className="h-10 w-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-lg group-hover:bg-brand-600 group-hover:text-white transition-all">
+                    {person.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{person.name}</p>
+                    <p className="text-[10px] text-slate-500 font-medium truncate">{person.note}</p>
+                  </div>
+                  <span className="material-symbols-outlined text-slate-300 group-hover:text-brand-600 transition-colors">chevron_right</span>
+                </div>
+              ))}
+            </div>
+            <button className="w-full mt-6 py-3 text-xs font-bold text-slate-500 hover:text-brand-600 transition-colors border-t border-slate-50">
+              View All Directory
+            </button>
+          </section>
+        </div>
       </div>
     </div>
   );

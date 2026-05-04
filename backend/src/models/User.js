@@ -98,6 +98,16 @@ const userSchema = new mongoose.Schema(
     e2eeKeyUpdatedAt: {
       type: Date,
       default: null
+    },
+    blockedUserIds: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: []
+    },
+    mutedConversationIds: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "MentorshipRequest",
+      default: []
     }
   },
   {

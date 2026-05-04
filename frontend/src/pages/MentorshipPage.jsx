@@ -1,12 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  PortalMetricCard,
-  PortalMetricGrid,
-  PortalPageHeader,
-} from "../components/PortalPrimitives.jsx";
+import { useState } from "react";
 import { MentorshipSidebar } from "../components/mentorship/MentorshipSidebar.jsx";
 import { MentorshipChat } from "../components/mentorship/MentorshipChat.jsx";
 import { CreateGroupModal } from "../components/mentorship/MentorshipModals.jsx";
+import { useMentorshipRTC } from "../hooks/useMentorshipRTC.js";
+import { CallingOverlay } from "../components/mentorship/CallingOverlay.jsx";
 import "../components/mentorship/Mentorship.css";
 import { useAlumniConversations } from "../hooks/useMentorship.js";
 import { useAlumniConversationE2EE } from "../hooks/useMentorshipE2EE.js";
@@ -14,8 +12,51 @@ import { useAlumniConversationSocket } from "../hooks/useMentorshipSocket.js";
 
 const reactionChoices = ["😀", "😂", "❤️", "🎉", "👏", "🙏"];
 
+function getConversationContact(conversation, currentUserId, getInitials) {
+  if (!conversation) return null;
+
+  if (conversation.conversationType === "group") {
+    const groupName = conversation.groupName || "Unnamed Group";
+    return {
+      about: "Alumni group conversation",
+      initials: getInitials(groupName),
+      isGroup: true,
+      meta: "Shared alumni network",
+      name: groupName,
+      status: `${conversation.members?.length || 0} members`,
+    };
+  }
+
+  const currentId = String(currentUserId || "");
+  const partner =
+    String(conversation.requester?._id || conversation.requester?.id || "") ===
+    currentId
+      ? conversation.mentor
+      : conversation.requester;
+
+  const partnerName = partner?.name || "Alumni Contact";
+
+  return {
+    about:
+      partner?.headline ||
+      partner?.role ||
+      partner?.currentRole ||
+      "Alumni contact",
+    initials: getInitials(partnerName),
+    isGroup: false,
+    meta:
+      partner?.batch || partner?.graduationYear
+        ? `Alumni - Batch of ${partner.batch || partner.graduationYear}`
+        : "Alumni network member",
+    name: partnerName,
+    status: conversation.online ? "Online" : "Offline",
+  };
+}
+
 export default function AlumniMessagesPage() {
   const queryClient = useQueryClient();
+  const [isContactPanelVisible, setIsContactPanelVisible] = useState(false);
+  const [toasts, setToasts] = useState([]);
   const conversationsState = useAlumniConversations();
   const e2ee = useAlumniConversationE2EE(
     conversationsState.auth,
@@ -26,14 +67,22 @@ export default function AlumniMessagesPage() {
     conversationsState.conversations,
   );
 
-  const acceptedCount = conversationsState.conversations.filter(
-    (conversation) =>
-      conversation.status === "accepted" || conversation.type === "group",
-  ).length;
-  const pendingCount = conversationsState.conversations.filter(
-    (conversation) =>
-      conversation.type === "direct" && conversation.status === "pending",
-  ).length;
+  const rtc = useMentorshipRTC(
+    realtime.socket,
+    conversationsState.auth,
+    {
+      _id: conversationsState.activeConversation?._id,
+      partnerId: String(conversationsState.activeConversation?.requester?._id || conversationsState.activeConversation?.requester?.id) === String(conversationsState.auth.user?.id || conversationsState.auth.user?._id)
+        ? conversationsState.activeConversation?.mentor?._id || conversationsState.activeConversation?.mentor?.id
+        : conversationsState.activeConversation?.requester?._id || conversationsState.activeConversation?.requester?.id
+    },
+    null,
+    (error) => {
+      const id = Date.now();
+      setToasts((prev) => [...prev, { id, message: error }]);
+      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+    }
+  );
 
   const getThreadStatus = (item) => {
     if (item.type === "group")
@@ -133,6 +182,56 @@ export default function AlumniMessagesPage() {
     }
   };
 
+  const showToast = (message) => {
+    const id = Date.now();
+    setToasts((curr) => [...curr, { id, message }]);
+    setTimeout(() => {
+      setToasts((curr) => curr.filter((t) => t.id !== id));
+    }, 3000);
+  };
+
+  const handleUnimplemented = (feature) => {
+    showToast(`${feature} is coming soon!`);
+  };
+
+  const handleToggleMute = async () => {
+    if (!conversationsState.activeConversation) return;
+    try {
+      await conversationsState.toggleMuteMutation.mutateAsync(
+        conversationsState.activeConversation._id,
+      );
+      showToast(
+        conversationsState.activeConversation.isMuted
+          ? "Notifications unmuted"
+          : "Notifications muted",
+      );
+    } catch (err) {
+      showToast("Failed to update mute settings");
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    if (!conversationsState.activeConversation) return;
+    const isBlocked = conversationsState.activeConversation.isBlocked;
+    if (
+      !isBlocked &&
+      !window.confirm(
+        "Are you sure you want to block this contact? You will no longer receive messages from them.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await conversationsState.toggleBlockMutation.mutateAsync(
+        conversationsState.activeConversation._id,
+      );
+      showToast(isBlocked ? "Contact unblocked" : "Contact blocked");
+    } catch (err) {
+      showToast("Failed to update block settings");
+    }
+  };
+
   const handleReactionToggle = (conversationId, messageId, emoji) => {
     conversationsState.reactionMutation.mutate({
       id: conversationId,
@@ -143,8 +242,7 @@ export default function AlumniMessagesPage() {
 
   if (conversationsState.isLoading) {
     return (
-      <div className="portal-page-content">
-        <PortalPageHeader title="Alumni Messages" />
+      <div className="portal-page-content messages-portal-page">
         <div className="member-messages-shell skeleton">
           <div className="skeleton-sidebar" />
           <div className="skeleton-main" />
@@ -153,39 +251,14 @@ export default function AlumniMessagesPage() {
     );
   }
 
+  const contact = getConversationContact(
+    conversationsState.activeConversation,
+    conversationsState.auth.user?.id,
+    getInitials,
+  );
+
   return (
-    <div className="portal-page-content">
-      <PortalPageHeader
-        description="Chat with fellow alumni, collaborate in groups, and stay connected across your alumni network."
-        title="Alumni Messages"
-      />
-
-      <div className="portal-page-section">
-        <PortalMetricGrid>
-          <PortalMetricCard
-            icon="forum"
-            title="Total Conversations"
-            trend={acceptedCount > 0 ? `+${acceptedCount}` : null}
-            value={conversationsState.conversations.length}
-          />
-          <PortalMetricCard
-            icon="person_add"
-            title="Pending Chat Requests"
-            trend={pendingCount > 0 ? `${pendingCount} new` : null}
-            value={pendingCount}
-          />
-          <PortalMetricCard
-            icon="verified_user"
-            title="Secure Channels"
-            value={
-              conversationsState.conversations.filter(
-                (conversation) => conversation.e2ee?.envelopes?.length > 0,
-              ).length
-            }
-          />
-        </PortalMetricGrid>
-      </div>
-
+    <div className="portal-page-content messages-portal-page">
       {conversationsState.isError ? (
         <p className="error-text">
           {conversationsState.error?.message || "Unable to load conversations."}
@@ -193,7 +266,7 @@ export default function AlumniMessagesPage() {
       ) : null}
 
       <div
-        className={`member-messages-shell alumni-messages-thread-section ${conversationsState.isMobileViewport ? "mobile-view" : ""} ${conversationsState.isMobileThreadListOpen ? "mobile-sidebar-open" : "mobile-sidebar-closed"}`}
+        className={`member-messages-shell alumni-messages-thread-section ${conversationsState.isMobileViewport ? "mobile-view" : ""} ${conversationsState.isMobileThreadListOpen ? "mobile-sidebar-open" : "mobile-sidebar-closed"} ${!isContactPanelVisible ? "contact-panel-hidden" : ""}`}
       >
         <MentorshipSidebar
           activeId={conversationsState.activeId}
@@ -208,6 +281,8 @@ export default function AlumniMessagesPage() {
             conversationsState.setIsMobileThreadListOpen
           }
           setSearch={conversationsState.setSearch}
+          activeFilter={conversationsState.activeFilter}
+          setActiveFilter={conversationsState.setActiveFilter}
         />
 
         {conversationsState.activeConversation ? (
@@ -226,6 +301,8 @@ export default function AlumniMessagesPage() {
             isMessagesLoading={conversationsState.isMessagesLoading}
             isMobileViewport={conversationsState.isMobileViewport}
             isRealtimeConnected={realtime.isRealtimeConnected}
+            isContactPanelVisible={isContactPanelVisible}
+            setIsContactPanelVisible={setIsContactPanelVisible}
             editMessageMutation={conversationsState.editMessageMutation}
             deleteMessageMutation={conversationsState.deleteMessageMutation}
             markReadMutation={conversationsState.markReadMutation}
@@ -256,6 +333,7 @@ export default function AlumniMessagesPage() {
             transmitPendingMessage={transmitPendingMessage}
             updatePendingMessage={conversationsState.updatePendingMessage}
             verifySecret={e2ee.verifySecret}
+            rtc={rtc}
           />
         ) : (
           <main className="member-messages-panel">
@@ -272,6 +350,120 @@ export default function AlumniMessagesPage() {
             </div>
           </main>
         )}
+
+        {contact ? (
+          <aside className={`member-contact-panel ${!isContactPanelVisible ? "hidden" : ""}`} aria-label="Contact info">
+            <div className="member-contact-panel-header">
+              <h2>Contact info</h2>
+              <button className="member-contact-icon-button" onClick={() => setIsContactPanelVisible(false)} type="button">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="member-contact-identity">
+              <div className="member-contact-avatar">
+                {contact.isGroup ? (
+                  <span className="material-symbols-outlined">groups</span>
+                ) : (
+                  contact.initials
+                )}
+                {!contact.isGroup &&
+                conversationsState.activeConversation?.online ? (
+                  <span className="member-contact-online" />
+                ) : null}
+              </div>
+              <strong>{contact.name}</strong>
+              <span>{contact.status}</span>
+            </div>
+
+            <div className="member-contact-actions">
+              <button onClick={() => rtc.startCall("audio")} type="button">
+                <span className="material-symbols-outlined">call</span>
+                Audio
+              </button>
+              <button onClick={() => rtc.startCall("video")} type="button">
+                <span className="material-symbols-outlined">videocam</span>
+                Video
+              </button>
+              <button onClick={() => handleUnimplemented("In-chat search")} type="button">
+                <span className="material-symbols-outlined">search</span>
+                Search
+              </button>
+              <button onClick={() => handleUnimplemented("More options")} type="button">
+                <span className="material-symbols-outlined">more_horiz</span>
+                More
+              </button>
+            </div>
+
+            <section className="member-contact-card">
+              <h3>About</h3>
+              <p>{contact.about}</p>
+              <span>{contact.meta}</span>
+            </section>
+
+            <section className="member-contact-card">
+              <div className="member-contact-card-head">
+                <h3>Media, links and docs</h3>
+                <button onClick={() => handleUnimplemented("Media gallery")} type="button">See all</button>
+              </div>
+              <div className="member-contact-media-grid">
+                {(conversationsState.activeConversation?.messages || [])
+                  .flatMap((m) => m.attachments || [])
+                  .slice(0, 4)
+                  .map((att, idx, arr) => {
+                    const isLast = idx === 3;
+                    const totalCount = (conversationsState.activeConversation?.messages || [])
+                      .flatMap((m) => m.attachments || []).length;
+                    
+                    if (att.mimeType?.startsWith("image/")) {
+                      return (
+                        <div key={att.url || idx} className={isLast ? "more-tile" : ""}>
+                          <img src={att.url} alt="Attachment" />
+                          {isLast && totalCount > 4 && `+${totalCount - 4}`}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={att.url || idx} className={isLast ? "more-tile" : ""}>
+                        <span className="material-symbols-outlined">
+                          {att.mimeType?.includes("pdf") ? "picture_as_pdf" : "description"}
+                        </span>
+                        {isLast && totalCount > 4 && `+${totalCount - 4}`}
+                      </div>
+                    );
+                  })}
+                {!(conversationsState.activeConversation?.messages || []).some(m => m.attachments?.length) && (
+                  <p className="muted" style={{ gridColumn: 'span 3', fontSize: '0.8rem' }}>No media shared yet.</p>
+                )}
+              </div>
+            </section>
+
+            <section className="member-contact-card compact">
+              <button onClick={() => handleUnimplemented("Starred messages")} type="button">
+                <span className="material-symbols-outlined">star</span>
+                Starred messages
+              </button>
+              <button onClick={handleToggleMute} type="button">
+                <span className="material-symbols-outlined">
+                  {conversationsState.activeConversation?.isMuted ? "notifications" : "notifications_off"}
+                </span>
+                {conversationsState.activeConversation?.isMuted ? "Unmute notifications" : "Mute notifications"}
+                <span className={`member-contact-toggle ${conversationsState.activeConversation?.isMuted ? "active" : ""}`} />
+              </button>
+              <button onClick={() => handleUnimplemented("Disappearing messages")} type="button">
+                <span className="material-symbols-outlined">timer</span>
+                Disappearing messages
+                <strong>Off</strong>
+              </button>
+              <button className="danger" onClick={handleToggleBlock} type="button">
+                <span className="material-symbols-outlined">
+                  {conversationsState.activeConversation?.isBlocked ? "undo" : "block"}
+                </span>
+                {conversationsState.activeConversation?.isBlocked ? "Unblock contact" : "Block contact"}
+              </button>
+            </section>
+          </aside>
+        ) : null}
       </div>
 
       <CreateGroupModal
@@ -283,6 +475,24 @@ export default function AlumniMessagesPage() {
         setGroupForm={conversationsState.setGroupForm}
         onClose={() => conversationsState.setIsCreateGroupOpen(false)}
       />
+
+      <CallingOverlay
+        callState={rtc.callState}
+        incomingCallData={rtc.incomingCallData}
+        localStream={rtc.localStream}
+        remoteStream={rtc.remoteStream}
+        onAccept={rtc.answerCall}
+        onReject={rtc.rejectCall}
+        onEnd={rtc.endCall}
+        isAudioOnly={rtc.isAudioOnly}
+      />
+
+      {toasts.map((t) => (
+        <div key={t.id} className="member-toast">
+          <span className="material-symbols-outlined">info</span>
+          {t.message}
+        </div>
+      ))}
     </div>
   );
 }

@@ -96,48 +96,85 @@ export function useMentorshipE2EE(auth, activeConversation) {
         }
 
         const storageKey = getSecretStorageKey(conversationId);
-        let resolvedSecret = localStorage.getItem(storageKey) || "";
+        const storedSecret = localStorage.getItem(storageKey) || "";
+        let resolvedSecret = "";
 
-        if (!resolvedSecret) {
-          const ownEnvelope = envelopeEntries.find(e => e.userId === currentUserId);
-          if (ownEnvelope?.encryptedKey) {
-            try {
-              resolvedSecret = await decryptConversationSecretEnvelope(ownEnvelope.encryptedKey, devicePrivateKeyJwk);
-            } catch { resolvedSecret = ""; }
+        // Check if other participants already have envelopes.
+        // This means a secret was already established on the other side.
+        const othersHaveEnvelopes = envelopeEntries.some(
+          (e) => e.userId !== currentUserId && e.encryptedKey,
+        );
+
+        // 1st priority: decrypt our own envelope (most authoritative source)
+        const ownEnvelope = envelopeEntries.find((e) => e.userId === currentUserId);
+        if (ownEnvelope?.encryptedKey) {
+          try {
+            resolvedSecret = await decryptConversationSecretEnvelope(
+              ownEnvelope.encryptedKey,
+              devicePrivateKeyJwk,
+            );
+          } catch {
+            resolvedSecret = "";
           }
         }
 
-        if (!resolvedSecret) {
+        // 2nd priority: use localStorage only if we were the originator
+        // (i.e., no other envelopes exist — meaning we generated the secret first)
+        if (!resolvedSecret && storedSecret && !othersHaveEnvelopes) {
+          resolvedSecret = storedSecret;
+        }
+
+        // If others have envelopes but we don't have ours yet, clear any stale
+        // locally-generated secret — it won't match the established shared key.
+        if (!resolvedSecret && othersHaveEnvelopes && storedSecret) {
+          localStorage.removeItem(storageKey);
+        }
+
+        // 3rd priority: generate a new secret only when no envelopes exist at all
+        // (we are the first participant to set up encryption for this conversation)
+        if (!resolvedSecret && !othersHaveEnvelopes) {
           resolvedSecret = generateConversationSecret();
         }
 
-        // Sync envelopes for missing participants
-        const envelopeByUserId = new Map(envelopeEntries.map(e => [e.userId, e]));
-        const missingTargets = [...participantKeyByUserId.entries()]
-          .filter(([userId, pubKey]) => pubKey && !envelopeByUserId.has(userId))
-          .map(([userId, publicKey]) => ({ userId, publicKey }));
+        // If resolvedSecret is still empty here, we are waiting for the other
+        // participant to create our envelope. Do not store or set anything yet.
 
-        if (missingTargets.length) {
-          const signature = `${conversationId}:${missingTargets.map(t => t.userId).sort().join("|")}`;
-          if (e2eeSyncSignatureRef.current.get(conversationId) !== signature) {
-            e2eeSyncSignatureRef.current.set(conversationId, signature);
-            const envelopes = [];
-            for (const target of missingTargets) {
-              const encryptedKey = await encryptConversationSecretForPublicKey(resolvedSecret, target.publicKey);
-              envelopes.push({ userId: target.userId, encryptedKey, algorithm: "RSA-OAEP", version: "conv-v1" });
-            }
-            if (envelopes.length) {
-              await syncMentorshipConversationEnvelopes(conversationId, { envelopes });
-              await queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
-              await queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+        // Only sync envelopes for missing participants if we have a valid secret.
+        // (If resolvedSecret is empty we're waiting for our envelope — skip sync.)
+        if (resolvedSecret) {
+          const envelopeByUserId = new Map(envelopeEntries.map(e => [e.userId, e]));
+          const missingTargets = [...participantKeyByUserId.entries()]
+            .filter(([userId, pubKey]) => pubKey && !envelopeByUserId.has(userId))
+            .map(([userId, publicKey]) => ({ userId, publicKey }));
+
+          if (missingTargets.length) {
+            const signature = `${conversationId}:${missingTargets.map(t => t.userId).sort().join("|")}`;
+            if (e2eeSyncSignatureRef.current.get(conversationId) !== signature) {
+              e2eeSyncSignatureRef.current.set(conversationId, signature);
+              const envelopes = [];
+              for (const target of missingTargets) {
+                const encryptedKey = await encryptConversationSecretForPublicKey(resolvedSecret, target.publicKey);
+                envelopes.push({ userId: target.userId, encryptedKey, algorithm: "RSA-OAEP", version: "conv-v1" });
+              }
+              if (envelopes.length) {
+                await syncMentorshipConversationEnvelopes(conversationId, { envelopes });
+                await queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
+                await queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+              }
             }
           }
         }
 
         if (isCancelled) return;
-        localStorage.setItem(storageKey, resolvedSecret);
-        setConversationSecret(resolvedSecret);
-        setConversationSecretInput(resolvedSecret);
+        if (resolvedSecret) {
+          localStorage.setItem(storageKey, resolvedSecret);
+          setConversationSecret(resolvedSecret);
+          setConversationSecretInput(resolvedSecret);
+        } else {
+          // Still waiting for our envelope — clear state so UI shows "Encrypted message"
+          setConversationSecret("");
+          setConversationSecretInput("");
+        }
         setError("");
       } catch (err) {
         if (!isCancelled) setError("Secure channel initializing...");

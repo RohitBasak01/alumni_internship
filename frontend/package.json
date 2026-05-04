@@ -10,8 +10,17 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.66.9",
+    "@tiptap/extension-image": "^3.22.5",
+    "@tiptap/extension-link": "^3.22.5",
+    "@tiptap/extension-placeholder": "^3.22.5",
+    "@tiptap/extension-youtube": "^3.22.5",
+    "@tiptap/pm": "^3.22.5",
+    "@tiptap/react": "^3.22.5",
+    "@tiptap/starter-kit": "^3.22.5",
     "axios": "^1.8.1",
+    "emoji-picker-react": "^4.19.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.5",

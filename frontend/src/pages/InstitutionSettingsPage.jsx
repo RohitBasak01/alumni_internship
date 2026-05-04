@@ -20,13 +20,23 @@ const initialFormState = {
   enableEvents: true,
   allowStudentRegistrations: false,
   autoApproveAlumni: false,
-  autoApproveEmailDomainsText: ""
+  autoApproveEmailDomainsText: "",
+  departmentsText: ""
 };
 
 function normalizeAutoApproveDomainsInput(value) {
   const values = String(value || "")
     .split(/[,\n]/)
     .map((item) => item.trim().toLowerCase().replace(/^@/, ""))
+    .filter(Boolean);
+
+  return [...new Set(values)];
+}
+
+function normalizeDepartmentsInput(value) {
+  const values = String(value || "")
+    .split(/[,\n]/)
+    .map((item) => item.trim())
     .filter(Boolean);
 
   return [...new Set(values)];
@@ -50,6 +60,9 @@ function mapSettingsToForm(settings) {
     autoApproveAlumni: Boolean(settings?.featureFlags?.autoApproveAlumni),
     autoApproveEmailDomainsText: Array.isArray(settings?.featureFlags?.autoApproveEmailDomains)
       ? settings.featureFlags.autoApproveEmailDomains.join("\n")
+      : "",
+    departmentsText: Array.isArray(settings?.departments)
+      ? settings.departments.join("\n")
       : ""
   };
 }
@@ -73,7 +86,8 @@ function buildUpdatePayload(form) {
       allowStudentRegistrations: form.allowStudentRegistrations,
       autoApproveAlumni: form.autoApproveAlumni,
       autoApproveEmailDomains: normalizeAutoApproveDomainsInput(form.autoApproveEmailDomainsText)
-    }
+    },
+    departments: normalizeDepartmentsInput(form.departmentsText)
   };
 }
 
@@ -182,6 +196,18 @@ function InstitutionSettingsPage() {
             <span>About / Bio</span>
             <textarea className="textarea" name="bio" onChange={handleSettingsChange} rows="4" value={form.bio} />
             <small>This description can be used in your public presence.</small>
+          </label>
+          <label className="full">
+            <span>Academic Departments / Branches</span>
+            <textarea
+              className="textarea"
+              name="departmentsText"
+              onChange={handleSettingsChange}
+              placeholder="Computer Science&#10;Electronics&#10;Mechanical"
+              rows="5"
+              value={form.departmentsText}
+            />
+            <small>Add one department per line. These will appear as options in the registration form.</small>
           </label>
         </div>
       </section>

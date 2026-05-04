@@ -1,3 +1,6 @@
+import { useEffect, useRef } from "react";
+import EmojiPicker from "emoji-picker-react";
+
 export function MentorshipComposer({
   draftMessage,
   setDraftMessage,
@@ -22,8 +25,20 @@ export function MentorshipComposer({
   reactionChoices,
   handleReactionInsert,
 }) {
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    const nextHeight = Math.min(textarea.scrollHeight, 120);
+    textarea.style.height = `${nextHeight}px`;
+  }, [draftMessage]);
+
   return (
     <div className="member-message-composer-wrap">
+      {/* ... existing reply/edit/attachment UI ... */}
       {editingMessage ? (
         <div className="member-compose-reply mode-editing">
           <div className="member-compose-reply-copy">
@@ -133,16 +148,18 @@ export function MentorshipComposer({
               <span className="material-symbols-outlined">mood</span>
             </button>
             {isEmojiPickerOpen ? (
-              <div className="member-toolbar-popover compact emoji-grid">
-                {reactionChoices.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleReactionInsert(emoji)}
-                    type="button"
-                  >
-                    {emoji}
-                  </button>
-                ))}
+              <div className="member-composer-emoji-picker">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => {
+                    handleReactionInsert(emojiData.emoji);
+                    setIsEmojiPickerOpen(false);
+                  }}
+                  autoFocusSearch={false}
+                  emojiStyle="native"
+                  lazyLoadEmojis={false}
+                  width={320}
+                  height={400}
+                />
               </div>
             ) : null}
           </div>
@@ -177,6 +194,7 @@ export function MentorshipComposer({
 
         <div className="member-message-composer-input">
           <textarea
+            ref={textareaRef}
             disabled={!canSendMessage}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {

@@ -1,5 +1,7 @@
 import express from "express";
-
+import multer from "multer";
+import path from "node:path";
+import fs from "node:fs/promises";
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
@@ -70,6 +72,31 @@ function buildAuthorPayload(user, profile) {
   };
 }
 
+// Multer config for post attachments
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), "uploads", "posts", req.tenant._id.toString());
+    await fs.mkdir(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname.replace(/\s+/g, "-"));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF files are allowed"));
+    }
+  }
+});
+
 async function formatPost(post, req, tenantModels) {
   await post.populate([
     { path: "authorUserId", select: "name email role isActive" },
@@ -106,7 +133,13 @@ async function formatPost(post, req, tenantModels) {
           createdAt: comment.createdAt,
           author: buildAuthorPayload(comment.userId, profileMap.get(commentUserId))
         };
-      })
+      }),
+    attachments: (post.attachments || []).map(a => ({
+      name: a.name,
+      url: a.url,
+      mimeType: a.mimeType,
+      size: a.size
+    }))
   };
 }
 
@@ -140,10 +173,36 @@ router.post(
         instituteId: req.tenant._id,
         authorUserId: req.user._id,
         title: req.body.title?.trim?.() || "",
-        content: req.body.content.trim()
+        content: req.body.content.trim(),
+        attachments: req.body.attachments || []
       });
 
       res.status(201).json(await formatPost(post, req, getTenantModels(req)));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/upload",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  upload.single("file"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        throw new Error("No file uploaded");
+      }
+
+      const url = `/uploads/posts/${req.tenant._id}/${req.file.filename}`;
+      res.json({
+        name: req.file.originalname,
+        url,
+        mimeType: req.file.mimetype,
+        size: req.file.size
+      });
     } catch (error) {
       next(error);
     }

@@ -79,6 +79,14 @@ const alumniPostSchema = new mongoose.Schema(
       type: [postReportSchema],
       default: []
     },
+    attachments: [
+      {
+        name: { type: String, required: true },
+        url: { type: String, required: true },
+        mimeType: { type: String, required: true },
+        size: { type: Number, required: true }
+      }
+    ],
     status: {
       type: String,
       enum: ["active", "hidden"],

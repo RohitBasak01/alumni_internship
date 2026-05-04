@@ -183,6 +183,10 @@ function validateAlumniRegistrationBody(body) {
     issues.push("Mobile number is required");
   }
 
+  if (!isNonEmptyString(body.currentCountry)) {
+    issues.push("Current country is required");
+  }
+
   if (!isNonEmptyString(body.currentCity)) {
     issues.push("Current city is required");
   }
@@ -744,7 +748,9 @@ router.post("/alumni-registration", validateBody(validateAlumniRegistrationBody)
       occupation: req.body.occupation?.trim?.() || "",
       company: req.body.company?.trim?.() || "",
       designation: req.body.designation?.trim?.() || "",
-      location: req.body.currentCity.trim(),
+      country: req.body.currentCountry.trim(),
+      city: req.body.currentCity.trim(),
+      location: `${req.body.currentCity.trim()}, ${req.body.currentCountry.trim()}`,
       bio: "",
       skills: [],
       registrationReviewStatus,

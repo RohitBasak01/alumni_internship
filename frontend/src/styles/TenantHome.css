@@ -1,0 +1,552 @@
+/* ============================================================
+   TenantHomePage.css  —  Per-institution public home page
+   Uses CSS vars injected by useTenantBranding:
+     --tenant-primary, --tenant-secondary, --tenant-accent
+   ============================================================ */
+
+/* ── Defaults (in case vars aren't set yet) ─────────────────── */
+:root {
+  --th-primary: var(--tenant-primary, #2554d8);
+  --th-secondary: var(--tenant-secondary, #163795);
+  --th-accent: var(--tenant-accent, #eef3ff);
+  --th-text: #0f172a;
+  --th-muted: #64748b;
+  --th-surface: #ffffff;
+  --th-border: #e2e8f0;
+  --th-radius: 1rem;
+  --th-radius-sm: 0.5rem;
+  --th-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+  --th-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.13);
+}
+
+/* ── Skip link ──────────────────────────────────────────────── */
+.th-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.th-skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1.25rem;
+  background: var(--th-primary);
+  color: #fff;
+  border-radius: var(--th-radius-sm);
+  font-weight: 600;
+  z-index: 9999;
+  text-decoration: none;
+}
+
+/* ── Page wrapper ───────────────────────────────────────────── */
+.th-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  color: var(--th-text);
+  background: #fff;
+  overflow-x: hidden;
+}
+
+/* ── Shared buttons ─────────────────────────────────────────── */
+.th-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+.th-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px var(--th-primary);
+}
+.th-btn:active {
+  transform: translateY(0);
+}
+
+.th-btn-primary {
+  background: var(--th-primary);
+  color: #fff;
+  border-color: var(--th-primary);
+  box-shadow: 0 8px 16px -4px var(--th-primary);
+}
+.th-btn-primary:hover {
+  background: var(--th-secondary);
+  border-color: var(--th-secondary);
+  color: #fff;
+}
+
+.th-btn-secondary {
+  background: #fff;
+  color: var(--th-text);
+  border-color: var(--th-border);
+}
+.th-btn-secondary:hover {
+  background: var(--th-accent);
+  color: var(--th-primary);
+  border-color: var(--th-accent);
+}
+
+.th-btn-lg {
+  padding: 1rem 2.25rem;
+  font-size: 1.125rem;
+}
+
+/* ── Hero ───────────────────────────────────────────────────── */
+.th-hero {
+  position: relative;
+  min-height: 95vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #fff;
+  padding: 6rem 1.5rem 4rem;
+}
+
+.th-hero-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Institution Blobs */
+.th-hero-glow::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  right: -10%;
+  width: 50%;
+  height: 60%;
+  background: var(--th-primary);
+  filter: blur(120px);
+  opacity: 0.12;
+  border-radius: 50%;
+  animation: th-blob 10s infinite;
+}
+
+.th-hero-glow::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: -5%;
+  width: 40%;
+  height: 50%;
+  background: var(--th-secondary);
+  filter: blur(100px);
+  opacity: 0.08;
+  border-radius: 50%;
+  animation: th-blob 12s infinite reverse;
+}
+
+@keyframes th-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+.th-hero-inner {
+  position: relative;
+  z-index: 2;
+  max-width: 840px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  animation: th-fade-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Logo / initials badge */
+.th-hero-badge {
+  width: 110px;
+  height: 110px;
+  border-radius: 2rem;
+  background: #fff;
+  border: 1px solid var(--th-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: var(--th-shadow-lg);
+  margin-bottom: 1rem;
+  transition: transform 0.5s ease;
+}
+.th-hero-badge:hover {
+  transform: rotate(5deg) scale(1.05);
+}
+
+.th-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 12px;
+}
+.th-logo-initials {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--th-primary);
+  letter-spacing: -2px;
+}
+
+/* Kicker label */
+.th-kicker {
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--th-primary);
+  margin-bottom: 0.5rem;
+}
+
+/* Hero heading */
+.th-hero-title {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  color: var(--th-text);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+/* Hero tagline */
+.th-hero-tagline {
+  font-size: 1.25rem;
+  color: var(--th-muted);
+  max-width: 600px;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Hero CTA row */
+.th-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+/* Decorative floating cards */
+.th-hero-visual {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.th-float-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: th-float 6s ease-in-out infinite;
+}
+.th-float-card .material-symbols-outlined {
+  font-size: 1rem;
+}
+.th-float-card--a {
+  top: 18%;
+  right: 8%;
+  animation-delay: 0s;
+}
+.th-float-card--b {
+  bottom: 28%;
+  right: 5%;
+  animation-delay: 2s;
+}
+.th-float-card--c {
+  bottom: 18%;
+  left: 7%;
+  animation-delay: 4s;
+}
+
+@keyframes th-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes th-fade-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Shared section layout ──────────────────────────────────── */
+.th-section {
+  padding: 8rem 1.5rem;
+  background: #fff;
+}
+.th-section-muted {
+  padding: 8rem 1.5rem;
+  background: var(--th-accent, #f8fbff);
+}
+.th-section-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.th-section-inner--narrow {
+  max-width: 800px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.th-section-heading {
+  text-align: center;
+  margin-bottom: 5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.th-section-heading h2 {
+  font-size: clamp(2.25rem, 4vw, 3rem);
+  font-weight: 900;
+  color: var(--th-text);
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+.th-section-subtitle {
+  color: var(--th-muted);
+  font-size: 1.125rem;
+  max-width: 580px;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ── About section ──────────────────────────────────────────── */
+.th-about-bio {
+  color: var(--th-muted);
+  font-size: 1.25rem;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ── Feature grid ───────────────────────────────────────────── */
+.th-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+}
+.th-feature-card {
+  background: #fff;
+  border: 1px solid var(--th-border);
+  border-radius: 2rem;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+.th-feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+  border-color: var(--th-primary);
+}
+.th-feature-icon {
+  font-size: 2rem;
+  color: var(--th-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: var(--th-accent);
+  border-radius: 1.25rem;
+  transition: all 0.3s ease;
+}
+.th-feature-card:hover .th-feature-icon {
+  background: var(--th-primary);
+  color: #fff;
+  transform: rotate(5deg);
+}
+.th-feature-card h3 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--th-text);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.th-feature-card p {
+  font-size: 1rem;
+  color: var(--th-muted);
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ── CTA banner ─────────────────────────────────────────────── */
+.th-cta-section {
+  background: var(--th-primary);
+  padding: 8rem 1.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.th-cta-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+}
+.th-cta-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+.th-cta-section h2 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+.th-cta-section p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.25rem;
+  margin: 0;
+  font-weight: 500;
+}
+.th-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+.th-btn-outline-white {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.th-btn-outline-white:hover {
+  background: #fff;
+  color: var(--th-primary);
+  border-color: #fff;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.th-footer {
+  background: #000;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6rem 1.5rem;
+  margin-top: auto;
+}
+.th-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+  text-align: center;
+}
+.th-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.th-footer-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 8px;
+}
+.th-footer-initials {
+  width: 48px;
+  height: 48px;
+  border-radius: 1rem;
+  background: var(--th-primary);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.th-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 3rem;
+  justify-content: center;
+}
+.th-footer-links a {
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+.th-footer-links a:hover {
+  color: #fff;
+}
+.th-footer-credit {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.th-footer-credit strong {
+  color: #fff;
+  font-weight: 900;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .th-hero {
+    padding: 6rem 1.25rem 4rem;
+  }
+  .th-hero-actions,
+  .th-cta-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .th-btn {
+    justify-content: center;
+  }
+  .th-feature-grid {
+    grid-template-columns: 1fr;
+  }
+  .th-section {
+    padding: 5rem 1.25rem;
+  }
+}

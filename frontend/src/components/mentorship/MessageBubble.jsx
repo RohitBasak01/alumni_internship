@@ -1,3 +1,5 @@
+import { useState } from "react";
+import EmojiPicker from "emoji-picker-react";
 import { resolveApiAssetUrl } from "../../lib/api.js";
 
 export function MessageBubble({
@@ -24,11 +26,15 @@ export function MessageBubble({
   registerMessageNode,
   onRetrySend,
   onOpenImage,
+  isGroupStart,
+  isGroupEnd,
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
   const messageSenderId = String(
     message.sender?._id || message.senderId?._id || message.senderId || "",
   );
-  const currentUserId = String(auth.user?.id || "");
+  const currentUserId = String(auth.user?.id || auth.user?._id || "");
   const isOwn = Boolean(messageSenderId) && messageSenderId === currentUserId;
   const isPending = message.isPending;
   const isDeleted = Boolean(message.deletedAt);
@@ -83,16 +89,16 @@ export function MessageBubble({
       ref={(node) => registerMessageNode(message._id, node)}
       className={`member-message-row ${isOwn ? "own" : ""} ${
         highlightedMessageId === String(message._id) ? "highlighted" : ""
-      } ${isFailed ? "failed" : ""}`}
+      } ${isFailed ? "failed" : ""} ${!isGroupStart ? "grouped" : ""}`}
     >
-      {!isOwn ? (
+      {!isOwn && isGroupStart ? (
         <div className="member-message-avatar" title={message.sender?.name}>
           {getInitials(message.sender?.name)}
         </div>
       ) : null}
 
       <div className="member-message-body">
-        {!isOwn && activeConversation.type === "group" ? (
+        {!isOwn && isGroupStart && activeConversation.type === "group" ? (
           <span className="member-message-sender-name">
             {message.sender?.name}
           </span>
@@ -247,20 +253,45 @@ export function MessageBubble({
                   {isOwn && !isPending ? (
                     <button
                       className="danger"
-                      onClick={() => {
-                        if (window.confirm("Delete this message?")) {
-                          deleteMessageMutation.mutate({
-                            requestId: activeConversation._id,
-                            messageId: message._id,
-                          });
-                        }
-                      }}
+                      onClick={() => setShowDeleteConfirm(true)}
                       type="button"
                     >
                       <span className="material-symbols-outlined">delete</span>
                       Delete
                     </button>
                   ) : null}
+                  {showDeleteConfirm && (
+                    <div className="member-popover-confirm">
+                      <p>Delete this message?</p>
+                      <div className="member-popover-confirm-actions">
+                        <button 
+                          className="button ghost compact" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDeleteConfirm(false);
+                          }}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          className="button danger compact" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteMessageMutation.mutate({
+                              requestId: activeConversation._id,
+                              messageId: message._id,
+                            });
+                            setShowDeleteConfirm(false);
+                            setActiveMessageMenuId(null);
+                          }}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {isFailed ? (
                     <button
                       onClick={() => onRetrySend?.(message)}
@@ -286,16 +317,44 @@ export function MessageBubble({
               ) : null}
 
               {reactionPickerMessageId === message._id ? (
-                <div className="member-toolbar-popover compact emoji-grid">
-                  {reactionChoices.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => handleReactionToggle(message._id, emoji)}
-                      type="button"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div className={`member-toolbar-popover ${showFullPicker ? 'full-picker' : 'compact emoji-grid'}`}>
+                  {showFullPicker ? (
+                    <EmojiPicker
+                      onEmojiClick={(emojiData) => {
+                        handleReactionToggle(message._id, emojiData.emoji);
+                        setReactionPickerMessageId(null);
+                        setShowFullPicker(false);
+                      }}
+                      autoFocusSearch={true}
+                      emojiStyle="native"
+                      lazyLoadEmojis={false}
+                      width={280}
+                      height={320}
+                    />
+                  ) : (
+                    <>
+                      {reactionChoices.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => {
+                            handleReactionToggle(message._id, emoji);
+                            setReactionPickerMessageId(null);
+                          }}
+                          type="button"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                      <button 
+                        className="member-emoji-more"
+                        onClick={() => setShowFullPicker(true)}
+                        type="button"
+                        title="More emojis"
+                      >
+                        <span className="material-symbols-outlined">add</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -336,8 +395,13 @@ export function MessageBubble({
             )}
           </span>
           {isOwn && deliveryStatus ? (
-            <span className={`delivery-status ${deliveryStatus}`}>
-              {deliveryStatus}
+            <span className={`delivery-tick ${deliveryStatus === 'read' ? 'read' : ''}`} title={deliveryStatus}>
+              {deliveryStatus === 'sent' && (
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              )}
+              {(deliveryStatus === 'delivered' || deliveryStatus === 'read') && (
+                <svg viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM1 12.5l1.41-1.41 4.24 4.24-1.41 1.41L1 12.5z"/></svg>
+              )}
             </span>
           ) : null}
           {isFailed ? (

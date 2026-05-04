@@ -63,6 +63,9 @@ function getConfiguredTenantContext() {
   const browserHost =
     typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
   const storage = typeof window !== "undefined" ? window.localStorage : null;
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const queryTenant = searchParams?.get("tenant")?.trim()?.toLowerCase();
+
   const tenantSubdomainOverride = String(
     storage?.getItem("tenantSubdomain") || "",
   )
@@ -71,6 +74,7 @@ function getConfiguredTenantContext() {
   const tenantDomainOverride = String(storage?.getItem("tenantDomain") || "")
     .trim()
     .toLowerCase();
+
   const configuredSubdomain = String(
     import.meta.env.VITE_TENANT_SUBDOMAIN || "",
   )
@@ -81,6 +85,15 @@ function getConfiguredTenantContext() {
     .toLowerCase();
   const reservedHosts = new Set(["localhost", "127.0.0.1"]);
 
+  // 1. Query Param Override (Dev/Testing)
+  if (queryTenant) {
+    return {
+      tenantSubdomain: queryTenant,
+      tenantDomain: "",
+    };
+  }
+
+  // 2. Local Storage Override
   if (tenantSubdomainOverride || tenantDomainOverride) {
     return {
       tenantSubdomain: tenantSubdomainOverride,
@@ -88,6 +101,7 @@ function getConfiguredTenantContext() {
     };
   }
 
+  // 3. Platform Configuration
   if (configuredSubdomain || configuredDomain) {
     return {
       tenantSubdomain: configuredSubdomain,
@@ -95,6 +109,7 @@ function getConfiguredTenantContext() {
     };
   }
 
+  // 4. Subdomain Detection
   if (browserHost && !reservedHosts.has(browserHost)) {
     const parts = browserHost.split(".");
     return {
@@ -646,6 +661,17 @@ export async function createAlumniPost(payload) {
   return data;
 }
 
+export async function uploadPostAttachment(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post("/alumni-posts/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return data;
+}
+
 export async function fetchAlumniPost(id) {
   const { data } = await api.get(`/alumni-posts/${id}`);
   return data;
@@ -899,3 +925,13 @@ export async function createGroupConversation(payload) {
 }
 
 export const createAlumniConversationGroup = createGroupConversation;
+
+export async function toggleMuteAlumniConversation(id) {
+  const { data } = await api.post(`/mentorship/${id}/mute`);
+  return data;
+}
+
+export async function toggleBlockAlumniContact(id) {
+  const { data } = await api.post(`/mentorship/${id}/block`);
+  return data;
+}

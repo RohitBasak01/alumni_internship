@@ -25,6 +25,8 @@ import {
   uploadAttachment,
   upsertE2eePublicKey,
   syncConversationEnvelopes,
+  toggleMuteConversation,
+  toggleBlockUser,
 } from "../controllers/mentorship.controller.js";
 
 const router = express.Router();
@@ -94,6 +96,8 @@ router.patch("/:id/members/:userId/role", protect, authorize("alumni"), requireT
 router.patch("/:id/members/:userId/mute", protect, authorize("alumni"), requireTenantAccess, validateParams(validateUserParams), muteGroupMember);
 router.delete("/:id/members/:userId/mute", protect, authorize("alumni"), requireTenantAccess, validateParams(validateUserParams), unmuteGroupMember);
 router.delete("/:id/members/:userId", protect, authorize("alumni"), requireTenantAccess, validateParams(validateUserParams), removeGroupMember);
+router.post("/:id/mute", protect, requireTenantAccess, validateParams(validateMentorshipParams), toggleMuteConversation);
+router.post("/:id/block", protect, requireTenantAccess, validateParams(validateMentorshipParams), toggleBlockUser);
 
 // ... Other routes will be migrated similarly ...
 

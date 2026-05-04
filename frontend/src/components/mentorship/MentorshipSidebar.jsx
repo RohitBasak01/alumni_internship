@@ -11,35 +11,60 @@ export function MentorshipSidebar({
   setIsCreateGroupOpen,
   getThreadStatus,
   getInitials,
+  activeFilter,
+  setActiveFilter,
 }) {
   return (
     <aside className="member-messages-sidebar">
       <div className="member-messages-sidebar-header">
-        <div>
-          <span className="member-chat-kicker">Your network</span>
-          <h2>Alumni Chats</h2>
-        </div>
+        <h2>Chats</h2>
         <button
-          className="button primary compact icon-only"
+          className="member-sidebar-icon-button"
           onClick={() => setIsCreateGroupOpen(true)}
-          title="New group"
+          title="New chat"
           type="button"
         >
-          <span className="material-symbols-outlined">group_add</span>
+          <span className="material-symbols-outlined">edit_square</span>
+        </button>
+        <button
+          className="member-sidebar-icon-button"
+          title="Filter chats"
+          type="button"
+        >
+          <span className="material-symbols-outlined">tune</span>
         </button>
       </div>
 
       <div className="member-messages-sidebar-search">
         <PortalSearchField
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search people, groups, or previews..."
+          placeholder="Search chats or contacts..."
           value={search}
         />
       </div>
 
-      <div className="member-thread-summary-bar">
-        <span>{conversations.length} visible</span>
-        <span>{conversations.filter((item) => item.isUnread).length} unread</span>
+      <div className="member-chat-filter-pills" aria-label="Chat filters">
+        <button
+          className={activeFilter === "all" ? "active" : ""}
+          onClick={() => setActiveFilter("all")}
+          type="button"
+        >
+          All
+        </button>
+        <button
+          className={activeFilter === "unread" ? "active" : ""}
+          onClick={() => setActiveFilter("unread")}
+          type="button"
+        >
+          Unread
+        </button>
+        <button
+          className={activeFilter === "groups" ? "active" : ""}
+          onClick={() => setActiveFilter("groups")}
+          type="button"
+        >
+          Groups
+        </button>
       </div>
 
       <div className="member-messages-thread-list">
@@ -85,7 +110,22 @@ export function MentorshipSidebar({
                       <span>{item.when}</span>
                     </span>
                   </div>
-                  <p>{item.preview}</p>
+                  <p>
+                    {item.preview === "Encrypted message" && (
+                      <span
+                        className="material-symbols-outlined"
+                        style={{
+                          fontSize: "0.9rem",
+                          verticalAlign: "middle",
+                          marginRight: "4px",
+                          color: "var(--chat-muted)",
+                        }}
+                      >
+                        lock
+                      </span>
+                    )}
+                    {item.preview}
+                  </p>
                   <div className="member-thread-foot">
                     <span className={`member-status-pill ${status.className}`}>
                       {status.label}

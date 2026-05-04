@@ -49,6 +49,24 @@ export function FeedPostCard({
       <div className="alumni-post-content">
         {post.title ? <h3>{post.title}</h3> : null}
         <p>{truncateText(post.content, 280)}</p>
+
+        {post.attachments?.length > 0 && (
+          <div className="alumni-post-attachments mt-4 flex flex-wrap gap-2">
+            {post.attachments.map((file, idx) => (
+              <a 
+                key={idx} 
+                href={file.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1.5 bg-brand-50 border border-brand-100 rounded-xl text-xs font-bold text-brand-700 hover:bg-brand-100 transition-all no-underline"
+              >
+                <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                <span className="truncate max-w-[150px]">{file.name}</span>
+                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="alumni-post-stats">

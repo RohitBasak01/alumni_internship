@@ -29,6 +29,7 @@
 .alumni-editor-document,
 .alumni-editor-preview {
   max-width: none;
+  width: 100%;
 }
 
 .alumni-editor-shell {

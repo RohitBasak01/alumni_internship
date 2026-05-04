@@ -66,10 +66,18 @@ export function CreateGroupModal({
                     }}
                     type="button"
                   >
-                    <div className="member-picker-avatar">{getInitials(person.name)}</div>
+                    <div className="member-picker-avatar">
+                      {getInitials(person.name || person.userId?.name || "??")}
+                    </div>
                     <div className="member-picker-copy">
-                      <strong>{person.name}</strong>
-                      <small>{person.designation || person.occupation || person.company || person.currentInstitution || "Alumni member"}</small>
+                      <strong>{person.name || person.userId?.name || "Unknown Member"}</strong>
+                      <small>
+                        {person.designation ||
+                          person.occupation ||
+                          person.company ||
+                          person.currentInstitution ||
+                          "Alumni member"}
+                      </small>
                     </div>
                     {isSelected ? (
                       <span className="material-symbols-outlined">check_circle</span>

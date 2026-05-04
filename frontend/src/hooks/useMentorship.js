@@ -30,6 +30,8 @@ import {
   removeGroupMember,
   uploadMentorshipAttachment,
   fetchAlumniConversationMessages,
+  toggleMuteAlumniConversation,
+  toggleBlockAlumniContact,
 } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { isEncryptedEnvelope } from "../lib/e2ee.js";
@@ -81,6 +83,7 @@ export function useMentorship() {
     queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
   }, [queryClient]);
   const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
   const [activeId, setActiveId] = useState(null);
   const [isMobileThreadListOpen, setIsMobileThreadListOpen] = useState(true);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
@@ -223,7 +226,9 @@ export function useMentorship() {
         };
       }
 
-      const isMentor = item.mentor?._id === auth.user?.id;
+      const currentId = String(auth.user?.id || auth.user?._id || "");
+      const isMentor =
+        currentId && String(item.mentor?._id || item.mentor?.id || "") === currentId;
       const partner = isMentor ? item.requester : item.mentor;
       return {
         ...common,
@@ -238,16 +243,24 @@ export function useMentorship() {
   }, [activeId, auth.user?.id, messagesData, rawData]);
 
   const filteredConversations = useMemo(() => {
-    if (!deferredSearch) return conversations;
+    let filtered = conversations;
+
+    if (activeFilter === "unread") {
+      filtered = filtered.filter((c) => c.unreadCount > 0);
+    } else if (activeFilter === "groups") {
+      filtered = filtered.filter((c) => c.type === "group");
+    }
+
+    if (!deferredSearch) return filtered;
     const q = deferredSearch.toLowerCase();
-    return conversations.filter(
+    return filtered.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.preview.toLowerCase().includes(q) ||
         (c.type === "group" &&
           (c.members || []).some((m) => m.name?.toLowerCase().includes(q))),
     );
-  }, [conversations, deferredSearch]);
+  }, [conversations, activeFilter, deferredSearch]);
 
   const activeConversation = useMemo(
     () =>
@@ -392,6 +405,15 @@ export function useMentorship() {
       setActiveId(null);
     },
   });
+  const toggleMuteMutation = useMutation({
+    mutationFn: toggleMuteAlumniConversation,
+    onSuccess: () => invalidateConversationLists(),
+  });
+
+  const toggleBlockMutation = useMutation({
+    mutationFn: toggleBlockAlumniContact,
+    onSuccess: () => invalidateConversationLists(),
+  });
 
   // Helper functions
   const removePendingMessage = useCallback((conversationId, matcher) => {
@@ -427,6 +449,8 @@ export function useMentorship() {
     setActiveId,
     search,
     setSearch,
+    activeFilter,
+    setActiveFilter,
     isMobileViewport,
     isMobileThreadListOpen,
     setIsMobileThreadListOpen,
@@ -451,6 +475,8 @@ export function useMentorship() {
     unmuteGroupMemberMutation,
     removeGroupMemberMutation,
     leaveGroupMutation,
+    toggleMuteMutation,
+    toggleBlockMutation,
     removePendingMessage,
     updatePendingMessage,
     isMessagesLoading,

@@ -123,6 +123,64 @@ function TenantDashboardPage() {
              </SectionCard>
           </aside>
         </section>
+
+        {selectedPostId && (derived.posts || []).find(p => p._id === selectedPostId) && (
+          <div className="member-dialog-backdrop" role="presentation" onClick={() => setSelectedPostId(null)}>
+            <div className="member-dialog newsroom-dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <div className="member-dialog-header">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-brand-600 text-white rounded-xl flex items-center justify-center font-bold">
+                    {(derived.posts || []).find(p => p._id === selectedPostId).author?.initials || "AN"}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 leading-none">
+                      {(derived.posts || []).find(p => p._id === selectedPostId).author?.name || tenantDisplay.memberSingular}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Posted {formatRelativeTime((derived.posts || []).find(p => p._id === selectedPostId).createdAt)}
+                    </p>
+                  </div>
+                </div>
+                <button className="member-dialog-close" onClick={() => setSelectedPostId(null)} type="button">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="newsroom-dialog-body pt-6">
+                {(derived.posts || []).find(p => p._id === selectedPostId).title && (
+                  <h2 className="text-2xl font-black text-slate-900 mb-6">
+                    {(derived.posts || []).find(p => p._id === selectedPostId).title}
+                  </h2>
+                )}
+                <div 
+                  className="prose prose-slate max-w-none"
+                  dangerouslySetInnerHTML={{ __html: (derived.posts || []).find(p => p._id === selectedPostId).content }}
+                />
+
+                {(derived.posts || []).find(p => p._id === selectedPostId).attachments?.length > 0 && (
+                  <div className="mt-8 pt-8 border-t border-slate-100">
+                    <h4 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">Attachments</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {(derived.posts || []).find(p => p._id === selectedPostId).attachments.map((file, idx) => (
+                        <a 
+                          key={idx} 
+                          href={file.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 px-5 py-3 bg-slate-50 border border-slate-200 rounded-[1.25rem] text-sm font-bold text-slate-700 hover:bg-white hover:border-brand-500 hover:text-brand-600 transition-all no-underline shadow-sm"
+                        >
+                          <span className="material-symbols-outlined text-brand-600">picture_as_pdf</span>
+                          {file.name}
+                          <span className="material-symbols-outlined text-[18px] opacity-40">download</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

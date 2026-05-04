@@ -16,6 +16,7 @@ import {
   decryptFileAttachment,
   generateConversationSecret,
 } from "../../lib/e2ee.js";
+import { groupConsecutiveMessages } from "../../utils/chatUtils.js";
 
 function formatMutedStatus(activeConversation, currentUserId) {
   const mutedEntry = (activeConversation?.mutedMembers || []).find(
@@ -35,6 +36,8 @@ export function MentorshipChat({
   isMobileViewport,
   setIsMobileThreadListOpen,
   isRealtimeConnected,
+  isContactPanelVisible,
+  setIsContactPanelVisible,
   conversationSecret,
   conversationSecretInput,
   setConversationSecretInput,
@@ -61,6 +64,7 @@ export function MentorshipChat({
   unmuteGroupMemberMutation,
   removeGroupMemberMutation,
   leaveGroupMutation,
+  rtc,
 }) {
   const [draftMessage, setDraftMessage] = useState("");
   const [composerAttachments, setComposerAttachments] = useState([]);
@@ -147,6 +151,10 @@ export function MentorshipChat({
     visibleMessages,
   ]);
 
+  const groupedMessages = useMemo(() => {
+    return groupConsecutiveMessages(filteredMessages);
+  }, [filteredMessages]);
+
   const firstUnreadMessageId = useMemo(() => {
     for (const message of filteredMessages) {
       const senderId = String(
@@ -208,49 +216,69 @@ export function MentorshipChat({
     let cancelled = false;
 
     async function decrypt() {
-      const content = {};
-      const replies = {};
-      for (const message of visibleMessages) {
-        const raw = String(message.content || "");
-        if (!isEncryptedEnvelope(raw)) {
-          content[message._id] = raw;
-        } else if (!conversationSecret) {
-          content[message._id] = "Encrypted message";
-        } else {
-          try {
-            content[message._id] = await decryptMessageContent(
-              raw,
-              conversationSecret,
-              activeConversation._id,
-            );
-          } catch {
-            content[message._id] = "Unable to decrypt";
-          }
-        }
+      const contentPatch = {};
+      const repliesPatch = {};
 
-        if (message.replyTo) {
-          const replyRaw = String(message.replyTo.content || "");
-          if (!isEncryptedEnvelope(replyRaw)) {
-            replies[message._id] = replyRaw;
+      for (const message of visibleMessages) {
+        const id = message._id;
+        const raw = String(message.content || "");
+
+        // Only decrypt if not already successfully decrypted
+        const alreadyDecrypted = decryptedContentByMessageId[id] &&
+          decryptedContentByMessageId[id] !== "Unable to decrypt" &&
+          decryptedContentByMessageId[id] !== "Encrypted message";
+
+        if (!alreadyDecrypted) {
+          if (!isEncryptedEnvelope(raw)) {
+            contentPatch[id] = raw;
           } else if (!conversationSecret) {
-            replies[message._id] = "Encrypted message";
+            contentPatch[id] = "Encrypted message";
           } else {
             try {
-              replies[message._id] = await decryptMessageContent(
-                replyRaw,
+              contentPatch[id] = await decryptMessageContent(
+                raw,
                 conversationSecret,
                 activeConversation._id,
               );
             } catch {
-              replies[message._id] = "Unable to decrypt";
+              contentPatch[id] = "Unable to decrypt";
+            }
+          }
+        }
+
+        if (message.replyTo) {
+          const alreadyDecryptedReply = replyPreviewContentByMessageId[id] &&
+            replyPreviewContentByMessageId[id] !== "Unable to decrypt" &&
+            replyPreviewContentByMessageId[id] !== "Encrypted message";
+
+          if (!alreadyDecryptedReply) {
+            const replyRaw = String(message.replyTo.content || "");
+            if (!isEncryptedEnvelope(replyRaw)) {
+              repliesPatch[id] = replyRaw;
+            } else if (!conversationSecret) {
+              repliesPatch[id] = "Encrypted message";
+            } else {
+              try {
+                repliesPatch[id] = await decryptMessageContent(
+                  replyRaw,
+                  conversationSecret,
+                  activeConversation._id,
+                );
+              } catch {
+                repliesPatch[id] = "Unable to decrypt";
+              }
             }
           }
         }
       }
 
       if (!cancelled) {
-        setDecryptedContentByMessageId(content);
-        setReplyPreviewContentByMessageId(replies);
+        if (Object.keys(contentPatch).length > 0) {
+          setDecryptedContentByMessageId((prev) => ({ ...prev, ...contentPatch }));
+        }
+        if (Object.keys(repliesPatch).length > 0) {
+          setReplyPreviewContentByMessageId((prev) => ({ ...prev, ...repliesPatch }));
+        }
       }
     }
 
@@ -258,6 +286,7 @@ export function MentorshipChat({
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation?._id, conversationSecret, visibleMessages]);
 
   useEffect(() => {
@@ -265,20 +294,26 @@ export function MentorshipChat({
     const objectUrls = [];
 
     async function decryptAttachments() {
-      const next = {};
+      const patch = {};
 
       for (const message of visibleMessages) {
         for (const attachment of message.attachments || []) {
           const key = `${message._id}:${attachment.url}`;
+
+          // Skip if already resolved to an object URL (blob:) or non-encrypted URL
+          if (decryptedAttachmentUrlByKey[key] && decryptedAttachmentUrlByKey[key].startsWith("blob:")) {
+            continue;
+          }
+
           const encryptedUrl = resolveApiAssetUrl(attachment.url);
 
           if (!attachment.isEncrypted) {
-            next[key] = encryptedUrl;
+            patch[key] = encryptedUrl;
             continue;
           }
 
           if (!conversationSecret) {
-            next[key] = encryptedUrl;
+            patch[key] = encryptedUrl;
             continue;
           }
 
@@ -301,15 +336,15 @@ export function MentorshipChat({
             });
             const objectUrl = URL.createObjectURL(blob);
             objectUrls.push(objectUrl);
-            next[key] = objectUrl;
+            patch[key] = objectUrl;
           } catch {
-            next[key] = encryptedUrl;
+            patch[key] = encryptedUrl;
           }
         }
       }
 
-      if (!cancelled) {
-        setDecryptedAttachmentUrlByKey(next);
+      if (!cancelled && Object.keys(patch).length > 0) {
+        setDecryptedAttachmentUrlByKey((prev) => ({ ...prev, ...patch }));
       }
     }
 
@@ -321,6 +356,7 @@ export function MentorshipChat({
         URL.revokeObjectURL(objectUrl);
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation?._id, conversationSecret, visibleMessages]);
 
   useEffect(() => {
@@ -615,29 +651,43 @@ export function MentorshipChat({
     <main className="member-messages-panel alumni-chat-panel">
       <div className="member-messages-panel-header polished">
         <div className="member-chat-header-main">
-          {isMobileViewport ? (
-            <button
-              className="member-messages-back-button"
-              onClick={() => setIsMobileThreadListOpen(true)}
-              type="button"
-            >
-              <span className="material-symbols-outlined">arrow_back</span>
-            </button>
-          ) : null}
+          <button
+            className="member-messages-back-button"
+            onClick={() => setIsMobileThreadListOpen(true)}
+            type="button"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+
+          <div className="member-chat-header-avatar">
+            {activeConversation.conversationType === "group" ? (
+              <span className="material-symbols-outlined">groups</span>
+            ) : (
+              (activeConversation.name || (String(activeConversation.requester?._id) === currentUserId ? activeConversation.mentor?.name : activeConversation.requester?.name) || "??")
+                .split(" ")
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()
+            )}
+            {activeConversation.online ? (
+              <span className="member-chat-header-online" />
+            ) : null}
+          </div>
 
           <div className="member-messages-panel-info">
-            <span className="member-chat-kicker">
-              {activeConversation.type === "group"
-                ? "Alumni circle"
-                : "Direct alumni chat"}
-            </span>
-            <h2>{activeConversation.name}</h2>
+            <h2>
+              {activeConversation.conversationType === "group" 
+                ? (activeConversation.groupName || "Unnamed Group")
+                : (activeConversation.name || (String(activeConversation.requester?._id) === currentUserId ? activeConversation.mentor?.name : activeConversation.requester?.name) || "Alumni Contact")
+              }
+            </h2>
             <p>
               {typingUsers.length
                 ? typingUsers.length === 1
                   ? `${typingUsers[0].name} is typing...`
                   : `${typingUsers[0].name} and ${typingUsers.length - 1} others are typing...`
-                : activeConversation.type === "group"
+                : activeConversation.conversationType === "group"
                   ? `${activeConversation.members?.length || 0} members${canManageGroup ? " • You can manage this group" : ""}`
                   : isRealtimeConnected
                     ? "Connected now"
@@ -647,6 +697,28 @@ export function MentorshipChat({
         </div>
 
         <div className="member-chat-topbar-actions">
+          {activeConversation.conversationType !== "group" && (
+            <>
+              <button
+                className="member-chat-action-button"
+                type="button"
+                onClick={() => rtc.startCall("audio")}
+                disabled={!isRealtimeConnected}
+                title={!isRealtimeConnected ? "Connecting to call service..." : "Audio call"}
+              >
+                <span className="material-symbols-outlined">call</span>
+              </button>
+              <button
+                className="member-chat-action-button"
+                type="button"
+                onClick={() => rtc.startCall("video")}
+                disabled={!isRealtimeConnected}
+                title={!isRealtimeConnected ? "Connecting to call service..." : "Video call"}
+              >
+                <span className="material-symbols-outlined">videocam</span>
+              </button>
+            </>
+          )}
           <label className="member-chat-search">
             <span className="material-symbols-outlined">search</span>
             <input
@@ -656,7 +728,7 @@ export function MentorshipChat({
             />
           </label>
           <button
-            className="button secondary compact icon-only"
+            className="member-chat-action-button"
             onClick={() => setIsEncryptionPanelOpen(!isEncryptionPanelOpen)}
             type="button"
           >
@@ -666,17 +738,33 @@ export function MentorshipChat({
           </button>
           {activeConversation.type === "group" ? (
             <button
-              className="button secondary compact icon-only"
+              className="member-chat-action-button"
               onClick={() => setIsGroupMembersExpanded(!isGroupMembersExpanded)}
               type="button"
             >
               <span className="material-symbols-outlined">group</span>
             </button>
           ) : null}
+          {!isContactPanelVisible ? (
+            <button
+              className="member-chat-action-button"
+              onClick={() => setIsContactPanelVisible(true)}
+              type="button"
+              title="Show contact info"
+            >
+              <span className="material-symbols-outlined">info</span>
+            </button>
+          ) : null}
+          <button className="member-chat-action-button ghost" type="button">
+            <span className="material-symbols-outlined">more_vert</span>
+          </button>
         </div>
       </div>
 
       <div className="member-chat-banner-row">
+        <div className="member-message-day-separator inline">
+          <span>Today</span>
+        </div>
         <div className="member-chat-status-pill">
           <span className="material-symbols-outlined">
             {isRealtimeConnected ? "wifi" : "wifi_off"}
@@ -719,8 +807,17 @@ export function MentorshipChat({
         }}
         onScroll={(event) => {
           const stream = event.currentTarget;
-          shouldAutoScrollRef.current =
-            stream.scrollHeight - stream.scrollTop - stream.clientHeight < 80;
+          const isAtBottom = stream.scrollHeight - stream.scrollTop - stream.clientHeight < 80;
+          shouldAutoScrollRef.current = isAtBottom;
+
+          const scrollButton = document.getElementById('chat-scroll-bottom');
+          if (scrollButton) {
+            if (!isAtBottom && stream.scrollHeight > stream.clientHeight * 1.5) {
+              scrollButton.classList.add('visible');
+            } else {
+              scrollButton.classList.remove('visible');
+            }
+          }
 
           if (stream.scrollTop === 0 && hasNextPage && !isFetchingNextPage) {
             const previousHeight = stream.scrollHeight;
@@ -774,14 +871,21 @@ export function MentorshipChat({
           </div>
         ) : null}
 
-        {filteredMessages.map((message) => (
+        {groupedMessages.map((message) => (
           <div className="member-message-stack" key={message._id}>
+            {message.dateLabel && (
+              <div className="member-date-separator">
+                <span>{message.dateLabel}</span>
+              </div>
+            )}
             {firstUnreadMessageId === String(message._id) ? (
               <div className="member-unread-divider">
                 <span>Unread messages</span>
               </div>
             ) : null}
             <MessageBubble
+              isGroupStart={message.isGroupStart}
+              isGroupEnd={message.isGroupEnd}
               message={message}
               auth={auth}
               activeConversation={activeConversation}
@@ -836,6 +940,23 @@ export function MentorshipChat({
             />
           </div>
         ))}
+
+        <button
+          id="chat-scroll-bottom"
+          className="member-scroll-to-bottom"
+          onClick={() => {
+            if (messageStreamRef.current) {
+              messageStreamRef.current.scrollTo({
+                top: messageStreamRef.current.scrollHeight,
+                behavior: 'smooth'
+              });
+            }
+          }}
+          type="button"
+          aria-label="Scroll to bottom"
+        >
+          <span className="material-symbols-outlined">arrow_downward</span>
+        </button>
       </div>
 
       <MentorshipComposer

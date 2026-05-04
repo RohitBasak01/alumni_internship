@@ -29,7 +29,7 @@ export function useDashboardLogic() {
   const showMentorship = tenant.featureFlags.enableMentorship !== false;
   const showJobs = tenant.featureFlags.enableJobs !== false;
 
-  const [composer, setComposer] = useState({ title: "", content: "" });
+  const [composer, setComposer] = useState({ title: "", content: "", attachments: [] });
   const [composerMode, setComposerMode] = useState("write");
   const [composerDraftSavedAt, setComposerDraftSavedAt] = useState("");
   const [composerDraftNotice, setComposerDraftNotice] = useState("");
@@ -80,7 +80,7 @@ export function useDashboardLogic() {
   const createPostMutation = useMutation({
     mutationFn: createAlumniPost,
     onSuccess: () => {
-      setComposer({ title: "", content: "" });
+      setComposer({ title: "", content: "", attachments: [] });
       setComposerDraftSavedAt("");
       setComposerDraftNotice("Published");
       localStorage.removeItem(composerDraftKey);

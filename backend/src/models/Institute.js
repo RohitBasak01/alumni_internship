@@ -237,7 +237,11 @@ const instituteSchema = new mongoose.Schema(
     ],
     primaryContactName: String,
     primaryContactEmail: String,
-    primaryContactPhone: String
+    primaryContactPhone: String,
+    departments: {
+      type: [String],
+      default: []
+    }
   },
   {
     timestamps: true

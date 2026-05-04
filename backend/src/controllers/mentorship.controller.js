@@ -296,6 +296,16 @@ async function serializeConversation(
       .filter((entry) => entry.userId),
     e2ee: buildConversationE2ee(conversation, peopleById),
     latestMessage: serializedLatestMessage,
+    isMuted: req.user?.mutedConversationIds?.some(id => String(id) === String(conversation._id)),
+    isBlocked: req.user?.blockedUserIds?.some(id => {
+      if (conversation.conversationType === 'direct') {
+        const partnerId = String(conversation.requesterId) === String(req.user._id) 
+          ? String(conversation.mentorId) 
+          : String(conversation.requesterId);
+        return String(id) === partnerId;
+      }
+      return false;
+    }),
   };
 }
 
@@ -961,6 +971,13 @@ export const syncConversationEnvelopes = asyncHandler(async (req, res) => {
   conversation.conversationKeyEnvelopes = [...envelopeByUserId.values()];
   await conversation.save();
 
+  // Notify all participants so their E2EE setup re-runs immediately
+  req.app.locals.emitMentorshipEvent?.({
+    conversationId: conversation._id.toString(),
+    conversationIds: [conversation._id.toString()],
+    type: "e2ee-envelopes-updated",
+  });
+
   res.json({ ok: true });
 });
 
@@ -1323,4 +1340,54 @@ export const getConversationMessages = asyncHandler(async (req, res) => {
     messages.reverse(),
   );
   res.json(serialized);
+});
+
+export const toggleMuteConversation = asyncHandler(async (req, res) => {
+  const { User } = getTenantModels(req);
+  const { id } = req.params; // conversationId
+
+  const user = await User.findById(req.user._id);
+  const isMuted = user.mutedConversationIds.some((cid) => String(cid) === String(id));
+
+  if (isMuted) {
+    user.mutedConversationIds = user.mutedConversationIds.filter(
+      (cid) => String(cid) !== String(id),
+    );
+  } else {
+    user.mutedConversationIds.push(id);
+  }
+
+  await user.save();
+  res.json({ ok: true, isMuted: !isMuted });
+});
+
+export const toggleBlockUser = asyncHandler(async (req, res) => {
+  const { User } = getTenantModels(req);
+  const { id } = req.params; // conversationId
+
+  const conversation = await findAccessibleConversation(req, id);
+  if (!conversation || conversation.conversationType !== "direct") {
+    return res.status(404).json({ message: "Direct conversation not found." });
+  }
+
+  const partnerId =
+    String(conversation.requesterId) === String(req.user._id)
+      ? conversation.mentorId
+      : conversation.requesterId;
+
+  const user = await User.findById(req.user._id);
+  const isBlocked = user.blockedUserIds.some(
+    (bid) => String(bid) === String(partnerId),
+  );
+
+  if (isBlocked) {
+    user.blockedUserIds = user.blockedUserIds.filter(
+      (bid) => String(bid) !== String(partnerId),
+    );
+  } else {
+    user.blockedUserIds.push(partnerId);
+  }
+
+  await user.save();
+  res.json({ ok: true, isBlocked: !isBlocked });
 });

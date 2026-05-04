@@ -25,10 +25,19 @@ export function formatRelativeTime(value) {
   return formatCardDate(value);
 }
 
+export function stripHtml(value) {
+  if (!value) return "";
+  return String(value)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function truncateText(value, maxLength = 260) {
   if (!value) return "";
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength).trim()}...`;
+  const cleanText = stripHtml(value);
+  if (cleanText.length <= maxLength) return cleanText;
+  return `${cleanText.slice(0, maxLength).trim()}...`;
 }
 
 export function countWords(value) {

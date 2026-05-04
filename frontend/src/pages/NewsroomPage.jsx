@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { PortalPageHeader, PortalSegmentedTabs } from "../components/PortalPrimitives.jsx";
 import SectionCard from "../components/SectionCard.jsx";
+import RichTextEditor from "../components/RichTextEditor.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { createAnnouncement, deleteAnnouncement, fetchAnnouncements, resolveApiAssetUrl, updateAnnouncement } from "../lib/api.js";
 
@@ -57,7 +58,12 @@ function createSummary(item) {
     return explicitSummary;
   }
 
-  const text = String(item.content || "").replace(/\s+/g, " ").trim();
+  // Strip HTML tags for the summary
+  const text = String(item.content || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
   if (text.length <= 260) {
     return text;
   }
@@ -183,7 +189,7 @@ function NewsroomPage() {
         category: form.category.trim(),
         summary: form.summary.trim(),
         imageUrl: form.imageUrl.trim(),
-        content: form.content.trim()
+        content: form.content // Don't trim HTML content as it might break some tags
       }
     });
   }
@@ -252,14 +258,14 @@ function NewsroomPage() {
               rows="3"
               value={form.summary}
             />
-            <textarea
-              className="textarea"
-              name="content"
-              onChange={handleChange}
-              placeholder="Write the full article body"
-              rows="8"
-              value={form.content}
-            />
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 ml-1">Article Body</label>
+              <RichTextEditor
+                value={form.content}
+                onChange={(html) => setForm(c => ({ ...c, content: html }))}
+                placeholder="Write the full article body with rich text, images, and videos..."
+              />
+            </div>
             <div className="inline-actions">
               <button className="button primary" disabled={saveMutation.isPending} type="submit">
                 {saveMutation.isPending ? "Saving..." : editingId ? "Update article" : "Publish article"}
@@ -379,11 +385,10 @@ function NewsroomPage() {
                 </div>
               ) : null}
               <p className="newsroom-dialog-summary">{selectedArticle.summary}</p>
-              <div className="newsroom-dialog-content">
-                {splitArticleContent(selectedArticle.content).map((paragraph, index) => (
-                  <p key={`${selectedArticle._id}-${index}`}>{paragraph}</p>
-                ))}
-              </div>
+              <div 
+                className="newsroom-dialog-content prose prose-slate max-w-none"
+                dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+              />
             </div>
           </div>
         </div>

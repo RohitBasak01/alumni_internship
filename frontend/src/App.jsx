@@ -1,10 +1,13 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { useTenantContext } from "./hooks/useTenantContext.js";
+
 import AppShell from "./components/AppShell.jsx";
 import DashboardLayout from "./components/DashboardLayout.jsx";
 import PageLoader from "./components/PageLoader.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import DevTenantSwitcher from "./components/DevTenantSwitcher.jsx";
 
 const AlumniProfilePage = lazy(() => import("./pages/AlumniProfilePage.jsx"));
 const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage.jsx"));
@@ -39,13 +42,24 @@ const TenantAlumniPage = lazy(() => import("./pages/TenantAlumniPage.jsx"));
 const TenantDashboardPage = lazy(
   () => import("./pages/TenantDashboardPage.jsx"),
 );
+const TenantHomePage = lazy(() => import("./pages/TenantHomePage.jsx"));
+
+/**
+ * RootPage — serves the platform landing page for the main domain
+ * and the per-institution home page for tenant subdomains / domains.
+ */
+function RootPage() {
+  const { isTenant } = useTenantContext();
+  return isTenant ? <TenantHomePage /> : <HomePage />;
+}
 
 function App() {
   return (
     <AppShell>
+      <DevTenantSwitcher />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<RootPage />} />
           <Route path="/request-portal" element={<PortalRequestPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />

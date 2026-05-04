@@ -107,6 +107,10 @@ function validateInstituteSettingsBody(body) {
     }
   }
 
+  if (body.departments !== undefined && !Array.isArray(body.departments)) {
+    issues.push("Departments must be an array of strings");
+  }
+
   return issues;
 }
 
@@ -160,7 +164,8 @@ function buildInstituteSettingsPayload(institute) {
     branding: {
       ...brandingDefaults,
       ...(institute.branding || {})
-    }
+    },
+    departments: institute.departments || []
   };
 }
 
@@ -355,7 +360,7 @@ router.get("/onboarding/draft/:draftId", validateParams(validateDraftId), async 
 router.get("/public", async (_req, res, next) => {
   try {
     const institutes = await Institute.find({ status: "active" })
-      .select("name subdomain domain institutionType educationLevel communityLabels")
+      .select("name subdomain domain institutionType educationLevel communityLabels departments")
       .sort({ name: 1 });
 
     res.json(institutes);
@@ -407,12 +412,15 @@ router.get("/public/current", async (req, res, next) => {
       institutionType: req.tenant.institutionType || "college",
       educationLevel: req.tenant.educationLevel || "higher_ed",
       status: req.tenant.status,
+      bio: req.tenant.bio || "",
+      website: req.tenant.website || "",
       communityLabels: req.tenant.communityLabels || null,
       featureFlags: req.tenant.featureFlags || null,
       branding: {
         ...getDefaultBranding(req.tenant.institutionType || "college"),
         ...(req.tenant.branding || {})
-      }
+      },
+      departments: req.tenant.departments || []
     });
   } catch (error) {
     next(error);
@@ -528,6 +536,10 @@ router.patch(
 
       if (req.body.primaryContactEmail !== undefined) {
         institute.primaryContactEmail = String(req.body.primaryContactEmail || "").trim().toLowerCase();
+      }
+
+      if (req.body.departments !== undefined) {
+        institute.departments = Array.isArray(req.body.departments) ? req.body.departments.map(d => String(d).trim()).filter(Boolean) : [];
       }
 
       const incomingBranding = req.body.branding && typeof req.body.branding === "object" ? req.body.branding : {};
