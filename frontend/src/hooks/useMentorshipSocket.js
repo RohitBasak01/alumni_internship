@@ -8,6 +8,7 @@ export function useMentorshipSocket(auth, conversations) {
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const socketRef = useRef(null);
   const subscribedConversationIdsRef = useRef(new Set());
+  const handledMessageEventIdsRef = useRef(new Set());
   const userIdRef = useRef(null);
 
   // Socket connection - use stable userId reference to prevent recreation
@@ -46,8 +47,6 @@ export function useMentorshipSocket(auth, conversations) {
 
     const socket = io(getApiOrigin(), {
       withCredentials: true,
-      // Prefer polling first so cookies/credentials are sent during the
-      // initial HTTP handshake; the transport will then upgrade to websocket.
       transports: ["polling", "websocket"],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -60,6 +59,14 @@ export function useMentorshipSocket(auth, conversations) {
     socket.on("connect", () => {
       console.log("[Socket] Connected successfully");
       setIsRealtimeConnected(true);
+
+      // Re-subscribe to all known conversations immediately on (re)connect
+      // so messages sent during a brief disconnect are not missed.
+      const idsToResub = [...subscribedConversationIdsRef.current];
+      if (idsToResub.length) {
+        console.log("[Socket] Re-subscribing to", idsToResub.length, "conversations after connect");
+        socket.emit("mentorship:subscribe", { conversationIds: idsToResub });
+      }
     });
 
     socket.on("disconnect", (reason) => {
@@ -71,90 +78,119 @@ export function useMentorshipSocket(auth, conversations) {
       console.error("[Socket] Connection error:", error.message || error);
     });
 
+    // Upsert a message into the infinite-query cache for a conversation.
     const upsertMessage = (conversationId, nextMessage) => {
       if (!conversationId || !nextMessage?._id) return;
-
-      let messageWasInserted = false;
 
       queryClient.setQueryData(
         ["alumni-conversation-messages", conversationId],
         (old) => {
-          // If no cache exists yet, seed it with this message so the user
-          // doesn't have to refresh to see real-time messages.
-          if (!old) {
-            messageWasInserted = true;
+          // No cache yet – seed it so the message appears immediately
+          const pages = Array.isArray(old?.pages)
+            ? old.pages.map((page) => (Array.isArray(page) ? [...page] : []))
+            : [];
+
+          if (!pages.length) {
             return { pages: [[nextMessage]], pageParams: [undefined] };
           }
 
-          const newPages = old.pages.map((page) =>
-            page.map((message) => {
-              if (String(message._id) === String(nextMessage._id)) {
-                return nextMessage;
-              }
-              if (
-                nextMessage.clientId &&
-                message.clientId &&
-                String(message.clientId) === String(nextMessage.clientId)
-              ) {
-                return nextMessage;
-              }
-              return message;
-            }),
-          );
-
-          const lastPageIdx = newPages.length - 1;
-          const alreadyExists = newPages.some((page) =>
+          // Check if this message already exists (by _id or clientId).
+          const alreadyExists = pages.some((page) =>
             page.some(
-              (message) => String(message._id) === String(nextMessage._id),
+              (m) =>
+                String(m._id) === String(nextMessage._id) ||
+                (nextMessage.clientId &&
+                  m.clientId &&
+                  String(m.clientId) === String(nextMessage.clientId)),
             ),
           );
 
-          if (!alreadyExists && lastPageIdx >= 0) {
-            newPages[lastPageIdx] = [...newPages[lastPageIdx], nextMessage];
-            messageWasInserted = true;
+          if (alreadyExists) {
+            // Update in place (e.g. delivery status changed)
+            return {
+              ...old,
+              pages: pages.map((page) =>
+                page.map((m) => {
+                  if (String(m._id) === String(nextMessage._id)) return nextMessage;
+                  if (
+                    nextMessage.clientId &&
+                    m.clientId &&
+                    String(m.clientId) === String(nextMessage.clientId)
+                  ) return nextMessage;
+                  return m;
+                }),
+              ),
+            };
           }
 
-          return { ...old, pages: newPages };
+          // Append to the last page
+          pages[pages.length - 1] = [...pages[pages.length - 1], nextMessage];
+          return { ...old, pages };
         },
       );
 
-      // If we couldn't insert (e.g. race with initial fetch), trigger a
-      // server refetch so the message definitely appears.
-      if (!messageWasInserted) {
-        queryClient.invalidateQueries({
-          queryKey: ["alumni-conversation-messages", conversationId],
-        });
+      // Refresh the conversations sidebar so the preview + unread count update immediately.
+      queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
+    };
+
+    const handleRealtimeMessage = (payload = {}) => {
+      const conversationId = String(payload?.conversationId || "").trim();
+      const messageId = String(payload?.messageId || payload?.message?._id || "").trim();
+      if (!conversationId || !payload?.message) return;
+
+      const eventKey = `${conversationId}:${messageId || payload.timestamp || Date.now()}`;
+      if (messageId && handledMessageEventIdsRef.current.has(eventKey)) {
+        return;
       }
+
+      if (messageId) {
+        handledMessageEventIdsRef.current.add(eventKey);
+        if (handledMessageEventIdsRef.current.size > 500) {
+          handledMessageEventIdsRef.current = new Set(
+            [...handledMessageEventIdsRef.current].slice(-250),
+          );
+        }
+      }
+
+      console.log("[Socket] realtime message for", conversationId);
+      upsertMessage(conversationId, payload.message);
     };
 
     socket.on("mentorship:message", (payload = {}) => {
-      const conversationId = String(payload?.conversationId || "").trim();
-      if (!conversationId) return;
-      upsertMessage(conversationId, payload.message);
-      queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
-      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+      handleRealtimeMessage(payload);
     });
 
     socket.on("mentorship:update", (payload = {}) => {
-      const conversationId = String(payload?.conversationId || "").trim();
-      
       if (payload?.type === "message" && payload?.message) {
-        upsertMessage(conversationId, payload.message);
+        handleRealtimeMessage(payload);
+      } else if (payload?.type === "messages-cleared") {
+        const conversationId = String(payload?.conversationId || "").trim();
+        if (conversationId) {
+          queryClient.setQueryData(
+            ["alumni-conversation-messages", conversationId],
+            (old) =>
+              old
+                ? { ...old, pages: [[]] }
+                : { pages: [[]], pageParams: [undefined] },
+          );
+        }
+        queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
+      } else {
+        // Non-message update (typing, read, role change) — refresh metadata only
+        queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
       }
+    });
 
-      // Handle all update types by refreshing the conversation metadata.
-      // This includes 'key_rotation', 'e2ee-envelopes-updated', and 'conversation' updates.
-      queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
-      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+    socket.on("mentorship:ready", () => {
+      console.log("[Socket] Server ready signal received");
     });
 
     return () => {
       console.log("[Socket] Component unmounting, keeping socket alive");
-      // Don't disconnect on unmount - let it stay connected
     };
-  }, [auth.user?.id, auth.user?.role]);
+  }, [auth.user?.id, auth.user?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Handle subscriptions
+  // Handle subscriptions — runs whenever conversations list or connection changes
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket || !isRealtimeConnected) return;
@@ -167,6 +203,7 @@ export function useMentorshipSocket(auth, conversations) {
     const idsToUnsubscribe = [...previousIds].filter((id) => !nextIds.has(id));
 
     if (idsToSubscribe.length) {
+      console.log("[Socket] Subscribing to", idsToSubscribe.length, "new conversations");
       socket.emit("mentorship:subscribe", { conversationIds: idsToSubscribe });
     }
     if (idsToUnsubscribe.length) {

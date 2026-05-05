@@ -90,7 +90,7 @@ export function useMentorshipE2EE(auth, activeConversation) {
         const participantKeys = activeConversation.e2ee?.participantKeys || [];
         const envelopeEntries = activeConversation.e2ee?.envelopes || [];
         const participantKeyByUserId = new Map(participantKeys.map(k => [k.userId, k.publicKey]));
-        
+
         if (!participantKeyByUserId.has(currentUserId)) {
           participantKeyByUserId.set(currentUserId, devicePublicKeySerialized);
         }
@@ -107,33 +107,43 @@ export function useMentorshipE2EE(auth, activeConversation) {
 
         // 1st priority: decrypt our own envelope (most authoritative source)
         const ownEnvelope = envelopeEntries.find((e) => e.userId === currentUserId);
+        let resolvedFromEnvelope = false;
         if (ownEnvelope?.encryptedKey) {
           try {
             resolvedSecret = await decryptConversationSecretEnvelope(
               ownEnvelope.encryptedKey,
               devicePrivateKeyJwk,
             );
+            resolvedFromEnvelope = true;
           } catch {
             resolvedSecret = "";
           }
         }
 
-        // 2nd priority: use localStorage only if we were the originator
-        // (i.e., no other envelopes exist — meaning we generated the secret first)
-        if (!resolvedSecret && storedSecret && !othersHaveEnvelopes) {
+        // 2nd priority: fall back to localStorage secret (works when our own
+        // envelope decryption fails — e.g. device key was regenerated — but the
+        // stored plaintext secret is still the correct one we originally generated)
+        if (!resolvedSecret && storedSecret) {
           resolvedSecret = storedSecret;
         }
 
-        // If others have envelopes but we don't have ours yet, clear any stale
-        // locally-generated secret — it won't match the established shared key.
-        if (!resolvedSecret && othersHaveEnvelopes && storedSecret) {
-          localStorage.removeItem(storageKey);
-        }
-
         // 3rd priority: generate a new secret only when no envelopes exist at all
-        // (we are the first participant to set up encryption for this conversation)
+        // and we have no stored secret (we are the first to set up encryption)
         if (!resolvedSecret && !othersHaveEnvelopes) {
           resolvedSecret = generateConversationSecret();
+        }
+
+        // Track whether we need to re-sync our own envelope:
+        // - our envelope exists but decryption failed (stale key), OR
+        // - we have a secret but no envelope yet
+        const ownEnvelopeNeedsRefresh = resolvedSecret && (
+          !ownEnvelope?.encryptedKey ||           // no envelope for us yet
+          (ownEnvelope?.encryptedKey && !resolvedFromEnvelope) // stale/bad envelope
+        );
+
+        // Clear the sync signature so the fresh envelope gets pushed on next run
+        if (ownEnvelopeNeedsRefresh) {
+          e2eeSyncSignatureRef.current.delete(conversationId);
         }
 
         // If resolvedSecret is still empty here, we are waiting for the other
@@ -143,8 +153,15 @@ export function useMentorshipE2EE(auth, activeConversation) {
         // (If resolvedSecret is empty we're waiting for our envelope — skip sync.)
         if (resolvedSecret) {
           const envelopeByUserId = new Map(envelopeEntries.map(e => [e.userId, e]));
+
           const missingTargets = [...participantKeyByUserId.entries()]
-            .filter(([userId, pubKey]) => pubKey && !envelopeByUserId.has(userId))
+            .filter(([userId, pubKey]) => {
+              if (!pubKey) return false;
+              if (!envelopeByUserId.has(userId)) return true; // no envelope yet
+              // Re-sync our own stale/bad envelope using the current device key
+              if (userId === currentUserId && ownEnvelopeNeedsRefresh) return true;
+              return false;
+            })
             .map(([userId, publicKey]) => ({ userId, publicKey }));
 
           if (missingTargets.length) {

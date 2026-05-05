@@ -14,8 +14,8 @@ function validateGroupBody(body) {
     issues.push("Group name is required");
   }
 
-  if (!["interest", "class", "year"].includes(body.groupType)) {
-    issues.push("Group type must be interest, class, or year");
+  if (!["interest", "class", "year", "chapter"].includes(body.groupType)) {
+    issues.push("Group type must be interest, class, year, or chapter");
   }
 
   if (body.description !== undefined && body.description !== null && typeof body.description !== "string") {

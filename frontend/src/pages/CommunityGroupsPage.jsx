@@ -26,13 +26,15 @@ const tabItems = [
   { value: "my_groups", label: "My Groups" },
   { value: "interest", label: "Interest Groups" },
   { value: "class", label: "Class Groups" },
-  { value: "year", label: "Year Groups" }
+  { value: "year", label: "Year Groups" },
+  { value: "chapter", label: "Chapter Groups" }
 ];
 
 function getGroupTypeLabel(groupType) {
   if (groupType === "interest") return "Interest Group";
   if (groupType === "class") return "Class Group";
-  return "Year Group";
+  if (groupType === "year") return "Year Group";
+  return "Chapter Group";
 }
 
 function getAudiencePlaceholder(groupType, tenant) {
@@ -40,6 +42,7 @@ function getAudiencePlaceholder(groupType, tenant) {
   if (groupType === "class") {
     return tenant.institutionType === "school" ? "e.g. Class 10A, Science House" : "e.g. Computer Science, MBA A";
   }
+  if (groupType === "chapter") return "e.g. Mumbai Chapter, USA East Coast";
 
   return tenant.institutionType === "school" ? "e.g. Leaving Year 2018" : "e.g. Batch of 2020";
 }
@@ -279,6 +282,7 @@ function CommunityGroupsPage() {
               <option value="interest">Interest Group</option>
               <option value="class">Class Group</option>
               <option value="year">Year Group</option>
+              <option value="chapter">Chapter Group</option>
             </select>
             <input
               name="audienceLabel"

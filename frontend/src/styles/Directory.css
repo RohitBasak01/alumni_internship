@@ -31,21 +31,28 @@
 }
 
 .directory-location-header {
-  margin-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, transparent 100%);
+  border-left: 4px solid var(--ui-brand);
+  border-radius: 4px 12px 12px 4px;
 }
 
 .directory-title {
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-size: 1.6rem;
+  font-weight: 800;
   color: var(--ui-text);
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .directory-title small {
-  font-size: 1rem;
-  font-weight: 400;
+  font-size: 0.95rem;
+  font-weight: 500;
   color: var(--ui-text-muted);
-  margin-left: 0.5rem;
+  margin-left: 0.75rem;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .directory-category-bar {
@@ -401,13 +408,16 @@
 }
 
 @media (max-width: 760px) {
+
   .directory-main-search,
   .directory-input-group {
     flex-direction: column;
   }
+
   .directory-input.roll-input {
     max-width: none;
   }
+
   .directory-status-bar {
     flex-direction: column;
     align-items: flex-start;
@@ -457,6 +467,7 @@
 }
 
 @media (max-width: 1180px) {
+
   .member-directory-grid.hero-grid,
   .member-directory-grid.cards-grid,
   .member-directory-grid.admin-grid,
@@ -466,6 +477,7 @@
 }
 
 @media (max-width: 760px) {
+
   .member-directory-grid.hero-grid,
   .member-directory-grid.cards-grid,
   .member-directory-grid.admin-grid,
@@ -476,4 +488,3 @@
     grid-template-columns: 1fr;
   }
 }
-

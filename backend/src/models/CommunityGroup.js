@@ -42,7 +42,7 @@ const communityGroupSchema = new mongoose.Schema(
     },
     groupType: {
       type: String,
-      enum: ["interest", "class", "year"],
+      enum: ["interest", "class", "year", "chapter"],
       required: true,
       index: true
     },

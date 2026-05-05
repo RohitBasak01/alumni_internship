@@ -7,7 +7,7 @@ import { useMentorshipRTC } from "../hooks/useMentorshipRTC.js";
 import { CallingOverlay } from "../components/mentorship/CallingOverlay.jsx";
 import "../components/mentorship/Mentorship.css";
 import { useAlumniConversations } from "../hooks/useMentorship.js";
-import { useAlumniConversationE2EE } from "../hooks/useMentorshipE2EE.js";
+
 import { useAlumniConversationSocket } from "../hooks/useMentorshipSocket.js";
 
 const reactionChoices = ["😀", "😂", "❤️", "🎉", "👏", "🙏"];
@@ -58,10 +58,7 @@ export default function AlumniMessagesPage() {
   const [isContactPanelVisible, setIsContactPanelVisible] = useState(false);
   const [toasts, setToasts] = useState([]);
   const conversationsState = useAlumniConversations();
-  const e2ee = useAlumniConversationE2EE(
-    conversationsState.auth,
-    conversationsState.activeConversation,
-  );
+
   const realtime = useAlumniConversationSocket(
     conversationsState.auth,
     conversationsState.conversations,
@@ -289,14 +286,9 @@ export default function AlumniMessagesPage() {
           <MentorshipChat
             activeConversation={conversationsState.activeConversation}
             auth={conversationsState.auth}
-            conversationKeyFingerprint={e2ee.conversationKeyFingerprint}
-            conversationSecret={e2ee.conversationSecret}
-            conversationSecretInput={e2ee.conversationSecretInput}
             fetchNextPage={conversationsState.fetchNextPage}
             handleReactionToggle={handleReactionToggle}
             hasNextPage={conversationsState.hasNextPage}
-            isConversationKeyVerified={e2ee.isConversationKeyVerified}
-            isE2eeInitializing={e2ee.isE2eeInitializing}
             isFetchingNextPage={conversationsState.isFetchingNextPage}
             isMessagesLoading={conversationsState.isMessagesLoading}
             isMobileViewport={conversationsState.isMobileViewport}
@@ -305,6 +297,7 @@ export default function AlumniMessagesPage() {
             setIsContactPanelVisible={setIsContactPanelVisible}
             editMessageMutation={conversationsState.editMessageMutation}
             deleteMessageMutation={conversationsState.deleteMessageMutation}
+            clearMessagesMutation={conversationsState.clearMessagesMutation}
             markReadMutation={conversationsState.markReadMutation}
             updateGroupMemberRoleMutation={
               conversationsState.updateGroupMemberRoleMutation
@@ -322,17 +315,13 @@ export default function AlumniMessagesPage() {
                 conversationsState.activeConversation?._id
               ] || []
             }
-            queryClient={queryClient}
             reactionChoices={reactionChoices}
             removePendingMessage={conversationsState.removePendingMessage}
-            saveSecret={e2ee.saveSecret}
-            setConversationSecretInput={e2ee.setConversationSecretInput}
             setIsMobileThreadListOpen={
               conversationsState.setIsMobileThreadListOpen
             }
             transmitPendingMessage={transmitPendingMessage}
             updatePendingMessage={conversationsState.updatePendingMessage}
-            verifySecret={e2ee.verifySecret}
             rtc={rtc}
           />
         ) : (

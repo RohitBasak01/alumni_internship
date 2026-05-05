@@ -235,9 +235,20 @@ function TenantAlumniPage() {
         </div>
       )}
 
-      {["name", "course", "location", "work", "roles", "skills"].includes(
-        filters.activeTab,
-      ) && (
+      {filters.activeTab === "roles" && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <BrowseByEntity
+            title="Browse by Roles"
+            items={derived.activeMembers.map((m) => m.designation)}
+            onSelect={(val) => {
+              setFilters((f) => ({ ...f, activeTab: "name", q: val }));
+            }}
+            placeholder="Search roles..."
+          />
+        </div>
+      )}
+
+      {["name", "course", "location", "work"].includes(filters.activeTab) && (
         <div className="member-directory-grid cards-grid">
           {derived.activeMembers.map((alumni) => (
             <AlumniCard

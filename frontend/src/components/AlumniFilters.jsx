@@ -7,7 +7,6 @@ const CATEGORIES = [
   { id: "institute", icon: "school", label: "Institute" },
   { id: "company", icon: "apartment", label: "Company" },
   { id: "roles", icon: "person_search", label: "Roles" },
-  { id: "skills", icon: "psychology", label: "Professional Skills" },
   { id: "industry", icon: "factory", label: "Industry" },
 ];
 
@@ -77,122 +76,124 @@ export function AlumniFilters({
         </div>
       </div>
 
-      {/* Main Filter Card */}
-      <div className="directory-filter-card">
-        <div className="directory-tabs">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              className={`directory-tab ${activeTab === tab.id ? "active" : ""}`}
-              onClick={() => handleTabClick(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-          <div className="directory-sort-container">
-            <select className="directory-sort-select">
-              <option>Sort by</option>
-              <option value="name">Name (A-Z)</option>
-              <option value="recent">Recently Added</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="directory-tab-content">
-          <div className="directory-main-search">
-            {activeTab === "name" && (
-              <div className="directory-input-group">
-                <input
-                  type="text"
-                  name="q"
-                  placeholder="Name or Email"
-                  className="directory-input main-input"
-                  value={filters.q}
-                  onChange={handleFilterChange}
-                />
-                <input
-                  type="text"
-                  name="rollNo"
-                  placeholder="Roll No"
-                  className="directory-input roll-input"
-                  value={filters.rollNo || ""}
-                  onChange={handleFilterChange}
-                />
-              </div>
-            )}
-
-            {activeTab === "course" && (
-              <div className="directory-input-group">
-                <input
-                  type="text"
-                  name="department"
-                  placeholder={directoryConfig.educationFieldLabel}
-                  className="directory-input"
-                  value={filters.department}
-                  onChange={handleFilterChange}
-                />
-                <input
-                  type="number"
-                  name="batch"
-                  placeholder={directoryConfig.yearFieldLabel}
-                  className="directory-input"
-                  value={filters.batch}
-                  onChange={handleFilterChange}
-                />
-              </div>
-            )}
-
-            {activeTab === "location" && (
-              <input
-                type="text"
-                name="location"
-                placeholder="City, State or Country"
-                className="directory-input"
-                value={filters.location || ""}
-                onChange={handleFilterChange}
-              />
-            )}
-
-            {activeTab === "company" && (
-              <input
-                type="text"
-                name="company"
-                placeholder="Company Name"
-                className="directory-input"
-                value={filters.company}
-                onChange={handleFilterChange}
-              />
-            )}
-
-            {activeTab === "work" && (
-              <input
-                type="text"
-                name="skill"
-                placeholder="Experience or Skills"
-                className="directory-input"
-                value={filters.skill}
-                onChange={handleFilterChange}
-              />
-            )}
-
-            <button className="directory-search-submit" type="button">
-              <span className="material-symbols-outlined">chevron_right</span>
-            </button>
-          </div>
-
-          <div className="directory-alpha-index">
-            {ALPHABET.map((letter) => (
+      {/* Main Filter Card - only show for specific search tabs */}
+      {["name", "course", "location", "company", "work"].includes(activeTab) && (
+        <div className="directory-filter-card">
+          <div className="directory-tabs">
+            {TABS.map((tab) => (
               <button
-                key={letter}
-                className={`directory-alpha-btn ${filters.alphaIndex === letter ? "active" : ""}`}
-                onClick={() => handleAlphaClick(letter)}
+                key={tab.id}
+                className={`directory-tab ${activeTab === tab.id ? "active" : ""}`}
+                onClick={() => handleTabClick(tab.id)}
               >
-                {letter}
+                {tab.label}
               </button>
             ))}
+            <div className="directory-sort-container">
+              <select className="directory-sort-select">
+                <option>Sort by</option>
+                <option value="name">Name (A-Z)</option>
+                <option value="recent">Recently Added</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="directory-tab-content">
+            <div className="directory-main-search">
+              {activeTab === "name" && (
+                <div className="directory-input-group">
+                  <input
+                    type="text"
+                    name="q"
+                    placeholder="Name or Email"
+                    className="directory-input main-input"
+                    value={filters.q}
+                    onChange={handleFilterChange}
+                  />
+                  <input
+                    type="text"
+                    name="rollNo"
+                    placeholder="Roll No"
+                    className="directory-input roll-input"
+                    value={filters.rollNo || ""}
+                    onChange={handleFilterChange}
+                  />
+                </div>
+              )}
+
+              {activeTab === "course" && (
+                <div className="directory-input-group">
+                  <input
+                    type="text"
+                    name="department"
+                    placeholder={directoryConfig.educationFieldLabel}
+                    className="directory-input"
+                    value={filters.department}
+                    onChange={handleFilterChange}
+                  />
+                  <input
+                    type="number"
+                    name="batch"
+                    placeholder={directoryConfig.yearFieldLabel}
+                    className="directory-input"
+                    value={filters.batch}
+                    onChange={handleFilterChange}
+                  />
+                </div>
+              )}
+
+              {activeTab === "location" && (
+                <input
+                  type="text"
+                  name="location"
+                  placeholder="City, State or Country"
+                  className="directory-input"
+                  value={filters.location || ""}
+                  onChange={handleFilterChange}
+                />
+              )}
+
+              {activeTab === "company" && (
+                <input
+                  type="text"
+                  name="company"
+                  placeholder="Company Name"
+                  className="directory-input"
+                  value={filters.company}
+                  onChange={handleFilterChange}
+                />
+              )}
+
+              {activeTab === "work" && (
+                <input
+                  type="text"
+                  name="skill"
+                  placeholder="Experience or Skills"
+                  className="directory-input"
+                  value={filters.skill}
+                  onChange={handleFilterChange}
+                />
+              )}
+
+              <button className="directory-search-submit" type="button">
+                <span className="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+
+            <div className="directory-alpha-index">
+              {ALPHABET.map((letter) => (
+                <button
+                  key={letter}
+                  className={`directory-alpha-btn ${filters.alphaIndex === letter ? "active" : ""}`}
+                  onClick={() => handleAlphaClick(letter)}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Bottom Status Bar */}
       <div className="directory-status-bar">

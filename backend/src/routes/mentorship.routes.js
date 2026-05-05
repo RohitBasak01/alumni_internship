@@ -22,6 +22,7 @@ import {
   toggleMessageReaction,
   editMessage,
   deleteMessage,
+  clearConversationMessages,
   uploadAttachment,
   upsertE2eePublicKey,
   syncConversationEnvelopes,
@@ -86,6 +87,7 @@ router.put("/e2ee/public-key", protect, authorize("alumni"), requireTenantAccess
 router.patch("/:id/e2ee/envelopes", protect, authorize("alumni"), requireTenantAccess, validateParams(validateMentorshipParams), syncConversationEnvelopes);
 router.get("/:id/messages", protect, requireTenantAccess, validateParams(validateMentorshipParams), getConversationMessages);
 router.post("/:id/messages", protect, requireTenantAccess, validateParams(validateMentorshipParams), validateBody(validateMentorshipMessageBody), sendMessage);
+router.delete("/:id/messages", protect, requireTenantAccess, validateParams(validateMentorshipParams), clearConversationMessages);
 router.post("/:id/messages/:messageId/reactions", protect, requireTenantAccess, validateParams(validateMessageParams), toggleMessageReaction);
 router.patch("/:id/messages/:messageId", protect, requireTenantAccess, validateParams(validateMessageParams), validateBody((body) => hasMinLength(body.content, 1) ? [] : ["Message content is required"]), editMessage);
 router.delete("/:id/messages/:messageId", protect, requireTenantAccess, validateParams(validateMessageParams), deleteMessage);

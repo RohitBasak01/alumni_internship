@@ -24,6 +24,7 @@ import {
   leaveGroupConversation,
   editAlumniConversationMessage,
   deleteAlumniConversationMessage,
+  clearAlumniConversationMessages,
   updateGroupMemberRole,
   muteGroupMember,
   unmuteGroupMember,
@@ -34,7 +35,7 @@ import {
   toggleBlockAlumniContact,
 } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { isEncryptedEnvelope } from "../lib/e2ee.js";
+
 
 const initialGroupForm = {
   groupName: "",
@@ -47,7 +48,7 @@ function upsertConversationMessage(oldData, nextMessage) {
     return { pages: [[nextMessage]], pageParams: [undefined] };
   }
 
-  const pages = oldData.pages.map((page) =>
+  const pages = (oldData.pages || []).map((page) =>
     page.map((message) => {
       if (String(message._id) === String(nextMessage._id)) {
         return nextMessage;
@@ -64,7 +65,13 @@ function upsertConversationMessage(oldData, nextMessage) {
   );
 
   const exists = pages.some((page) =>
-    page.some((message) => String(message._id) === String(nextMessage._id)),
+    page.some(
+      (message) =>
+        String(message._id) === String(nextMessage._id) ||
+        (nextMessage.clientId &&
+          message.clientId &&
+          String(message.clientId) === String(nextMessage.clientId)),
+    ),
   );
 
   if (!exists) {
@@ -142,6 +149,7 @@ export function useMentorship() {
       return lastPage[0]?.createdAt; // Fetch messages before the oldest one in the last batch
     },
     refetchOnWindowFocus: false,
+    refetchInterval: 3000,
   });
 
   const messagesData = useMemo(() => {
@@ -186,17 +194,18 @@ export function useMentorship() {
             ? 1
             : 0;
       const latestPreview = latestMessage
-        ? isEncryptedEnvelope(latestMessage.content)
-          ? "Encrypted message"
-          : latestMessage.content?.trim() ||
-            (latestMessage.attachments?.length
-              ? "Attachment"
-              : "No messages yet")
+        ? latestMessage.content?.trim() ||
+          (latestMessage.attachments?.length ? "Attachment" : "No messages yet")
         : item.message || "No messages yet";
       const previewText =
-        item.conversationType === "group" && latestSenderName && latestPreview !== "Encrypted message"
+        item.conversationType === "group" && latestSenderName
           ? `${latestSenderName}: ${latestPreview}`
           : latestPreview;
+
+      const isActiveConversation = activeId === item._id;
+      const displayUnreadCount = isActiveConversation
+        ? 0
+        : Number(item.unreadCount ?? unreadCount ?? 0);
 
       const common = {
         _id: item._id,
@@ -208,10 +217,10 @@ export function useMentorship() {
         ),
         messages: activeId === item._id ? messagesData : [],
         createdAt: item.createdAt,
-        e2ee: item.e2ee || { participantKeys: [], envelopes: [] },
+        e2ee: { participantKeys: [], envelopes: [] },
         typingMembers: item.typingMembers || [],
-        isUnread: latestIsUnread,
-        unreadCount: Number(item.unreadCount ?? unreadCount ?? 0),
+        isUnread: isActiveConversation ? false : latestIsUnread,
+        unreadCount: displayUnreadCount,
       };
 
       if (item.conversationType === "group") {
@@ -349,6 +358,41 @@ export function useMentorship() {
     },
   });
 
+  const clearMessagesMutation = useMutation({
+    mutationFn: clearAlumniConversationMessages,
+    onMutate: async (conversationId) => {
+      await queryClient.cancelQueries({
+        queryKey: ["alumni-conversation-messages", conversationId],
+      });
+      const previousMessages = queryClient.getQueryData([
+        "alumni-conversation-messages",
+        conversationId,
+      ]);
+      queryClient.setQueryData(
+        ["alumni-conversation-messages", conversationId],
+        (old) =>
+          old
+            ? { ...old, pages: [[]] }
+            : { pages: [[]], pageParams: [undefined] },
+      );
+      return { conversationId, previousMessages };
+    },
+    onError: (_error, conversationId, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(
+          ["alumni-conversation-messages", conversationId],
+          context.previousMessages,
+        );
+      }
+    },
+    onSettled: (_data, _error, conversationId) => {
+      queryClient.invalidateQueries({
+        queryKey: ["alumni-conversation-messages", conversationId],
+      });
+      invalidateConversationLists();
+    },
+  });
+
   const markReadMutation = useMutation({
     mutationFn: markAlumniConversationRead,
     onSuccess: () =>
@@ -468,6 +512,7 @@ export function useMentorship() {
     reactionMutation,
     editMessageMutation,
     deleteMessageMutation,
+    clearMessagesMutation,
     markReadMutation,
     createGroupMutation,
     updateGroupMemberRoleMutation,

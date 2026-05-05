@@ -249,15 +249,15 @@ async function serializeConversation(
 
   const serializedLatestMessage = latestMessage
     ? {
-        ...latestMessage.toObject(),
-        senderId: peopleById.get(latestSenderId) || latestMessage.senderId,
-        sentAt: latestMessage.sentAt || latestMessage.createdAt || new Date(),
-        delivery: getMessageDeliveryMetadata(
-          latestMessage,
-          conversation,
-          req.user?._id || req.user?.id,
-        ),
-      }
+      ...latestMessage.toObject(),
+      senderId: peopleById.get(latestSenderId) || latestMessage.senderId,
+      sentAt: latestMessage.sentAt || latestMessage.createdAt || new Date(),
+      delivery: getMessageDeliveryMetadata(
+        latestMessage,
+        conversation,
+        req.user?._id || req.user?.id,
+      ),
+    }
     : null;
 
   return {
@@ -299,8 +299,8 @@ async function serializeConversation(
     isMuted: req.user?.mutedConversationIds?.some(id => String(id) === String(conversation._id)),
     isBlocked: req.user?.blockedUserIds?.some(id => {
       if (conversation.conversationType === 'direct') {
-        const partnerId = String(conversation.requesterId) === String(req.user._id) 
-          ? String(conversation.mentorId) 
+        const partnerId = String(conversation.requesterId) === String(req.user._id)
+          ? String(conversation.mentorId)
           : String(conversation.requesterId);
         return String(id) === partnerId;
       }
@@ -321,10 +321,10 @@ async function formatMessagesForClient(req, conversation, messages) {
 
   const replyMessages = replyIds.length
     ? await tenantModels.Message.find({
-        instituteId: req.tenant._id,
-        conversationId: conversation._id,
-        _id: { $in: replyIds },
-      }).populate("senderId", "name email")
+      instituteId: req.tenant._id,
+      conversationId: conversation._id,
+      _id: { $in: replyIds },
+    }).populate("senderId", "name email")
     : [];
 
   const replyById = new Map(
@@ -368,14 +368,14 @@ async function formatMessagesForClient(req, conversation, messages) {
       ),
       replyTo: replyToMessage
         ? {
-            messageId: replyToMessage._id,
-            senderName: replySenderId
-              ? peopleById.get(replySenderId)?.name ||
-                replyToMessage.senderId?.name ||
-                "Member"
-              : "Member",
-            content: replyToMessage.content || "",
-          }
+          messageId: replyToMessage._id,
+          senderName: replySenderId
+            ? peopleById.get(replySenderId)?.name ||
+            replyToMessage.senderId?.name ||
+            "Member"
+            : "Member",
+          content: replyToMessage.content || "",
+        }
         : null,
     };
   });
@@ -416,9 +416,9 @@ export const getMentorshipRequests = asyncHandler(async (req, res) => {
     req.user.role === "institute_admin"
       ? { instituteId: req.tenant._id }
       : {
-          instituteId: req.tenant._id,
-          ...getConversationAccessQuery(req.user._id),
-        };
+        instituteId: req.tenant._id,
+        ...getConversationAccessQuery(req.user._id),
+      };
 
   const conversations = await MentorshipRequest.find(query)
     .populate("requesterId", "name email")
@@ -1323,6 +1323,53 @@ export const deleteMessage = asyncHandler(async (req, res) => {
   });
 
   res.json(serializedMessage);
+});
+
+export const clearConversationMessages = asyncHandler(async (req, res) => {
+  const { Message } = getTenantModels(req);
+  const conversation = await findAccessibleConversation(req, req.params.id);
+
+  if (!conversation) {
+    return res.status(404).json({ message: "Chat not found." });
+  }
+
+  const now = new Date();
+  const result = await Message.updateMany(
+    {
+      instituteId: req.tenant._id,
+      conversationId: conversation._id,
+      isDeleted: false,
+    },
+    {
+      $set: {
+        isDeleted: true,
+        content: "",
+        attachments: [],
+        reactions: [],
+        deletedAt: now,
+        deletedById: req.user._id,
+      },
+    },
+  );
+
+  conversation.message = "";
+  conversation.updatedAt = now;
+  conversation.typingMembers = ensureArray(conversation.typingMembers).filter(
+    (entry) => toIdString(entry.userId) !== req.user._id.toString(),
+  );
+  await conversation.save();
+
+  req.app.locals.emitMentorshipEvent?.({
+    conversationId: conversation._id.toString(),
+    conversationIds: [conversation._id.toString()],
+    type: "messages-cleared",
+  });
+
+  res.json({
+    ok: true,
+    deletedCount: result.modifiedCount || 0,
+    conversationId: conversation._id,
+  });
 });
 
 export const getConversationMessages = asyncHandler(async (req, res) => {

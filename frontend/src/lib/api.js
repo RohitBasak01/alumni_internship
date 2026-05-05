@@ -857,6 +857,13 @@ export async function deleteMentorshipMessage(requestId, messageId) {
 
 export const deleteAlumniConversationMessage = deleteMentorshipMessage;
 
+export async function clearMentorshipMessages(requestId) {
+  const { data } = await api.delete(`/mentorship/${requestId}/messages`);
+  return data;
+}
+
+export const clearAlumniConversationMessages = clearMentorshipMessages;
+
 export async function toggleMentorshipMessageReaction(
   requestId,
   messageId,
