@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef, useState, useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageBubble } from "./MessageBubble.jsx";
 import { MentorshipComposer } from "./MentorshipComposer.jsx";
 import { EncryptionPanel, GroupDetailsDrawer } from "./MentorshipModals.jsx";
@@ -88,6 +88,8 @@ export function MentorshipChat({
   const [messageSearch, setMessageSearch] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxAttachment, setLightboxAttachment] = useState(null);
+  const queryClient = useQueryClient();
+  const refreshTriggeredRef = useRef(false);
 
   const messageStreamRef = useRef(null);
   const messageNodeRefs = useRef(new Map());
@@ -207,10 +209,21 @@ export function MentorshipChat({
       return conversationSecret;
     }
 
+    // If another participant already has an envelope, a shared secret is already
+    // established by them. Generating a NEW independent secret here would cause
+    // an irreparable key mismatch — neither user could decrypt the other's messages.
+    // Return null so callers can show a "please wait" error instead of sending.
+    const othersHaveEnvelopes = (activeConversation?.e2ee?.envelopes || []).some(
+      (e) => e.userId !== currentUserId && e.encryptedKey,
+    );
+    if (othersHaveEnvelopes) {
+      return null;
+    }
+
     const generatedSecret = generateConversationSecret();
     saveSecret(generatedSecret);
     return generatedSecret;
-  }, [conversationSecret, saveSecret]);
+  }, [conversationSecret, saveSecret, activeConversation?.e2ee?.envelopes, currentUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,6 +246,16 @@ export function MentorshipChat({
             contentPatch[id] = raw;
           } else if (!conversationSecret) {
             contentPatch[id] = "Encrypted message";
+            // If we're seeing encrypted messages but have no secret, the other
+            // participant might have just established the secure channel.
+            // Trigger a metadata refresh so useMentorshipE2EE can find the new envelope.
+            if (!refreshTriggeredRef.current) {
+              refreshTriggeredRef.current = true;
+              queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
+              queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+              // Reset throttle after 5s
+              setTimeout(() => { refreshTriggeredRef.current = false; }, 5000);
+            }
           } else {
             try {
               contentPatch[id] = await decryptMessageContent(
@@ -456,6 +479,13 @@ export function MentorshipChat({
     if (!files.length) return;
 
     const workingSecret = ensureConversationSecret();
+    if (!workingSecret) {
+      setAttachmentUploadError(
+        "Secure channel is being established. Please wait a moment and try again.",
+      );
+      if (resetTarget) resetTarget.value = "";
+      return;
+    }
 
     setAttachmentUploadError("");
     setIsUploadingAttachments(true);
@@ -561,6 +591,12 @@ export function MentorshipChat({
     }
 
     const workingSecret = ensureConversationSecret();
+    if (!workingSecret) {
+      setAttachmentUploadError(
+        "Secure channel is being established. Please wait a moment and try again.",
+      );
+      return;
+    }
 
     if (editingMessage) {
       await editMessageMutation.mutateAsync({

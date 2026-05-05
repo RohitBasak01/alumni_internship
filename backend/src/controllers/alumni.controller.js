@@ -46,6 +46,11 @@ export const getAlumni = asyncHandler(async (req, res) => {
     lastClassAttended,
     section,
     location,
+    rollNo,
+    industry,
+    alphaIndex,
+    isFaculty,
+    registeredOnly,
   } = req.query;
   const searchText = String(q || "").trim();
 
@@ -55,22 +60,47 @@ export const getAlumni = asyncHandler(async (req, res) => {
 
   if (department) profileFilter.department = buildRegex(String(department));
   if (company) profileFilter.company = buildRegex(String(company));
+  if (industry) profileFilter.industry = buildRegex(String(industry));
   if (lastClassAttended)
     profileFilter.lastClassAttended = buildRegex(String(lastClassAttended));
   if (section) profileFilter.section = buildRegex(String(section));
   if (location) profileFilter.location = buildRegex(String(location));
+  if (rollNo) profileFilter.rollNo = buildRegex(String(rollNo));
+  if (isFaculty === "true") profileFilter.isFaculty = true;
+
+  if (alphaIndex) {
+    profileFilter.$or = [
+      { name: { $regex: new RegExp(`^${alphaIndex}`, "i") } },
+      // Since name is on the User model, we'll need to handle this via the filter later
+      // or aggregate. For now, we'll handle it in the filter step below for simplicity.
+    ];
+  }
+
   if (skill) profileFilter.skills = { $in: [buildRegex(String(skill))] };
 
   const alumni = await AlumniProfile.find(profileFilter)
     .populate("userId", "name email isActive passwordSetupCompleted")
     .sort({ createdAt: -1 });
 
+  let result = alumni;
+
+  if (registeredOnly === "true") {
+    result = result.filter((entry) => entry.userId?.passwordSetupCompleted);
+  }
+
+  if (alphaIndex) {
+    const letter = String(alphaIndex).toUpperCase();
+    result = result.filter((entry) =>
+      String(entry.userId?.name || "").toUpperCase().startsWith(letter),
+    );
+  }
+
   if (!searchText) {
-    return res.json(alumni);
+    return res.json(result);
   }
 
   const queryRegex = buildRegex(searchText);
-  const filtered = alumni.filter((entry) => {
+  const filtered = result.filter((entry) => {
     const userName = String(entry?.userId?.name || "");
     const userEmail = String(entry?.userId?.email || "");
 

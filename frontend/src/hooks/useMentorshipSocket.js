@@ -73,14 +73,22 @@ export function useMentorshipSocket(auth, conversations) {
 
     const upsertMessage = (conversationId, nextMessage) => {
       if (!conversationId || !nextMessage?._id) return;
-      // Use queryClient directly instead of from closure
+
+      let messageWasInserted = false;
+
       queryClient.setQueryData(
         ["alumni-conversation-messages", conversationId],
         (old) => {
-          if (!old) return old;
+          // If no cache exists yet, seed it with this message so the user
+          // doesn't have to refresh to see real-time messages.
+          if (!old) {
+            messageWasInserted = true;
+            return { pages: [[nextMessage]], pageParams: [undefined] };
+          }
+
           const newPages = old.pages.map((page) =>
             page.map((message) => {
-              if (message._id === nextMessage._id) {
+              if (String(message._id) === String(nextMessage._id)) {
                 return nextMessage;
               }
               if (
@@ -93,6 +101,7 @@ export function useMentorshipSocket(auth, conversations) {
               return message;
             }),
           );
+
           const lastPageIdx = newPages.length - 1;
           const alreadyExists = newPages.some((page) =>
             page.some(
@@ -102,11 +111,20 @@ export function useMentorshipSocket(auth, conversations) {
 
           if (!alreadyExists && lastPageIdx >= 0) {
             newPages[lastPageIdx] = [...newPages[lastPageIdx], nextMessage];
+            messageWasInserted = true;
           }
 
           return { ...old, pages: newPages };
         },
       );
+
+      // If we couldn't insert (e.g. race with initial fetch), trigger a
+      // server refetch so the message definitely appears.
+      if (!messageWasInserted) {
+        queryClient.invalidateQueries({
+          queryKey: ["alumni-conversation-messages", conversationId],
+        });
+      }
     };
 
     socket.on("mentorship:message", (payload = {}) => {
@@ -119,9 +137,13 @@ export function useMentorshipSocket(auth, conversations) {
 
     socket.on("mentorship:update", (payload = {}) => {
       const conversationId = String(payload?.conversationId || "").trim();
+      
       if (payload?.type === "message" && payload?.message) {
         upsertMessage(conversationId, payload.message);
       }
+
+      // Handle all update types by refreshing the conversation metadata.
+      // This includes 'key_rotation', 'e2ee-envelopes-updated', and 'conversation' updates.
       queryClient.invalidateQueries({ queryKey: ["alumni-conversations"] });
       queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
     });

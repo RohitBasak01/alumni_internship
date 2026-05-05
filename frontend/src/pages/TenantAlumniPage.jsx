@@ -8,6 +8,8 @@ import {
 import SectionCard from "../components/SectionCard.jsx";
 import { AlumniFilters } from "../components/AlumniFilters.jsx";
 import { AlumniCard } from "../components/AlumniCard.jsx";
+import { AlumniMap } from "../components/AlumniMap.jsx";
+import { BrowseByEntity } from "../components/BrowseByEntity.jsx";
 import "../styles/Directory.css";
 import { useAlumniLogic } from "../hooks/useAlumniLogic.js";
 
@@ -51,6 +53,8 @@ function TenantAlumniPage() {
   );
   const chatMutation = mutations.mentorship;
 
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'map'
+
   const directoryConfig = useMemo(() => getDirectoryConfig(tenant), [tenant]);
   const isSchool = directoryConfig.isSchool;
   const resetFilters = () =>
@@ -63,6 +67,12 @@ function TenantAlumniPage() {
       section: "",
       company: "",
       skill: "",
+      rollNo: "",
+      industry: "",
+      alphaIndex: "",
+      isFaculty: false,
+      registeredOnly: false,
+      activeTab: "name",
     });
 
   if (isAdmin) {
@@ -123,6 +133,8 @@ function TenantAlumniPage() {
               clearFilters={resetFilters}
               isSchool={isSchool}
               directoryConfig={directoryConfig}
+              setFilters={setFilters}
+              totalFound={derived.directoryEntries.length}
             />
 
             <div className="member-directory-grid admin-grid">
@@ -159,6 +171,8 @@ function TenantAlumniPage() {
         clearFilters={resetFilters}
         isSchool={isSchool}
         directoryConfig={directoryConfig}
+        setFilters={setFilters}
+        totalFound={queries.alumni.data?.length || 0}
       />
       {queries.alumni.isLoading ? (
         <p className="muted">Loading members...</p>
@@ -176,22 +190,71 @@ function TenantAlumniPage() {
           <p className="muted">No active member profiles are available yet.</p>
         </SectionCard>
       ) : null}
-      <div className="member-directory-grid cards-grid">
-        {derived.activeMembers.map((alumni) => (
-          <AlumniCard
-            key={alumni._id}
-            alumni={alumni}
-            isSchool={isSchool}
-            directoryConfig={directoryConfig}
-            onRequestChat={(item) => {
-              setSelectedForChat(item);
-              setChatMessage(
-                "Hi, I'd like to connect and start a conversation with you.",
-              );
+      {filters.activeTab === "location" && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <AlumniMap members={derived.activeMembers} />
+        </div>
+      )}
+
+      {filters.activeTab === "institute" && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <BrowseByEntity
+            title="Browse by Institute"
+            items={derived.activeMembers.map((m) => m.currentInstitution)}
+            onSelect={(val) => {
+              setFilters((f) => ({ ...f, activeTab: "name", q: val }));
             }}
+            placeholder="Search institutes..."
           />
-        ))}
-      </div>
+        </div>
+      )}
+
+      {filters.activeTab === "company" && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <BrowseByEntity
+            title="Browse by Company"
+            items={derived.activeMembers.map((m) => m.company)}
+            onSelect={(val) => {
+              setFilters((f) => ({ ...f, activeTab: "name", q: val }));
+            }}
+            placeholder="Search companies..."
+          />
+        </div>
+      )}
+
+      {filters.activeTab === "industry" && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <BrowseByEntity
+            title="Browse by Industry"
+            items={derived.activeMembers.map((m) => m.industry)}
+            onSelect={(val) => {
+              setFilters((f) => ({ ...f, activeTab: "name", q: val }));
+            }}
+            placeholder="Search industries..."
+          />
+        </div>
+      )}
+
+      {["name", "course", "location", "work", "roles", "skills"].includes(
+        filters.activeTab,
+      ) && (
+        <div className="member-directory-grid cards-grid">
+          {derived.activeMembers.map((alumni) => (
+            <AlumniCard
+              key={alumni._id}
+              alumni={alumni}
+              isSchool={isSchool}
+              directoryConfig={directoryConfig}
+              onRequestChat={(item) => {
+                setSelectedForChat(item);
+                setChatMessage(
+                  "Hi, I'd like to connect and start a conversation with you.",
+                );
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {selectedForChat ? (
         <div

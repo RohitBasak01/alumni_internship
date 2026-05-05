@@ -37,6 +37,12 @@ const initialFilters = {
   section: "",
   company: "",
   skill: "",
+  rollNo: "",
+  industry: "",
+  alphaIndex: "",
+  isFaculty: false,
+  registeredOnly: false,
+  activeTab: "name",
 };
 
 export function useAlumniLogic() {

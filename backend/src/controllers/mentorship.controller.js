@@ -903,7 +903,7 @@ export const uploadAttachment = asyncHandler(async (req, res) => {
 });
 
 export const upsertE2eePublicKey = asyncHandler(async (req, res) => {
-  const { User } = getTenantModels(req);
+  const { User, MentorshipRequest } = getTenantModels(req);
   const publicKey = String(req.body.publicKey || "").trim();
   const algorithm =
     String(req.body.algorithm || "RSA-OAEP").trim() || "RSA-OAEP";
@@ -911,6 +911,15 @@ export const upsertE2eePublicKey = asyncHandler(async (req, res) => {
   if (!publicKey) {
     return res.status(400).json({ message: "Public key is required." });
   }
+
+  // Detect if the public key changed — meaning the user regenerated their
+  // device key pair (e.g. cleared localStorage). Any existing envelopes
+  // encrypted with the old key are now permanently unreadable, so remove
+  // them. Participants will recreate fresh envelopes with the new public key.
+  const existingUser = await User.findById(req.user._id).select("e2eePublicKey");
+  const keyRotated =
+    existingUser?.e2eePublicKey &&
+    existingUser.e2eePublicKey !== publicKey;
 
   await User.updateOne(
     { _id: req.user._id },
@@ -923,7 +932,26 @@ export const upsertE2eePublicKey = asyncHandler(async (req, res) => {
     },
   );
 
-  res.json({ ok: true });
+  if (keyRotated) {
+    const userId = req.user._id.toString();
+    await MentorshipRequest.updateMany(
+      {
+        instituteId: req.tenant._id,
+        "conversationKeyEnvelopes.userId": userId,
+        ...getConversationAccessQuery(req.user._id),
+      },
+      { $pull: { conversationKeyEnvelopes: { userId } } },
+    );
+
+    // Notify other participants that this user's key has changed
+    // so they can recreate envelopes for them immediately.
+    req.app.locals.emitMentorshipEvent?.({
+      userId: userId,
+      type: "key_rotation",
+    });
+  }
+
+  res.json({ ok: true, keyRotated: Boolean(keyRotated) });
 });
 
 export const syncConversationEnvelopes = asyncHandler(async (req, res) => {

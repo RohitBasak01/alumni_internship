@@ -21,8 +21,11 @@
     "@tiptap/starter-kit": "^3.22.5",
     "axios": "^1.8.1",
     "emoji-picker-react": "^4.19.1",
+    "leaflet": "^1.9.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
+    "react-leaflet-cluster": "^4.1.3",
     "react-router-dom": "^7.1.5",
     "socket.io-client": "^4.8.3"
   },

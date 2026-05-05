@@ -28,6 +28,15 @@ const alumniProfileSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    rollNo: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    isFaculty: {
+      type: Boolean,
+      default: false,
+    },
     authProvider: {
       type: String,
       enum: ["google", "linkedin", "email", ""],
