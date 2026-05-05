@@ -9,6 +9,13 @@ import {
   resolveApiAssetUrl,
 } from "../../lib/api.js";
 import { groupConsecutiveMessages } from "../../utils/chatUtils.js";
+import {
+  isEncryptedEnvelope,
+  decryptMessageContent,
+  ensureE2eeDeviceKeyPair,
+  decryptConversationSecretEnvelope,
+} from "../../lib/e2ee.js";
+
 
 function formatMutedStatus(activeConversation, currentUserId) {
   const mutedEntry = (activeConversation?.mutedMembers || []).find(
@@ -48,6 +55,7 @@ export function MentorshipChat({
   unmuteGroupMemberMutation,
   removeGroupMemberMutation,
   leaveGroupMutation,
+  deleteConversationMutation,
   rtc,
 }) {
   const [draftMessage, setDraftMessage] = useState("");
@@ -66,6 +74,10 @@ export function MentorshipChat({
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxAttachment, setLightboxAttachment] = useState(null);
   const [attachmentUrlByKey, setAttachmentUrlByKey] = useState({});
+  const [decryptedContents, setDecryptedContents] = useState({});
+  const [conversationSecret, setConversationSecret] = useState(null);
+  const [isDecryptionRunning, setIsDecryptionRunning] = useState(false);
+
 
   const queryClient = useQueryClient();
   const messageStreamRef = useRef(null);
@@ -245,7 +257,97 @@ export function MentorshipChat({
     setIsEmojiPickerOpen(false);
     setIsQuickMenuOpen(false);
     setAttachmentUrlByKey({});
+    setDecryptedContents({});
+    setConversationSecret(null);
   }, [activeConversation?._id]);
+
+  // Handle conversation secret resolution (for passive decryption)
+  useEffect(() => {
+    async function resolveSecret() {
+      if (!activeConversation?._id || !activeConversation?.e2ee?.envelopes?.length) {
+        setConversationSecret(null);
+        return;
+      }
+
+      try {
+        const keyPair = await ensureE2eeDeviceKeyPair();
+        if (!keyPair) return;
+
+        const currentUserId = String(auth.user?.id || auth.user?._id || "");
+        const myEnvelope = activeConversation.e2ee.envelopes.find(
+          (e) => String(e.userId?._id || e.userId || "") === currentUserId
+        );
+
+        if (myEnvelope) {
+          const secret = await decryptConversationSecretEnvelope(myEnvelope, keyPair.privateKey);
+          setConversationSecret(secret);
+        }
+      } catch (err) {
+        console.error("[Decryption] Failed to resolve conversation secret:", err);
+      }
+    }
+    resolveSecret();
+  }, [activeConversation?._id, activeConversation?.e2ee, auth.user?.id]);
+
+  // Passive decryption effect: decrypt any messages starting with enc:v1:
+  useEffect(() => {
+    async function runDecryption() {
+      if (!conversationSecret || isDecryptionRunning) return;
+
+      const encryptedMessages = visibleMessages.filter(
+        (m) => {
+          const mainEncrypted = m.content && isEncryptedEnvelope(m.content) && !decryptedContents[m._id];
+          const replyEncrypted = m.replyTo?.content && isEncryptedEnvelope(m.replyTo.content) && !decryptedContents[`reply-${m._id}`];
+          return mainEncrypted || replyEncrypted;
+        }
+      );
+
+      if (!encryptedMessages.length) return;
+
+      setIsDecryptionRunning(true);
+      const patch = {};
+
+      for (const message of encryptedMessages) {
+        // Decrypt main content
+        if (message.content && isEncryptedEnvelope(message.content) && !decryptedContents[message._id]) {
+          try {
+            const decrypted = await decryptMessageContent(
+              message.content,
+              conversationSecret,
+              activeConversation._id
+            );
+            patch[message._id] = decrypted;
+          } catch (err) {
+            console.warn(`[Decryption] Failed for message ${message._id}:`, err);
+            patch[message._id] = "[Unable to decrypt message]";
+          }
+        }
+
+        // Decrypt reply content
+        if (message.replyTo?.content && isEncryptedEnvelope(message.replyTo.content) && !decryptedContents[`reply-${message._id}`]) {
+          try {
+            const decryptedReply = await decryptMessageContent(
+              message.replyTo.content,
+              conversationSecret,
+              activeConversation._id
+            );
+            patch[`reply-${message._id}`] = decryptedReply;
+          } catch (err) {
+            console.warn(`[Decryption] Failed for reply in ${message._id}:`, err);
+            patch[`reply-${message._id}`] = "[Unable to decrypt reply]";
+          }
+        }
+      }
+
+      if (Object.keys(patch).length > 0) {
+        setDecryptedContents((curr) => ({ ...curr, ...patch }));
+      }
+      setIsDecryptionRunning(false);
+    }
+
+    runDecryption();
+  }, [visibleMessages, conversationSecret, decryptedContents, activeConversation?._id, isDecryptionRunning]);
+
 
   const handleClearChat = async () => {
     if (!activeConversation?._id) return;
@@ -257,6 +359,20 @@ export function MentorshipChat({
     await clearMessagesMutation.mutateAsync(activeConversation._id);
     setActiveMessageMenuId(null);
     setReactionPickerMessageId(null);
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!activeConversation?._id) return;
+    const confirmed = window.confirm(
+      "Are you sure you want to PERMANENTLY delete this group and all its messages? This action cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteConversationMutation.mutateAsync(activeConversation._id);
+    } catch (err) {
+      console.error("Failed to delete group:", err);
+    }
   };
 
   const uploadFiles = async (files, resetTarget) => {
@@ -463,11 +579,22 @@ export function MentorshipChat({
             className="member-chat-action-button danger"
             disabled={!visibleMessages.length || clearMessagesMutation.isPending}
             onClick={handleClearChat}
-            title="Clear chat"
+            title="Clear chat history"
             type="button"
           >
             <span className="material-symbols-outlined">delete_sweep</span>
           </button>
+          {activeConversation.type === "group" && canManageGroup && (
+            <button
+              className="member-chat-action-button danger"
+              disabled={deleteConversationMutation.isPending}
+              onClick={handleDeleteGroup}
+              title="Delete group permanently"
+              type="button"
+            >
+              <span className="material-symbols-outlined">delete</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -561,8 +688,9 @@ export function MentorshipChat({
               message={message}
               auth={auth}
               activeConversation={activeConversation}
-              decryptedContent={message.content || ""}
-              replyPreviewContent={message.replyTo?.content || ""}
+              decryptedContent={decryptedContents[message._id] || message.content || ""}
+              isDecrypted={!!decryptedContents[message._id]}
+              replyPreviewContent={decryptedContents[`reply-${message._id}`] || message.replyTo?.content || ""}
               decryptedAttachmentUrlByKey={attachmentUrlByKey}
               formatTime={(value) =>
                 new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })

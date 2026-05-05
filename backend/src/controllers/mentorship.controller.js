@@ -702,6 +702,37 @@ export const leaveGroupConversation = asyncHandler(async (req, res) => {
   });
 });
 
+export const deleteGroupConversation = asyncHandler(async (req, res) => {
+  const { MentorshipRequest, Message } = getTenantModels(req);
+  const conversation = await findGroupConversationAsAdmin(req, req.params.id);
+
+  if (!conversation) {
+    return res.status(404).json({ message: "Group chat not found or admin access is required." });
+  }
+
+  const conversationId = conversation._id;
+
+  // 1. Delete all messages
+  await Message.deleteMany({
+    instituteId: req.tenant._id,
+    conversationId
+  });
+
+  // 2. Delete the conversation itself
+  await MentorshipRequest.deleteOne({ _id: conversationId });
+
+  // 3. Emit event to notify members
+  req.app.locals.emitMentorshipEvent?.({
+    conversationId: conversationId.toString(),
+    conversationIds: [conversationId.toString()],
+    type: "conversation_deleted",
+  });
+
+  logAuditEvent(req, "GROUP_CHAT_DELETED", { conversationId });
+
+  res.json({ message: "Group deleted successfully.", conversationId });
+});
+
 export const updateGroupMemberRole = asyncHandler(async (req, res) => {
   const conversation = await findGroupConversationAsAdmin(req, req.params.id);
   const userId = String(req.params.userId || "");

@@ -48,6 +48,7 @@ function formatEvent(event, user) {
     description: event.description,
     eventDate: event.eventDate,
     location: event.location,
+    groupId: event.groupId,
     createdBy: event.createdBy,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
@@ -88,7 +89,13 @@ function validateEventId(params) {
 router.get("/", protect, requireTenantAccess, async (req, res, next) => {
   try {
     const { Event } = getTenantModels(req);
-    const events = await Event.find({ instituteId: req.tenant?._id })
+    const filter = { instituteId: req.tenant?._id };
+    if (req.query.groupId) {
+      filter.groupId = req.query.groupId;
+    } else {
+      filter.groupId = { $in: [null, undefined] };
+    }
+    const events = await Event.find(filter)
       .populate("registrations.userId", "name email")
       .sort({ eventDate: 1 });
     res.json(events.map((event) => formatEvent(event, req.user)));
@@ -111,6 +118,7 @@ router.post(
         registrationCap:
           req.body.registrationCap !== undefined ? Number(req.body.registrationCap) : undefined,
         instituteId: req.tenant._id,
+        groupId: req.body.groupId || null,
         createdBy: req.user._id
       });
 

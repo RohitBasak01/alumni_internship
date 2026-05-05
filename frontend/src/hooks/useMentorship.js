@@ -22,6 +22,7 @@ import {
   setAlumniConversationTyping,
   createAlumniConversationGroup,
   leaveGroupConversation,
+  deleteAlumniConversation,
   editAlumniConversationMessage,
   deleteAlumniConversationMessage,
   clearAlumniConversationMessages,
@@ -217,7 +218,7 @@ export function useMentorship() {
         ),
         messages: activeId === item._id ? messagesData : [],
         createdAt: item.createdAt,
-        e2ee: { participantKeys: [], envelopes: [] },
+        e2ee: item.e2ee || { participantKeys: [], envelopes: [] },
         typingMembers: item.typingMembers || [],
         isUnread: isActiveConversation ? false : latestIsUnread,
         unreadCount: displayUnreadCount,
@@ -247,6 +248,10 @@ export function useMentorship() {
         incoming: isMentor,
         requester: item.requester,
         mentor: item.mentor,
+        members: [item.requester, item.mentor].filter(Boolean).map(p => ({
+          ...p,
+          id: p._id || p.id
+        })),
       };
     });
   }, [activeId, auth.user?.id, messagesData, rawData]);
@@ -449,6 +454,14 @@ export function useMentorship() {
       setActiveId(null);
     },
   });
+
+  const deleteConversationMutation = useMutation({
+    mutationFn: deleteAlumniConversation,
+    onSuccess: () => {
+      invalidateConversationLists();
+      setActiveId(null);
+    },
+  });
   const toggleMuteMutation = useMutation({
     mutationFn: toggleMuteAlumniConversation,
     onSuccess: () => invalidateConversationLists(),
@@ -520,6 +533,7 @@ export function useMentorship() {
     unmuteGroupMemberMutation,
     removeGroupMemberMutation,
     leaveGroupMutation,
+    deleteConversationMutation,
     toggleMuteMutation,
     toggleBlockMutation,
     removePendingMessage,

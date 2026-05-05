@@ -23,6 +23,7 @@ import {
   editMessage,
   deleteMessage,
   clearConversationMessages,
+  deleteGroupConversation,
   uploadAttachment,
   upsertE2eePublicKey,
   syncConversationEnvelopes,
@@ -100,6 +101,7 @@ router.delete("/:id/members/:userId/mute", protect, authorize("alumni"), require
 router.delete("/:id/members/:userId", protect, authorize("alumni"), requireTenantAccess, validateParams(validateUserParams), removeGroupMember);
 router.post("/:id/mute", protect, requireTenantAccess, validateParams(validateMentorshipParams), toggleMuteConversation);
 router.post("/:id/block", protect, requireTenantAccess, validateParams(validateMentorshipParams), toggleBlockUser);
+router.delete("/:id", protect, authorize("alumni"), requireTenantAccess, validateParams(validateMentorshipParams), deleteGroupConversation);
 
 // ... Other routes will be migrated similarly ...
 

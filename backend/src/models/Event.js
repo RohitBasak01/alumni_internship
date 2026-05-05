@@ -9,6 +9,12 @@ const eventSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CommunityGroup",
+      default: null,
+      index: true
+    },
     title: {
       type: String,
       required: true,

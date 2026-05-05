@@ -109,6 +109,7 @@ function formatGroup(group, profileByUserId, viewer) {
     audienceLabel: group.audienceLabel || "",
     memberCount: members.length,
     members,
+    createdBy: group.createdBy?._id || group.createdBy,
     canViewChat,
     messages: visibleMessages,
     latestMessage,
@@ -187,13 +188,19 @@ router.get("/", protect, requireTenantAccess, async (req, res, next) => {
 router.post(
   "/",
   protect,
-  authorize("institute_admin"),
   requireTenantAccess,
   validateBody(validateGroupBody),
   async (req, res, next) => {
     try {
       const { CommunityGroup, User, AlumniProfile } = getTenantModels(req);
       const memberUserIds = await assertValidMembers(User, req, req.body.memberUserIds || []);
+
+      // Enforcement logic
+      if (req.user.role !== "institute_admin") {
+        if (req.body.groupType !== "interest") {
+          return res.status(403).json({ message: "Alumni can only create interest groups" });
+        }
+      }
 
       const created = await CommunityGroup.create({
         instituteId: req.tenant._id,
@@ -323,6 +330,60 @@ router.post(
         groupId: formatted._id,
         message: latestMessage
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/join",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  validateParams(validateGroupId),
+  async (req, res, next) => {
+    try {
+      const { CommunityGroup, MentorshipRequest, AlumniProfile } = getTenantModels(req);
+      const allGroups = await CommunityGroup.find({}).select("_id name");
+      console.log("[JoinGroup] Debug - All Groups in DB:", allGroups.map(g => `${g.name}: ${g._id}`));
+      console.log("[JoinGroup] Backend lookup - ID:", req.params.id, "Tenant:", req.tenant._id);
+      
+      let group = await CommunityGroup.findById(req.params.id);
+      let isMentorshipGroup = false;
+
+      if (!group) {
+        console.log("[JoinGroup] Not found in CommunityGroup, checking MentorshipRequest...");
+        group = await MentorshipRequest.findOne({
+          _id: req.params.id,
+          conversationType: "group"
+        });
+        isMentorshipGroup = true;
+      }
+
+      if (!group) {
+        console.error("[JoinGroup] Group not found in either collection for ID:", req.params.id);
+        const error = new Error("Group not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (group.instituteId.toString() !== req.tenant._id.toString()) {
+        console.error("[JoinGroup] Tenant mismatch. Group Tenant:", group.instituteId, "Current Tenant:", req.tenant._id);
+        const error = new Error("This group belongs to another institution");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      const isMember = (group.memberIds || []).some((id) => id.toString() === req.user._id.toString());
+      if (isMember) {
+        return res.status(200).json({ message: "You are already a member of this group" });
+      }
+
+      group.memberIds.push(req.user._id);
+      await group.save();
+
+      res.status(200).json({ message: "Successfully joined the group" });
     } catch (error) {
       next(error);
     }

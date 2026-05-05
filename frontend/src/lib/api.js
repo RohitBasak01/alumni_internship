@@ -576,8 +576,8 @@ export async function setupPassword(payload) {
   return data;
 }
 
-export async function fetchEvents() {
-  const { data } = await api.get("/events");
+export async function fetchEvents(params = {}) {
+  const { data } = await api.get("/events", { params });
   return data;
 }
 
@@ -631,8 +631,8 @@ export async function applyToJob(jobId, payload) {
   return data;
 }
 
-export async function fetchAnnouncements() {
-  const { data } = await api.get("/announcements");
+export async function fetchAnnouncements(params = {}) {
+  const { data } = await api.get("/announcements", { params });
   return data;
 }
 
@@ -744,6 +744,11 @@ export async function updateCommunityGroup(id, payload) {
 
 export async function deleteCommunityGroup(id) {
   const { data } = await api.delete(`/community-groups/${id}`);
+  return data;
+}
+
+export async function joinCommunityGroup(id) {
+  const { data } = await api.post(`/community-groups/${id}/join`);
   return data;
 }
 
@@ -942,3 +947,10 @@ export async function toggleBlockAlumniContact(id) {
   const { data } = await api.post(`/mentorship/${id}/block`);
   return data;
 }
+
+export async function deleteMentorshipConversation(id) {
+  const { data } = await api.delete(`/mentorship/${id}`);
+  return data;
+}
+
+export const deleteAlumniConversation = deleteMentorshipConversation;

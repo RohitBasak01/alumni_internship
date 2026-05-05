@@ -31,10 +31,16 @@ function validateAnnouncementId(params) {
 router.get("/", protect, requireTenantAccess, async (req, res, next) => {
   try {
     const { Announcement } = getTenantModels(req);
-    const filter =
-      req.user.role === "institute_admin"
-        ? { instituteId: req.tenant._id }
-        : { instituteId: req.tenant._id, status: "published" };
+    const filter = { instituteId: req.tenant._id };
+    if (req.user.role !== "institute_admin") {
+      filter.status = "published";
+    }
+    
+    if (req.query.groupId) {
+      filter.groupId = req.query.groupId;
+    } else {
+      filter.groupId = { $in: [null, undefined] };
+    }
 
     const announcements = await Announcement.find(filter).sort({ createdAt: -1 });
     res.json(announcements);
@@ -46,24 +52,36 @@ router.get("/", protect, requireTenantAccess, async (req, res, next) => {
 router.post(
   "/",
   protect,
-  authorize("institute_admin"),
   requireTenantAccess,
   validateBody(validateAnnouncementBody),
   async (req, res, next) => {
   try {
-    const { Announcement } = getTenantModels(req);
-    const status = req.body.status === "draft" ? "draft" : "published";
-    const announcement = await Announcement.create({
-      instituteId: req.tenant._id,
-      title: req.body.title.trim(),
-      category: req.body.category?.trim?.() || "News",
-      summary: req.body.summary?.trim?.() || "",
-      imageUrl: req.body.imageUrl?.trim?.() || "",
-      content: req.body.content.trim(),
-      status,
-      publishedAt: status === "published" ? new Date() : null,
-      createdBy: req.user._id
-    });
+      const { Announcement, CommunityGroup } = getTenantModels(req);
+      
+      // Authorization check
+      if (req.user.role !== "institute_admin") {
+        if (!req.body.groupId) {
+          return res.status(403).json({ message: "Only admins can post global news" });
+        }
+        const group = await CommunityGroup.findById(req.body.groupId);
+        if (!group || String(group.createdBy) !== String(req.user._id)) {
+          return res.status(403).json({ message: "You are not authorized to post news to this group" });
+        }
+      }
+
+      const status = req.body.status === "draft" ? "draft" : "published";
+      const announcement = await Announcement.create({
+        instituteId: req.tenant._id,
+        groupId: req.body.groupId || null,
+        title: req.body.title.trim(),
+        category: req.body.category?.trim?.() || "News",
+        summary: req.body.summary?.trim?.() || "",
+        imageUrl: req.body.imageUrl?.trim?.() || "",
+        content: req.body.content.trim(),
+        status,
+        publishedAt: status === "published" ? new Date() : null,
+        createdBy: req.user._id
+      });
 
     res.status(201).json(announcement);
   } catch (error) {

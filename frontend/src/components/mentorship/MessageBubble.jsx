@@ -1,6 +1,6 @@
 import { useState } from "react";
 import EmojiPicker from "emoji-picker-react";
-import { resolveApiAssetUrl } from "../../lib/api.js";
+import { resolveApiAssetUrl, joinCommunityGroup } from "../../lib/api.js";
 
 export function MessageBubble({
   message,
@@ -26,6 +26,7 @@ export function MessageBubble({
   registerMessageNode,
   onRetrySend,
   onOpenImage,
+  isDecrypted,
   isGroupStart,
   isGroupEnd,
 }) {
@@ -127,7 +128,49 @@ export function MessageBubble({
               </p>
             ) : (
               <>
-                <p className="member-message-text">{decryptedContent}</p>
+                <p className="member-message-text">
+                  {decryptedContent}
+                  {isDecrypted && (
+                    <span className="member-message-decrypted-lock" title="This message was end-to-end encrypted and decrypted locally.">
+                      <span className="material-symbols-outlined">lock</span>
+                    </span>
+                  )}
+                </p>
+
+                { (message.contentType === 'group_invite' || (decryptedContent && decryptedContent.includes('?join='))) && (
+                  <div className="group-invite-card">
+                    <div className="invite-card-info">
+                       <span className="material-symbols-outlined icon">groups</span>
+                       <div>
+                         <strong>Join Group Invitation</strong>
+                         <p>Join the community to start connecting.</p>
+                       </div>
+                    </div>
+                    <div className="invite-card-actions">
+                       <button 
+                         className="invite-btn join"
+                         onClick={async () => {
+                            const match = decryptedContent?.match(/join=([a-f\d]{24})/i);
+                            const groupId = message.groupData?.id || (match ? match[1] : null);
+                            
+                            if (!groupId) return alert("Invalid group link");
+                            console.log("[JoinGroup] Attempting to join group ID:", groupId);
+                            try {
+                              await joinCommunityGroup(groupId);
+                              alert("Successfully joined the group!");
+                              window.location.href = `/portal/groups?id=${groupId}`;
+                            } catch (err) {
+                              console.error("[JoinGroup] Error:", err);
+                              alert("Failed to join: " + err.message);
+                            }
+                         }}
+                       >
+                         Join Group
+                       </button>
+                       <button className="invite-btn ignore">Ignore</button>
+                    </div>
+                  </div>
+                )}
                 {isEdited ? (
                   <span className="member-message-edited-tag">edited</span>
                 ) : null}

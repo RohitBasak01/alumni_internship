@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -84,7 +84,14 @@ function CreateEventPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
       queryClient.invalidateQueries({ queryKey: ["feed"] });
-      navigate("/portal/events");
+      queryClient.invalidateQueries({ queryKey: ["group-events", searchParams.get("groupId")] });
+      
+      const groupId = searchParams.get("groupId");
+      if (groupId) {
+        navigate(`/portal/groups?id=${groupId}`);
+      } else {
+        navigate("/portal/events");
+      }
     }
   });
 
@@ -226,6 +233,7 @@ function CreateEventPage() {
       description: mergedDescription,
       eventDate,
       location,
+      groupId: searchParams.get("groupId") || null,
       registrationCap: form.disableRegistrations === "yes" ? 0 : undefined
     });
   }

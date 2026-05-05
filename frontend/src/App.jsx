@@ -10,7 +10,6 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import DevTenantSwitcher from "./components/DevTenantSwitcher.jsx";
 
 const AlumniProfilePage = lazy(() => import("./pages/AlumniProfilePage.jsx"));
-const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage.jsx"));
 const BusinessDirectoryPage = lazy(
   () => import("./pages/BusinessDirectoryPage.jsx"),
 );

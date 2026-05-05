@@ -32,50 +32,53 @@ function SuperAdminShell({
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-4" aria-label="Super admin sections">
-          {sections.map((section) => (
-            <button
-              className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold transition-colors ${
-                activeSection === section.id
-                  ? "bg-[#1152d4]/10 text-[#1152d4]"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
-              key={`${section.label}-${section.id}`}
-              onClick={() => onSectionChange(section.id)}
-              type="button"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {section.icon}
-              </span>
-              <span>{section.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="mt-auto p-4">
-          <div className="rounded-xl bg-slate-50 p-4">
-            <div className="mb-3 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1152d4]/15 font-bold text-[#1152d4]">
-                {auth.user?.name
-                  ?.split(" ")
-                  .map((part) => part[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase() || "CA"}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold">{auth.user?.name || "Chief Administrator"}</p>
-                <p className="truncate text-xs text-slate-500">{auth.user?.email || "admin@alumnet.com"}</p>
-              </div>
-            </div>
-            <div>
+        {/* Sidebar Content (Scrollable) */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <nav className="space-y-1 px-4" aria-label="Super admin sections">
+            {sections.map((section) => (
               <button
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
-                onClick={() => void auth.logout()}
+                className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                  activeSection === section.id
+                    ? "bg-[#1152d4]/10 text-[#1152d4]"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+                key={`${section.label}-${section.id}`}
+                onClick={() => onSectionChange(section.id)}
                 type="button"
               >
-                Logout
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  {section.icon}
+                </span>
+                <span>{section.label}</span>
               </button>
+            ))}
+          </nav>
+
+          <div className="p-4">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="mb-3 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1152d4]/15 font-bold text-[#1152d4]">
+                  {auth.user?.name
+                    ?.split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase() || "CA"}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{auth.user?.name || "Chief Administrator"}</p>
+                  <p className="truncate text-xs text-slate-500">{auth.user?.email || "admin@alumnet.com"}</p>
+                </div>
+              </div>
+              <div>
+                <button
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                  onClick={() => void auth.logout()}
+                  type="button"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </div>

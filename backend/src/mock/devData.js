@@ -268,6 +268,19 @@ export const demoEvents = [
     updatedAt: "2026-03-01T10:00:00.000Z"
   },
   {
+    _id: "65f000000000000000000302",
+    instituteId: demoInstitute._id,
+    groupId: "65f000000000000000000601",
+    title: "AI Product Workshop",
+    description: "Hands-on workshop for AI Builders to share their latest projects and get feedback.",
+    eventDate: "2026-07-15T15:00:00.000Z",
+    location: "Online (Zoom)",
+    registrations: [],
+    createdBy: "65f000000000000000000003",
+    createdAt: "2026-04-01T10:00:00.000Z",
+    updatedAt: "2026-04-01T10:00:00.000Z"
+  },
+  {
     _id: "65f000000000000000000311",
     instituteId: demoSchoolInstitute._id,
     title: "Greenwood Founders Day",
@@ -306,7 +319,7 @@ export const demoCommunityGroups = [
     groupType: "interest",
     audienceLabel: "Artificial Intelligence",
     memberIds: ["65f000000000000000000004"],
-    createdBy: "65f000000000000000000003",
+    createdBy: "65f000000000000000000004",
     messages: [
       {
         _id: "65f000000000000000000701",

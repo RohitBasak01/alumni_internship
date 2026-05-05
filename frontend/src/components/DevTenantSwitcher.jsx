@@ -12,7 +12,11 @@ export default function DevTenantSwitcher() {
   const { isTenant, slug } = useTenantContext();
   const [isOpen, setIsOpen] = useState(false);
   const [inputSlug, setInputSlug] = useState("");
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  
   const dropdownRef = useRef(null);
+  const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
 
   // Close when clicking outside
   useEffect(() => {
@@ -24,6 +28,38 @@ export default function DevTenantSwitcher() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleMouseDown = (e) => {
+    // Only drag if clicking the main button area, not the dropdown or specific buttons
+    if (e.target.closest('button') && isOpen) return;
+    
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: position.x,
+      initialY: position.y
+    };
+    
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - dragRef.current.startX;
+      const deltaY = moveEvent.clientY - dragRef.current.startY;
+      
+      setPosition({
+        x: dragRef.current.initialX + deltaX,
+        y: dragRef.current.initialY + deltaY
+      });
+    };
+    
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
     return null;
@@ -40,17 +76,27 @@ export default function DevTenantSwitcher() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999]" ref={dropdownRef}>
+    <div 
+      className="fixed z-[9999]" 
+      style={{ 
+        bottom: `calc(1.5rem - ${position.y}px)`, 
+        right: `calc(1.5rem - ${position.x}px)`,
+        transition: isDragging ? 'none' : 'all 0.1s ease-out'
+      }}
+      ref={dropdownRef}
+    >
       {/* Trigger Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-2xl shadow-2xl transition-all duration-300 border-2 ${
+        onClick={() => !isDragging && setIsOpen(!isOpen)}
+        onMouseDown={handleMouseDown}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        className={`flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-2xl shadow-2xl transition-shadow duration-300 border-2 select-none ${
           isTenant 
           ? "bg-white border-brand-500 text-brand-600" 
           : "bg-slate-900 border-slate-800 text-white"
         }`}
       >
-        <div className="flex flex-col items-start leading-tight">
+        <div className="flex flex-col items-start leading-tight pointer-events-none">
           <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
             Dev Context
           </span>
@@ -58,7 +104,7 @@ export default function DevTenantSwitcher() {
             {isTenant ? `Tenant: ${slug}` : "Platform Root"}
           </span>
         </div>
-        <span className={`material-symbols-outlined transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>
+        <span className={`material-symbols-outlined transition-transform duration-300 pointer-events-none ${isOpen ? "rotate-180" : ""}`}>
           expand_more
         </span>
       </button>

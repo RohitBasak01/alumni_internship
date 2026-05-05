@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import { fetchNotificationSummary } from "../lib/api.js";
+import NotificationDropdown from "./NotificationDropdown.jsx";
 function buildAdminLinks(tenant) {
   const links = [
     { to: "/portal", label: "Overview", icon: "dashboard", end: true },
@@ -160,56 +161,59 @@ function DashboardLayout() {
             </Link>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
-            {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                title={isCollapsed ? link.label : ""}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? "bg-brand-50 text-brand-600 shadow-sm" 
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  } ${isCollapsed ? "justify-center px-0" : ""}`
-                }
-              >
-                <span className={`material-symbols-outlined transition-all duration-300 ${isCollapsed ? "text-[26px]" : "text-[22px]"}`}>
-                  {link.icon}
-                </span>
-                {!isCollapsed && <span className="flex-1 truncate">{link.label}</span>}
-                {getBadgeCount(link.to) > 0 && (
-                  <span className={`flex-shrink-0 min-w-[20px] h-5 grid place-items-center text-[10px] font-bold bg-brand-600 text-white rounded-full ${isCollapsed ? "absolute top-2 right-2 border-2 border-white" : ""}`}>
-                    {getBadgeCount(link.to)}
-                  </span>
-                )}
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* User Profile Summary */}
-          <div className="p-3 border-t border-slate-100">
-            <div className={`flex items-center gap-3 p-2 rounded-2xl bg-slate-50 transition-all duration-300 ${isCollapsed ? "justify-center" : ""}`}>
-              <div className="h-10 w-10 rounded-xl bg-white border border-slate-200 grid place-items-center text-slate-600 flex-shrink-0">
-                <span className="material-symbols-outlined">{profileIcon}</span>
-              </div>
-              {!isCollapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{auth.user?.name}</p>
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight truncate">{auth.user?.role.replace("_", " ")}</p>
-                </div>
-              )}
-              {!isCollapsed && (
-                <button 
-                  onClick={auth.logout}
-                  className="h-8 w-8 grid place-items-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  title="Logout"
+          {/* Sidebar Content (Scrollable) */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+            {/* Navigation Links */}
+            <nav className="px-3 py-2 space-y-1 overflow-x-hidden">
+              {links.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.end}
+                  title={isCollapsed ? link.label : ""}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                      isActive 
+                        ? "bg-brand-50 text-brand-600 shadow-sm" 
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    } ${isCollapsed ? "justify-center px-0" : ""}`
+                  }
                 >
-                  <span className="material-symbols-outlined text-lg">logout</span>
-                </button>
-              )}
+                  <span className={`material-symbols-outlined transition-all duration-300 ${isCollapsed ? "text-[26px]" : "text-[22px]"}`}>
+                    {link.icon}
+                  </span>
+                  {!isCollapsed && <span className="flex-1 truncate">{link.label}</span>}
+                  {getBadgeCount(link.to) > 0 && (
+                    <span className={`flex-shrink-0 min-w-[20px] h-5 grid place-items-center text-[10px] font-bold bg-brand-600 text-white rounded-full ${isCollapsed ? "absolute top-2 right-2 border-2 border-white" : ""}`}>
+                      {getBadgeCount(link.to)}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* User Profile Summary */}
+            <div className="p-3 border-t border-slate-100">
+              <div className={`flex items-center gap-3 p-2 rounded-2xl bg-slate-50 transition-all duration-300 ${isCollapsed ? "justify-center" : ""}`}>
+                <div className="h-10 w-10 rounded-xl bg-white border border-slate-200 grid place-items-center text-slate-600 flex-shrink-0">
+                  <span className="material-symbols-outlined">{profileIcon}</span>
+                </div>
+                {!isCollapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{auth.user?.name}</p>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight truncate">{auth.user?.role.replace("_", " ")}</p>
+                  </div>
+                )}
+                {!isCollapsed && (
+                  <button 
+                    onClick={auth.logout}
+                    className="h-8 w-8 grid place-items-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Logout"
+                  >
+                    <span className="material-symbols-outlined text-lg">logout</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -242,15 +246,7 @@ function DashboardLayout() {
           </div>
 
           <div className="flex items-center gap-4 ml-auto">
-            <NavLink 
-              to="/portal/notifications"
-              className="relative h-10 w-10 grid place-items-center rounded-xl bg-slate-50 text-slate-600 hover:bg-brand-50 hover:text-brand-600 transition-colors"
-            >
-              <span className="material-symbols-outlined">notifications</span>
-              {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
-              )}
-            </NavLink>
+            <NotificationDropdown />
             <Link 
               to={profileLink}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"

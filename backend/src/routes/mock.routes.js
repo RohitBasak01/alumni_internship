@@ -158,6 +158,7 @@ function formatMockCommunityGroup(req, group) {
         location: person?.location || ""
       };
     }),
+    createdBy: group.createdBy,
     canViewChat,
     messages: canViewChat ? messages : [],
     latestMessage: canViewChat ? messages[messages.length - 1] || null : null,
@@ -271,6 +272,7 @@ function formatEvent(req, event) {
     description: event.description,
     eventDate: event.eventDate,
     location: event.location,
+    groupId: event.groupId || null,
     createdBy: event.createdBy,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
@@ -832,12 +834,28 @@ router.patch("/alumni/me", requireMockAuth, requireRole("alumni"), ensureTenant,
 });
 
 router.get("/announcements", requireMockAuth, ensureTenant, (req, res) => {
-  const items = getStore(req).announcements.filter((item) => item.instituteId === req.tenant._id);
-  res.json(req.mockUser.role === "institute_admin" ? items : items.filter((item) => item.status === "published"));
+  let items = getStore(req).announcements.filter((item) => item.instituteId === req.tenant._id);
+  
+  if (req.mockUser.role !== "institute_admin") {
+    items = items.filter((item) => item.status === "published");
+  }
+
+  if (req.query.groupId) {
+    items = items.filter((item) => item.groupId === req.query.groupId);
+  } else {
+    items = items.filter((item) => !item.groupId);
+  }
+  
+  res.json(items);
 });
 
 router.get("/events", requireMockAuth, ensureTenant, (req, res) => {
-  const events = getStore(req).events.filter((item) => item.instituteId === req.tenant._id);
+  let events = getStore(req).events.filter((item) => item.instituteId === req.tenant._id);
+  if (req.query.groupId) {
+    events = events.filter((item) => item.groupId === req.query.groupId);
+  } else {
+    events = events.filter((item) => !item.groupId);
+  }
   res.json(events.map((item) => formatEvent(req, item)));
 });
 
@@ -1092,6 +1110,23 @@ router.post("/mentorship/:id/leave", requireMockAuth, requireRole("alumni"), ens
   });
 });
 
+router.delete("/mentorship/:id", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const store = getStore(req);
+  const index = store.mentorshipRequests.findIndex(
+    (item) =>
+      item._id === req.params.id &&
+      item.conversationType === "group" &&
+      (item.adminIds || []).includes(req.mockUser._id)
+  );
+
+  if (index === -1) {
+    return res.status(404).json({ message: "Group conversation not found or you are not an admin", requestId: req.requestId });
+  }
+
+  store.mentorshipRequests.splice(index, 1);
+  res.json({ message: "Group deleted successfully", conversationId: req.params.id });
+});
+
 router.get("/community-groups", requireMockAuth, ensureTenant, (req, res) => {
   const items = getStore(req).communityGroups
     .filter((item) => item.instituteId === req.tenant._id)
@@ -1100,12 +1135,18 @@ router.get("/community-groups", requireMockAuth, ensureTenant, (req, res) => {
   res.json(items);
 });
 
-router.post("/community-groups", requireMockAuth, requireRole("institute_admin"), ensureTenant, (req, res) => {
+router.post("/community-groups", requireMockAuth, ensureTenant, (req, res) => {
   const name = String(req.body?.name || "").trim();
   const groupType = String(req.body?.groupType || "").trim();
   const audienceLabel = String(req.body?.audienceLabel || "").trim();
   const description = String(req.body?.description || "").trim();
   const memberUserIds = Array.isArray(req.body?.memberUserIds) ? req.body.memberUserIds.map(String) : [];
+
+  if (req.mockUser.role !== "institute_admin") {
+    if (groupType !== "interest") {
+      return res.status(403).json({ message: "Alumni can only create interest groups", requestId: req.requestId });
+    }
+  }
 
   if (!name) {
     return res.status(400).json({ message: "Group name is required", requestId: req.requestId });
@@ -1214,6 +1255,32 @@ router.post("/community-groups/:id/messages", requireMockAuth, ensureTenant, (re
       }
     }
   });
+});
+
+router.post("/community-groups/:id/join", requireMockAuth, ensureTenant, (req, res) => {
+  let group = getStore(req).communityGroups.find(
+    (item) => item._id === req.params.id && item.instituteId === req.tenant._id
+  );
+
+  if (!group) {
+    group = getStore(req).mentorshipRequests.find(
+      (item) => item._id === req.params.id && item.conversationType === "group" && item.instituteId === req.tenant._id
+    );
+  }
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found", requestId: req.requestId });
+  }
+
+  const isMember = (group.memberIds || []).includes(req.mockUser._id);
+  if (isMember) {
+    return res.status(200).json({ message: "You are already a member of this group" });
+  }
+
+  group.memberIds = [...(group.memberIds || []), req.mockUser._id];
+  group.updatedAt = new Date().toISOString();
+
+  res.status(200).json({ message: "Successfully joined the group" });
 });
 
 router.delete("/community-groups/:id", requireMockAuth, requireRole("institute_admin"), ensureTenant, (req, res) => {

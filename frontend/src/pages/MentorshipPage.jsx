@@ -310,6 +310,7 @@ export default function AlumniMessagesPage() {
               conversationsState.removeGroupMemberMutation
             }
             leaveGroupMutation={conversationsState.leaveGroupMutation}
+            deleteConversationMutation={conversationsState.deleteConversationMutation}
             pendingActiveMessages={
               conversationsState.pendingMessagesByConversation[
                 conversationsState.activeConversation?._id
