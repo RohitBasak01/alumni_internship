@@ -602,6 +602,7 @@ function CommunityGroupsPage() {
               currentUserId={currentUserId}
               onEdit={() => openEditComposer(selectedGroup)}
               onInvite={() => setIsInviteModalOpen(true)}
+              onBack={() => setSelectedGroupId(null)}
             />
           ) : (
             <div className="group-browse-view">

@@ -42,6 +42,7 @@ const TenantDashboardPage = lazy(
   () => import("./pages/TenantDashboardPage.jsx"),
 );
 const TenantHomePage = lazy(() => import("./pages/TenantHomePage.jsx"));
+const FeedPage = lazy(() => import("./pages/FeedPage.jsx"));
 
 /**
  * RootPage — serves the platform landing page for the main domain
@@ -89,6 +90,7 @@ function App() {
             }
           >
             <Route index element={<TenantDashboardPage />} />
+            <Route path="feed" element={<FeedPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route
               path="announcements"

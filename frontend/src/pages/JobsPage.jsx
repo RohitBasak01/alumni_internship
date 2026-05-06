@@ -1,711 +1,435 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { PortalMetricCard, PortalMetricGrid, PortalPageHeader, PortalSearchField } from "../components/PortalPrimitives.jsx";
-import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { applyToJob, createJob, deleteJob, fetchJobs, updateJob } from "../lib/api.js";
+import "../styles/Jobs.css";
 
-const initialForm = {
-  title: "",
-  company: "",
-  description: "",
-  location: "",
-  industry: "",
-  requestedDeadline: "",
-  applicationDeadline: "",
-  status: "pending_approval"
-};
+const initialForm = { title:"",company:"",description:"",location:"",industry:"",requestedDeadline:"",applicationDeadline:"",status:"pending_approval" };
+const initialFilters = { query:"",jobType:"",location:"",industry:"" };
 
-const initialFilters = {
-  query: "",
-  jobType: "",
-  location: "",
-  industry: ""
-};
+const LOGO_COLORS=["#6366f1","#0ea5e9","#10b981","#f59e0b","#8b5cf6","#ef4444","#ec4899","#14b8a6"];
+const RECOMMENDED=[
+  {title:"Senior Software Engineer",company:"Cognizant",location:"Bengaluru, India",exp:"3-5 Yrs",color:"#6366f1"},
+  {title:"Machine Learning Engineer",company:"Flipkart",location:"Bengaluru, India",exp:"2-4 Yrs",color:"#0ea5e9"},
+  {title:"Business Analyst",company:"Deloitte",location:"Mumbai, India",exp:"2-3 Yrs",color:"#1e293b"},
+  {title:"DevOps Engineer",company:"IBM",location:"Pune, India",exp:"3-6 Yrs",color:"#1d4ed8"},
+];
+const CAREER_RESOURCES=[
+  {icon:"description",title:"Resume Review",sub:"Get your resume reviewed by experts"},
+  {icon:"chat",title:"Interview Preparation",sub:"Practice with mock interviews"},
+  {icon:"bar_chart",title:"Salary Insights",sub:"Check salary trends and benchmarks"},
+];
 
-function formatRelativeTime(value) {
-  const diffMs = Date.now() - new Date(value).getTime();
-  const hours = Math.max(1, Math.round(diffMs / (1000 * 60 * 60)));
-
-  if (hours < 24) {
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  }
-
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
+function fmtRel(v){
+  const h=Math.max(1,Math.round((Date.now()-new Date(v).getTime())/(1000*60*60)));
+  if(h<24) return `${h}h ago`;
+  const d=Math.round(h/24);
+  return `${d}d ago`;
 }
-
-function formatDateTime(value) {
-  if (!value) {
-    return "Not set";
-  }
-
-  return new Date(value).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  });
+function fmtDT(v){
+  if(!v) return "Not set";
+  return new Date(v).toLocaleString(undefined,{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});
 }
+function logoColor(name=""){ return LOGO_COLORS[(name.charCodeAt(0)||65)%LOGO_COLORS.length]; }
 
-function JobsPage() {
-  const auth = useAuth();
-  const queryClient = useQueryClient();
-  const [form, setForm] = useState(initialForm);
-  const [filters, setFilters] = useState(initialFilters);
-  const [editingId, setEditingId] = useState(null);
-  const [showComposer, setShowComposer] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState(null);
-  const [coverLetter, setCoverLetter] = useState("");
-  const [resumeFile, setResumeFile] = useState(null);
-  const [applicationSuccess, setApplicationSuccess] = useState(null);
-  const { data = [], isLoading, isError, error } = useQuery({
-    queryKey: ["jobs"],
-    queryFn: fetchJobs
-  });
-  const deferredQuery = useDeferredValue(filters.query);
-
-  const saveMutation = useMutation({
-    mutationFn: ({ id, payload }) => (id ? updateJob(id, payload) : createJob(payload)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["jobs"] });
-      setForm(initialForm);
-      setEditingId(null);
-      setShowComposer(false);
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteJob,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["jobs"] });
-    }
-  });
-
-  const applyMutation = useMutation({
-    mutationFn: async (payload) => {
-      let resumeUrl = "";
-      let resumeFileName = "";
-      
-      if (resumeFile) {
-        const reader = new FileReader();
-        resumeFileName = resumeFile.name;
-        
-        return new Promise((resolve, reject) => {
-          reader.onload = async () => {
-            try {
-              resumeUrl = reader.result; // Data URL
-              const result = await applyToJob(selectedJobId, {
-                ...payload,
-                resumeUrl,
-                resumeFileName
-              });
-              resolve(result);
-            } catch (err) {
-              reject(err);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(resumeFile);
-        });
-      }
-      
-      return applyToJob(selectedJobId, payload);
-    },
-    onSuccess: () => {
-      setApplicationSuccess(true);
-      setCoverLetter("");
-      setResumeFile(null);
-      setTimeout(() => {
-        setApplicationSuccess(null);
-        setSelectedJobId(null);
-      }, 2000);
-    }
-  });
-
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
-  }
-
-  function handleFilterChange(event) {
-    const { name, value } = event.target;
-    setFilters((current) => ({ ...current, [name]: value }));
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    const payload = {
-      title: form.title,
-      company: form.company,
-      description: form.description,
-      location: form.location,
-      industry: form.industry
-    };
-
-    if (form.requestedDeadline) {
-      payload.requestedDeadline = form.requestedDeadline;
-    }
-
-    if (isAdmin) {
-      payload.status = form.status;
-      if (form.applicationDeadline) {
-        payload.applicationDeadline = form.applicationDeadline;
-      }
-    }
-
-    saveMutation.mutate({ id: editingId, payload });
-  }
-
-  function handleEdit(item) {
-    setEditingId(item._id);
-    setShowComposer(true);
-    setForm({
-      title: item.title || "",
-      company: item.company || "",
-      description: item.description || "",
-      location: item.location || item.locationLabel || "",
-      industry: item.industry || item.industryLabel || "",
-      requestedDeadline: item.requestedDeadline ? new Date(item.requestedDeadline).toISOString().slice(0, 16) : "",
-      applicationDeadline: item.applicationDeadline ? new Date(item.applicationDeadline).toISOString().slice(0, 16) : "",
-      status:
-        item.adminStatus === "Approved"
-          ? "published"
-          : item.adminStatus === "Rejected"
-            ? "rejected"
-            : item.adminStatus === "Expired"
-              ? "expired"
-              : "pending_approval"
-    });
-  }
-
-  function handleCancel() {
-    setEditingId(null);
-    setForm(initialForm);
-    setShowComposer(false);
-  }
-
-  function clearFilters() {
-    setFilters(initialFilters);
-  }
-
-  const isAdmin = auth.user?.role === "institute_admin";
-  const displayJobs = data;
-  const decoratedJobs = useMemo(
-    () => displayJobs,
-    [displayJobs]
-  );
-
-  const filteredJobs = useMemo(
-    () =>
-      decoratedJobs.filter((item) => {
-        const haystack =
-          `${item.title} ${item.company} ${item.description} ${item.industryLabel}`.toLowerCase();
-        const matchesQuery = deferredQuery ? haystack.includes(deferredQuery.toLowerCase()) : true;
-        const matchesType = filters.jobType
-          ? isAdmin
-            ? item.adminStatus === filters.jobType
-            : item.jobType === filters.jobType
-          : true;
-        const matchesLocation = filters.location ? item.locationLabel === filters.location : true;
-        const matchesIndustry = filters.industry ? item.industryLabel === filters.industry : true;
-        return matchesQuery && matchesType && matchesLocation && matchesIndustry;
-      }),
-    [decoratedJobs, deferredQuery, filters.jobType, filters.location, filters.industry, isAdmin]
-  );
-
-  const locationOptions = [...new Set(decoratedJobs.map((item) => item.locationLabel))];
-  const industryOptions = [...new Set(decoratedJobs.map((item) => item.industryLabel))];
-  const pendingJobs = decoratedJobs.filter((item) => item.adminStatus === "Pending");
-  const activeJobs = decoratedJobs.filter((item) => item.adminStatus === "Approved");
-  const archivedJobs = decoratedJobs.filter((item) => item.adminStatus === "Expired" || item.adminStatus === "Rejected");
-
-  if (isAdmin) {
-    return (
-      <div className="admin-jobs-page">
-        <PortalPageHeader
-          actions={
-            <button
-              className="button primary admin-jobs-post"
-              onClick={() => setShowComposer((current) => !current)}
-              type="button"
-            >
-              {showComposer ? "Close Composer" : "+ Review Queue"}
-            </button>
-          }
-          className="admin-jobs-header"
-          subtitle="Review, approve, and moderate career opportunities submitted by the alumni community."
-          title="Manage Jobs"
-        />
-
-        <PortalMetricGrid className="admin-jobs-metrics">
-          <PortalMetricCard
-            className="admin-jobs-metric-card"
-            title="Total Jobs Posted"
-            trend="Live"
-            value={decoratedJobs.length.toLocaleString()}
-          />
-          <PortalMetricCard
-            className="admin-jobs-metric-card highlight"
-            title="Pending Approvals"
-            trend="Action Required"
-            value={pendingJobs.length}
-          />
-          <PortalMetricCard
-            className="admin-jobs-metric-card"
-            title="Active Job Listings"
-            trend="Open"
-            value={activeJobs.length}
-          />
-          <PortalMetricCard
-            className="admin-jobs-metric-card"
-            title="Expired / Archived"
-            trend="Closed"
-            value={archivedJobs.length}
-          />
-        </PortalMetricGrid>
-
-        {showComposer ? (
-          <SectionCard title="Review Job Posting" subtitle="Institute Admin">
-            <form className="form-grid" onSubmit={handleSubmit}>
-              <input name="title" onChange={handleChange} placeholder="Job title" value={form.title} />
-              <input name="company" onChange={handleChange} placeholder="Company" value={form.company} />
-              <input name="location" onChange={handleChange} placeholder="Location" value={form.location} />
-              <input name="industry" onChange={handleChange} placeholder="Industry" value={form.industry} />
-              <textarea
-                className="textarea"
-                name="description"
-                onChange={handleChange}
-                placeholder="Job description"
-                rows="5"
-                value={form.description}
-              />
-              <input
-                name="requestedDeadline"
-                onChange={handleChange}
-                type="datetime-local"
-                value={form.requestedDeadline}
-              />
-              <input
-                name="applicationDeadline"
-                onChange={handleChange}
-                type="datetime-local"
-                value={form.applicationDeadline}
-              />
-              <select className="select" name="status" onChange={handleChange} value={form.status}>
-                <option value="pending_approval">Pending Review</option>
-                <option value="published">Approve</option>
-                <option value="rejected">Reject</option>
-                <option value="expired">Expire</option>
-              </select>
-              <div className="inline-actions">
-                <button className="button primary" disabled={saveMutation.isPending} type="submit">
-                  {saveMutation.isPending ? "Saving..." : "Save Review"}
-                </button>
-                <button className="button secondary" onClick={handleCancel} type="button">
-                  Cancel
-                </button>
-              </div>
-            </form>
-            {saveMutation.isError ? <p className="error-text">{saveMutation.error.message}</p> : null}
-          </SectionCard>
-        ) : null}
-
-        <section className="admin-jobs-filters">
-          <PortalSearchField
-            className="admin-jobs-search"
-            name="query"
-            onChange={handleFilterChange}
-            placeholder="Search by job title or company..."
-            value={filters.query}
-          />
-
-          <select name="jobType" onChange={handleFilterChange} value={filters.jobType}>
-            <option value="">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Expired">Expired</option>
-          </select>
-
-          <select name="industry" onChange={handleFilterChange} value={filters.industry}>
-            <option value="">All Industries</option>
-            {industryOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-
-          <button className="admin-jobs-more" onClick={clearFilters} type="button">
-            More Filters
-          </button>
-        </section>
-
-        <section className="admin-jobs-table-card">
-          <div className="admin-jobs-table-head">
-            <span>Job Title & Company</span>
-            <span>Posted By</span>
-            <span>Date Posted</span>
-            <span>Industry</span>
-            <span>Status</span>
-            <span>Actions</span>
-          </div>
-
-          {isLoading ? <p>Loading jobs...</p> : null}
-          {isError ? <p className="error-text">{error.message}</p> : null}
-          {!isLoading && !filteredJobs.length ? <p className="muted">No job openings match the current filters.</p> : null}
-
-          <div className="admin-jobs-table-body">
-            {filteredJobs.map((item, index) => (
-              <article className="admin-jobs-row" key={item._id}>
-                <div className="admin-jobs-role">
-                  <div className={`admin-jobs-avatar tone-${(index % 4) + 1}`}>{item.company.slice(0, 1)}</div>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>
-                      {item.company} • {item.cityLabel}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="admin-jobs-poster">
-                  <div className="admin-jobs-poster-dot">{item.postedByLabel.slice(0, 1)}</div>
-                  <span>
-                    {item.postedByLabel} &apos;{String(item.posterBatch).padStart(2, "0")}
-                  </span>
-                </div>
-
-                <span>{new Date(item.createdAt || new Date()).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
-                <span>{item.industryLabel}</span>
-                <span className={`admin-jobs-status status-${item.adminStatus.toLowerCase()}`}>{item.adminStatus}</span>
-
-                <div className="admin-jobs-actions">
-                  {item.adminStatus === "Pending" ? (
-                    <>
-                      <button className="admin-jobs-icon approve" onClick={() => handleEdit(item)} type="button">
-                        AP
-                      </button>
-                      <button
-                        className="admin-jobs-icon reject"
-                        onClick={() => saveMutation.mutate({ id: item._id, payload: { status: "rejected" } })}
-                        type="button"
-                      >
-                        RJ
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button className="admin-jobs-icon" onClick={() => handleEdit(item)} type="button">
-                        ED
-                      </button>
-                      <button
-                        className="admin-jobs-icon"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(item._id)}
-                        type="button"
-                      >
-                        DL
-                      </button>
-                    </>
-                  )}
-                  <button className="admin-jobs-icon" type="button">
-                    VW
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="admin-jobs-table-footer">
-            <p>
-              Showing 1 to {Math.min(filteredJobs.length, 10)} of <strong>{decoratedJobs.length.toLocaleString()}</strong> jobs
-            </p>
-            <div className="admin-jobs-pagination">
-              <button disabled type="button">{"<"}</button>
-              <button className="active" type="button">1</button>
-              <button disabled type="button">{">"}</button>
-            </div>
-          </div>
-        </section>
-
-        {deleteMutation.isError ? <p className="error-text">{deleteMutation.error.message}</p> : null}
-      </div>
-    );
-  }
-
-  return (
-    <div className="jobs-board-page">
-      <header className="jobs-board-header">
-        <div>
-          <h1>Jobs Board</h1>
-          <p>Find your next opportunity or submit a job for institute admin approval.</p>
+function JobRow({item,idx,onView,isAdmin,onEdit,onDelete,deletePending}){
+  const color=logoColor(item.company);
+  const isNew=(Date.now()-new Date(item.createdAt).getTime())<86400000*2;
+  return(
+    <div className="jb-row">
+      <div className="jb-row-logo" style={{background:color+"18",color}}>{item.company?.[0]?.toUpperCase()||"?"}</div>
+      <div className="jb-row-body">
+        <div className="jb-row-top">
+          {isNew&&<span className="jb-new-badge">New</span>}
+          <h3 className="jb-row-title" onClick={()=>onView(item)}>
+            {item.title}
+            <span className="material-symbols-outlined" style={{fontSize:14,color:"#6366f1",marginLeft:4}}>verified</span>
+          </h3>
+          <button className="jb-bookmark-btn"><span className="material-symbols-outlined" style={{fontSize:18}}>bookmark_border</span></button>
         </div>
-        {auth.user ? (
-          <button
-            className="button primary jobs-board-post"
-            onClick={() => setShowComposer((current) => !current)}
-            type="button"
-          >
-            {showComposer ? "Close" : "+ Post New Job"}
-          </button>
-        ) : null}
-      </header>
-
-      {showComposer ? (
-        <SectionCard title={editingId ? "Edit Job" : "Post a New Job"} subtitle={isAdmin ? "Institute Admin" : "Submit for Review"}>
-          <form className="form-grid" onSubmit={handleSubmit}>
-            <input name="title" onChange={handleChange} placeholder="Job title" value={form.title} />
-            <input name="company" onChange={handleChange} placeholder="Company" value={form.company} />
-            <input name="location" onChange={handleChange} placeholder="Location" value={form.location} />
-            <input name="industry" onChange={handleChange} placeholder="Industry" value={form.industry} />
-            <textarea
-              className="textarea"
-              name="description"
-              onChange={handleChange}
-              placeholder="Job description"
-              rows="5"
-              value={form.description}
-            />
-            <input
-              name="requestedDeadline"
-              onChange={handleChange}
-              type="datetime-local"
-              value={form.requestedDeadline}
-            />
-            <div className="inline-actions">
-              <button className="button primary" disabled={saveMutation.isPending} type="submit">
-                {saveMutation.isPending ? "Saving..." : editingId ? "Update Submission" : "Submit for Approval"}
-              </button>
-              <button className="button secondary" onClick={handleCancel} type="button">
-                Cancel
-              </button>
-            </div>
-          </form>
-          {saveMutation.isError ? <p className="error-text">{saveMutation.error.message}</p> : null}
-        </SectionCard>
-      ) : null}
-
-      <section className="jobs-board-filters">
-        <label className="jobs-board-search">
-          <span aria-hidden="true">S</span>
-          <input
-            name="query"
-            onChange={handleFilterChange}
-            placeholder="Search by job title, company, or keywords..."
-            value={filters.query}
-          />
-        </label>
-
-        <div className="jobs-board-filter-row">
-          <select name="jobType" onChange={handleFilterChange} value={filters.jobType}>
-            <option value="">Job Type</option>
-            <option value="Full-time">Full-time</option>
-            <option value="Internship">Internship</option>
-            <option value="Contract">Contract</option>
-          </select>
-
-          <select name="location" onChange={handleFilterChange} value={filters.location}>
-            <option value="">Location</option>
-            {locationOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-
-          <select name="industry" onChange={handleFilterChange} value={filters.industry}>
-            <option value="">Industry</option>
-            {industryOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-
-          <button className="jobs-board-clear" onClick={clearFilters} type="button">
-            Clear Filters
-          </button>
+        <div className="jb-row-meta">
+          <span>{item.company}</span>
+          <span>·</span>
+          <span>{item.locationLabel||item.location||"India"}</span>
+          <span>·</span>
+          <span>{item.jobType||"Full-time"}</span>
         </div>
-      </section>
-
-      {isLoading ? <p>Loading jobs...</p> : null}
-      {isError ? <p className="error-text">{error.message}</p> : null}
-      {!isLoading && !filteredJobs.length ? (
-        <p className="muted">No job openings match the current filters.</p>
-      ) : null}
-
-      <div className="jobs-board-list">
-        {filteredJobs.map((item, index) => (
-          <article className="jobs-board-card" key={item._id}>
-            <div className={`jobs-board-logo jobs-board-logo-${(index % 4) + 1}`}>{item.company.slice(0, 1)}</div>
-
-            <div className="jobs-board-copy">
-              <div className="jobs-board-card-head">
-                <div>
-                  <h3>{item.title}</h3>
-                  <div className="jobs-board-meta">
-                    <span>{item.company}</span>
-                    <span>{item.locationLabel}</span>
-                    <span>{formatRelativeTime(item.createdAt || new Date())}</span>
-                  </div>
-                </div>
-                <span className={`jobs-board-badge ${item.jobType === "Internship" ? "internship" : ""}`}>
-                  {item.adminStatus === "Pending" || item.adminStatus === "Rejected" || item.adminStatus === "Expired"
-                    ? item.adminStatus
-                    : item.jobType}
-                </span>
-              </div>
-
-              <p className="jobs-board-description">{item.description}</p>
-
-              <div className="jobs-board-footer">
-                <p>
-                  Posted by <strong>{item.postedByLabel || "Institute Admin"}</strong>
-                </p>
-                <p>
-                  Deadline <strong>{formatDateTime(item.applicationDeadline || item.requestedDeadline)}</strong>
-                </p>
-
-                <div className="jobs-board-actions">
-                  <button className="button secondary jobs-board-detail" onClick={() => setSelectedJobId(item._id)} type="button">
-                    View Details
-                  </button>
-                  {isAdmin && data.some((job) => job._id === item._id) ? (
-                    <>
-                      <button className="button secondary compact" onClick={() => handleEdit(item)} type="button">
-                        Edit
-                      </button>
-                      <button
-                        className="button secondary compact"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(item._id)}
-                        type="button"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <div className="jobs-board-pagination">
-        <button disabled type="button">{"<"}</button>
-        <button className="active" type="button">1</button>
-        <button disabled type="button">{">"}</button>
-      </div>
-
-      {selectedJobId ? (() => {
-        const selectedJob = filteredJobs.find((job) => job._id === selectedJobId);
-        return selectedJob ? (
-          <div className="modal-overlay" onClick={() => setSelectedJobId(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>{selectedJob.title}</h2>
-                <button className="modal-close" onClick={() => setSelectedJobId(null)} type="button">×</button>
-              </div>
-              <div className="modal-body">
-                <div className="job-detail-grid">
-                  <div>
-                    <h4>Company</h4>
-                    <p>{selectedJob.company}</p>
-                  </div>
-                  <div>
-                    <h4>Location</h4>
-                    <p>{selectedJob.locationLabel}</p>
-                  </div>
-                  <div>
-                    <h4>Job Type</h4>
-                    <p>{selectedJob.jobType}</p>
-                  </div>
-                  <div>
-                    <h4>Industry</h4>
-                    <p>{selectedJob.industryLabel}</p>
-                  </div>
-                  <div>
-                    <h4>Status</h4>
-                    <p>{selectedJob.adminStatus}</p>
-                  </div>
-                  <div>
-                    <h4>Deadline</h4>
-                    <p>{formatDateTime(selectedJob.applicationDeadline || selectedJob.requestedDeadline)}</p>
-                  </div>
-                </div>
-                <div className="job-detail-description">
-                  <h4>Description</h4>
-                  <p>{selectedJob.description}</p>
-                </div>
-                <p className="job-detail-posted">Posted by <strong>{selectedJob.postedByLabel || "Institute Admin"}</strong></p>
-              </div>
-              <div className="modal-footer">
-                {applicationSuccess ? (
-                  <div className="application-success">
-                    <p>✓ Your application has been submitted successfully!</p>
-                  </div>
-                ) : !selectedJob.canApply ? (
-                  <div className="application-success">
-                    <p>
-                      {selectedJob.adminStatus === "Pending"
-                        ? "This job is waiting for institute admin approval."
-                        : selectedJob.adminStatus === "Rejected"
-                          ? "This job posting was rejected by the institute admin."
-                          : selectedJob.adminStatus === "Expired"
-                            ? "This job posting has expired."
-                            : "You cannot apply to this job."}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <textarea
-                      className="textarea"
-                      placeholder="Share your cover letter or why you're interested in this role (optional)..."
-                      value={coverLetter}
-                      onChange={(e) => setCoverLetter(e.target.value)}
-                      rows="3"
-                    />
-                    <div className="resume-upload-section">
-                      <label htmlFor="resume-upload" className="resume-upload-label">
-                        📄 Upload Resume (optional)
-                      </label>
-                      <input
-                        id="resume-upload"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                        className="resume-upload-input"
-                      />
-                      {resumeFile && (
-                        <p className="resume-file-name">Selected: {resumeFile.name}</p>
-                      )}
-                    </div>
-                    <div className="modal-actions">
-                      <button 
-                        className="button primary" 
-                        disabled={applyMutation.isPending}
-                        onClick={() => applyMutation.mutate({ coverLetter })}
-                        type="button"
-                      >
-                        {applyMutation.isPending ? "Submitting..." : "Apply Now"}
-                      </button>
-                      <button className="button secondary" onClick={() => setSelectedJobId(null)} type="button">Close</button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+        <div className="jb-row-footer">
+          <span className="jb-exp-badge">{2+(idx%4)}-{4+(idx%4)} Yrs</span>
+          <span className="jb-cat-badge">{item.industryLabel||item.industry||"Technology"}</span>
+          <span className="jb-time">{fmtRel(item.createdAt||new Date())}</span>
+          <div className="jb-row-actions">
+            <button className="jb-view-btn" onClick={()=>onView(item)}>View Details</button>
+            {isAdmin&&<button className="jb-edit-btn" onClick={()=>onEdit(item)}>Edit</button>}
+            {isAdmin&&<button className="jb-del-btn" disabled={deletePending} onClick={()=>onDelete(item._id)}>Delete</button>}
           </div>
-        ) : null;
-      })() : null}
-
-      {deleteMutation.isError ? <p className="error-text">{deleteMutation.error.message}</p> : null}
+        </div>
+      </div>
     </div>
   );
 }
 
-export default JobsPage;
+function ApplyModal({job,coverLetter,setCoverLetter,resumeFile,setResumeFile,onApply,onClose,isPending,isSuccess,canApply}){
+  return(
+    <div className="jb-modal-backdrop" onClick={onClose}>
+      <div className="jb-modal" onClick={e=>e.stopPropagation()}>
+        <div className="jb-modal-header">
+          <div>
+            <p className="jb-modal-kicker">Apply for position</p>
+            <h3 className="jb-modal-title">{job.title}</h3>
+            <p className="jb-modal-sub">{job.company} · {job.locationLabel||job.location}</p>
+          </div>
+          <button className="jb-modal-close" onClick={onClose}><span className="material-symbols-outlined">close</span></button>
+        </div>
+        <div className="jb-modal-body">
+          <div className="jb-detail-grid">
+            <div><span className="jb-detail-label">Company</span><span className="jb-detail-val">{job.company}</span></div>
+            <div><span className="jb-detail-label">Location</span><span className="jb-detail-val">{job.locationLabel||job.location}</span></div>
+            <div><span className="jb-detail-label">Type</span><span className="jb-detail-val">{job.jobType||"Full-time"}</span></div>
+            <div><span className="jb-detail-label">Industry</span><span className="jb-detail-val">{job.industryLabel||job.industry}</span></div>
+            <div><span className="jb-detail-label">Status</span><span className="jb-detail-val">{job.adminStatus}</span></div>
+            <div><span className="jb-detail-label">Deadline</span><span className="jb-detail-val">{fmtDT(job.applicationDeadline||job.requestedDeadline)}</span></div>
+          </div>
+          {job.description&&<p className="jb-detail-desc">{job.description}</p>}
+          {isSuccess?(
+            <div className="jb-success-msg">✓ Application submitted successfully!</div>
+          ):!canApply?(
+            <div className="jb-info-msg">
+              {job.adminStatus==="Pending"?"This job is pending approval.":job.adminStatus==="Rejected"?"This job was rejected.":job.adminStatus==="Expired"?"This job has expired.":"You cannot apply to this job."}
+            </div>
+          ):(
+            <>
+              <textarea className="jb-textarea" rows={3} placeholder="Cover letter (optional)..." value={coverLetter} onChange={e=>setCoverLetter(e.target.value)}/>
+              <div className="jb-resume-row">
+                <label className="jb-resume-label">
+                  <span className="material-symbols-outlined" style={{fontSize:16}}>upload_file</span>
+                  {resumeFile?resumeFile.name:"Upload Resume (PDF/DOC, optional)"}
+                  <input type="file" accept=".pdf,.doc,.docx" style={{display:"none"}} onChange={e=>setResumeFile(e.target.files?.[0]||null)}/>
+                </label>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="jb-modal-footer">
+          {!isSuccess&&canApply&&(
+            <button className="jb-apply-btn" disabled={isPending} onClick={onApply}>
+              {isPending?"Submitting...":"Apply Now"}
+            </button>
+          )}
+          <button className="jb-close-btn" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function JobsPage(){
+  const auth=useAuth();
+  const queryClient=useQueryClient();
+  const [form,setForm]=useState(initialForm);
+  const [filters,setFilters]=useState(initialFilters);
+  const [editingId,setEditingId]=useState(null);
+  const [showComposer,setShowComposer]=useState(false);
+  const [selectedJobId,setSelectedJobId]=useState(null);
+  const [coverLetter,setCoverLetter]=useState("");
+  const [resumeFile,setResumeFile]=useState(null);
+  const [applicationSuccess,setApplicationSuccess]=useState(null);
+  const [activeTab,setActiveTab]=useState("All Jobs");
+  const [page,setPage]=useState(1);
+  const PAGE_SIZE=10;
+
+  const {data=[],isLoading,isError,error}=useQuery({queryKey:["jobs"],queryFn:fetchJobs});
+  const deferredQuery=useDeferredValue(filters.query);
+
+  const saveMutation=useMutation({
+    mutationFn:({id,payload})=>id?updateJob(id,payload):createJob(payload),
+    onSuccess:()=>{queryClient.invalidateQueries({queryKey:["jobs"]});setForm(initialForm);setEditingId(null);setShowComposer(false);}
+  });
+  const deleteMutation=useMutation({mutationFn:deleteJob,onSuccess:()=>queryClient.invalidateQueries({queryKey:["jobs"]})});
+  const applyMutation=useMutation({
+    mutationFn:async(payload)=>{
+      if(resumeFile){
+        return new Promise((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=async()=>{try{resolve(await applyToJob(selectedJobId,{...payload,resumeUrl:reader.result,resumeFileName:resumeFile.name}));}catch(e){reject(e);}};
+          reader.onerror=reject;
+          reader.readAsDataURL(resumeFile);
+        });
+      }
+      return applyToJob(selectedJobId,payload);
+    },
+    onSuccess:()=>{setApplicationSuccess(true);setCoverLetter("");setResumeFile(null);setTimeout(()=>{setApplicationSuccess(null);setSelectedJobId(null);},2000);}
+  });
+
+  function handleChange(e){setForm(c=>({...c,[e.target.name]:e.target.value}));}
+  function handleFilterChange(e){setFilters(c=>({...c,[e.target.name]:e.target.value}));}
+  function handleSubmit(e){
+    e.preventDefault();
+    const payload={title:form.title,company:form.company,description:form.description,location:form.location,industry:form.industry};
+    if(form.requestedDeadline) payload.requestedDeadline=form.requestedDeadline;
+    if(isAdmin){payload.status=form.status;if(form.applicationDeadline)payload.applicationDeadline=form.applicationDeadline;}
+    saveMutation.mutate({id:editingId,payload});
+  }
+  function handleEdit(item){
+    setEditingId(item._id);setShowComposer(true);
+    setForm({title:item.title||"",company:item.company||"",description:item.description||"",location:item.location||item.locationLabel||"",industry:item.industry||item.industryLabel||"",
+      requestedDeadline:item.requestedDeadline?new Date(item.requestedDeadline).toISOString().slice(0,16):"",
+      applicationDeadline:item.applicationDeadline?new Date(item.applicationDeadline).toISOString().slice(0,16):"",
+      status:item.adminStatus==="Approved"?"published":item.adminStatus==="Rejected"?"rejected":item.adminStatus==="Expired"?"expired":"pending_approval"});
+  }
+  function handleCancel(){setEditingId(null);setForm(initialForm);setShowComposer(false);}
+  function clearFilters(){setFilters(initialFilters);}
+
+  const isAdmin=auth.user?.role==="institute_admin";
+  const locationOptions=[...new Set(data.map(i=>i.locationLabel).filter(Boolean))];
+  const industryOptions=[...new Set(data.map(i=>i.industryLabel).filter(Boolean))];
+
+  const filteredJobs=useMemo(()=>data.filter(item=>{
+    const hs=`${item.title} ${item.company} ${item.description} ${item.industryLabel}`.toLowerCase();
+    const q=deferredQuery?hs.includes(deferredQuery.toLowerCase()):true;
+    const t=filters.jobType?(isAdmin?item.adminStatus===filters.jobType:item.jobType===filters.jobType):true;
+    const l=filters.location?item.locationLabel===filters.location:true;
+    const ind=filters.industry?item.industryLabel===filters.industry:true;
+    return q&&t&&l&&ind;
+  }),[data,deferredQuery,filters,isAdmin]);
+
+  const pendingJobs=data.filter(i=>i.adminStatus==="Pending");
+  const activeJobs=data.filter(i=>i.adminStatus==="Approved");
+  const archivedJobs=data.filter(i=>i.adminStatus==="Expired"||i.adminStatus==="Rejected");
+  const totalPages=Math.max(1,Math.ceil(filteredJobs.length/PAGE_SIZE));
+  const pagedJobs=filteredJobs.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+  const selectedJob=filteredJobs.find(j=>j._id===selectedJobId);
+
+  const STATS=[
+    {icon:"work",label:"Active Jobs",value:activeJobs.length||filteredJobs.length,trend:"18% this week",color:"#6366f1",bg:"#eff0ff"},
+    {icon:"new_releases",label:"New This Week",value:Math.round(filteredJobs.length*0.26)||324,trend:"24% this week",color:"#10b981",bg:"#f0fdf4"},
+    {icon:"send",label:"Applications Sent",value:89,trend:"12% this week",color:"#f59e0b",bg:"#fff7ed"},
+    {icon:"groups",label:"Interviews",value:23,trend:"9% this week",color:"#8b5cf6",bg:"#fdf4ff"},
+  ];
+
+  return(
+    <div className="jb-root">
+      <div className="jb-page-header">
+        <div>
+          <h1 className="jb-page-title">Jobs</h1>
+          <p className="jb-page-sub">Discover exciting opportunities and take the next step in your career.</p>
+        </div>
+      </div>
+
+      <div className="jb-stats-row">
+        {STATS.map(s=>(
+          <div key={s.label} className="jb-stat-card">
+            <div className="jb-stat-icon" style={{background:s.bg,color:s.color}}>
+              <span className="material-symbols-outlined" style={{fontSize:22}}>{s.icon}</span>
+            </div>
+            <div>
+              <div className="jb-stat-value">{s.value.toLocaleString()}</div>
+              <div className="jb-stat-label">{s.label}</div>
+              <div className="jb-stat-trend" style={{color:s.color}}>↑ {s.trend}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="jb-search-row">
+        <div className="jb-search-wrap">
+          <span className="material-symbols-outlined jb-search-icon">search</span>
+          <input className="jb-search-input" name="query" value={filters.query} onChange={handleFilterChange} placeholder="Search jobs, companies, or keywords..."/>
+        </div>
+        <button className="jb-post-btn" onClick={()=>setShowComposer(s=>!s)}>
+          <span className="material-symbols-outlined" style={{fontSize:16}}>add</span>
+          Post a Job
+        </button>
+      </div>
+
+      <div className="jb-filter-row">
+        <select className="jb-filter-select" name="jobType" value={filters.jobType} onChange={handleFilterChange}>
+          <option value="">All Job Types</option>
+          <option value="Full-time">Full-time</option>
+          <option value="Internship">Internship</option>
+          <option value="Contract">Contract</option>
+          {isAdmin&&<><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></>}
+        </select>
+        <select className="jb-filter-select" name="location" value={filters.location} onChange={handleFilterChange}>
+          <option value="">All Locations</option>
+          {locationOptions.map(o=><option key={o} value={o}>{o}</option>)}
+        </select>
+        <select className="jb-filter-select" name="industry" value={filters.industry} onChange={handleFilterChange}>
+          <option value="">All Industries</option>
+          {industryOptions.map(o=><option key={o} value={o}>{o}</option>)}
+        </select>
+        <select className="jb-filter-select"><option>Experience Level</option><option>0-2 Yrs</option><option>2-5 Yrs</option><option>5+ Yrs</option></select>
+        <button className="jb-more-filters-btn">
+          <span className="material-symbols-outlined" style={{fontSize:15}}>filter_list</span>More Filters
+        </button>
+        {(filters.query||filters.jobType||filters.location||filters.industry)&&(
+          <button className="jb-reset-btn" onClick={clearFilters}>Reset</button>
+        )}
+      </div>
+
+      {showComposer&&(
+        <div className="jb-composer-card">
+          <h3 className="jb-composer-title">{editingId?(isAdmin?"Review Job":"Edit Job"):"Post a New Job"}</h3>
+          <form onSubmit={handleSubmit} className="jb-composer-form">
+            <div className="jb-composer-row">
+              <input className="jb-cinput" name="title" value={form.title} onChange={handleChange} placeholder="Job title" required/>
+              <input className="jb-cinput" name="company" value={form.company} onChange={handleChange} placeholder="Company" required/>
+            </div>
+            <div className="jb-composer-row">
+              <input className="jb-cinput" name="location" value={form.location} onChange={handleChange} placeholder="Location"/>
+              <input className="jb-cinput" name="industry" value={form.industry} onChange={handleChange} placeholder="Industry"/>
+            </div>
+            <textarea className="jb-cinput" name="description" value={form.description} onChange={handleChange} placeholder="Job description" rows={3}/>
+            <div className="jb-composer-row">
+              <input className="jb-cinput" name="requestedDeadline" type="datetime-local" value={form.requestedDeadline} onChange={handleChange}/>
+              {isAdmin&&<input className="jb-cinput" name="applicationDeadline" type="datetime-local" value={form.applicationDeadline} onChange={handleChange}/>}
+              {isAdmin&&(
+                <select className="jb-cinput" name="status" value={form.status} onChange={handleChange}>
+                  <option value="pending_approval">Pending Review</option>
+                  <option value="published">Approve</option>
+                  <option value="rejected">Reject</option>
+                  <option value="expired">Expire</option>
+                </select>
+              )}
+            </div>
+            <div className="jb-composer-actions">
+              <button className="jb-post-btn" type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending?"Saving...":editingId?"Update":"Submit"}</button>
+              <button className="jb-reset-btn" type="button" onClick={handleCancel} style={{borderColor:"#e2e8f0",color:"#374151",background:"#fff"}}>Cancel</button>
+            </div>
+            {saveMutation.isError&&<p style={{color:"#ef4444",fontSize:"0.8rem"}}>{saveMutation.error.message}</p>}
+          </form>
+        </div>
+      )}
+
+      <div className="jb-layout">
+        <div className="jb-main-col">
+          <div className="jb-tabs-row">
+            {["All Jobs","Saved Jobs","Applied Jobs","Company Following"].map(tab=>(
+              <button key={tab} className={`jb-tab ${activeTab===tab?"jb-tab--active":""}`} onClick={()=>setActiveTab(tab)}>{tab}</button>
+            ))}
+            <div className="jb-sort-wrap" style={{marginLeft:"auto"}}>
+              <span style={{fontSize:"0.75rem",color:"#64748b",fontWeight:600}}>Sort by:</span>
+              <select className="jb-filter-select">
+                <option>Most Recent</option><option>Most Relevant</option><option>Salary</option>
+              </select>
+              <div className="jb-view-toggle">
+                <button className="jb-view-btn jb-view-btn--active"><span className="material-symbols-outlined" style={{fontSize:17}}>grid_view</span></button>
+                <button className="jb-view-btn"><span className="material-symbols-outlined" style={{fontSize:17}}>view_list</span></button>
+              </div>
+            </div>
+          </div>
+
+          {isLoading&&<p style={{color:"#94a3b8",fontSize:"0.85rem"}}>Loading jobs...</p>}
+          {isError&&<p style={{color:"#ef4444",fontSize:"0.85rem"}}>{error.message}</p>}
+          {!isLoading&&filteredJobs.length===0&&(
+            <div className="jb-empty">
+              <span className="material-symbols-outlined" style={{fontSize:44,color:"#c7d2fe"}}>work_off</span>
+              <h3>No jobs found</h3><p>Try adjusting your filters.</p>
+            </div>
+          )}
+
+          <div className="jb-list">
+            {pagedJobs.map((item,idx)=>(
+              <JobRow key={item._id} item={item} idx={idx} isAdmin={isAdmin}
+                onView={j=>setSelectedJobId(j._id)}
+                onEdit={handleEdit}
+                onDelete={id=>deleteMutation.mutate(id)}
+                deletePending={deleteMutation.isPending}
+              />
+            ))}
+          </div>
+
+          {totalPages>1&&(
+            <div className="jb-pagination">
+              <button className="jb-page-btn" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>
+                <span className="material-symbols-outlined" style={{fontSize:17}}>chevron_left</span>
+              </button>
+              {Array.from({length:Math.min(totalPages,5)},(_,i)=>i+1).map(n=>(
+                <button key={n} className={`jb-page-btn ${page===n?"jb-page-btn--active":""}`} onClick={()=>setPage(n)}>{n}</button>
+              ))}
+              {totalPages>5&&<span className="jb-page-ellipsis">...</span>}
+              {totalPages>5&&<button className="jb-page-btn" onClick={()=>setPage(totalPages)}>{totalPages}</button>}
+              <button className="jb-page-btn" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>
+                <span className="material-symbols-outlined" style={{fontSize:17}}>chevron_right</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <aside className="jb-sidebar">
+          <div className="jb-sidebar-card">
+            <div className="jb-sidebar-header"><span className="jb-sidebar-title">Recommended for You</span><button className="jb-sidebar-link">View All</button></div>
+            <div className="jb-rec-list">
+              {RECOMMENDED.map(r=>(
+                <div key={r.title} className="jb-rec-item">
+                  <div className="jb-rec-logo" style={{background:r.color+"18",color:r.color}}>{r.company[0]}</div>
+                  <div className="jb-rec-info">
+                    <div className="jb-rec-title">{r.title}</div>
+                    <div className="jb-rec-company">{r.company}</div>
+                    <div className="jb-rec-meta">
+                      <span><span className="material-symbols-outlined" style={{fontSize:11}}>location_on</span>{r.location}</span>
+                      <span className="jb-rec-exp">{r.exp}</span>
+                    </div>
+                  </div>
+                  <button className="jb-bookmark-btn"><span className="material-symbols-outlined" style={{fontSize:16}}>bookmark_border</span></button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="jb-sidebar-card">
+            <div className="jb-sidebar-header"><span className="jb-sidebar-title">Application Tracker</span><button className="jb-sidebar-link">View All</button></div>
+            <div className="jb-tracker-row">
+              {[{v:89,l:"Applied",c:"#6366f1"},{v:23,l:"In Review",c:"#f59e0b"},{v:12,l:"Interview",c:"#10b981"},{v:5,l:"Offer",c:"#8b5cf6"}].map(t=>(
+                <div key={t.l} className="jb-tracker-item">
+                  <div className="jb-tracker-val" style={{color:t.c}}>{t.v}</div>
+                  <div className="jb-tracker-label">{t.l}</div>
+                </div>
+              ))}
+            </div>
+            <div className="jb-recent-apps">
+              {data.slice(0,3).map((job,i)=>(
+                <div key={job._id} className="jb-recent-app-row">
+                  <div className="jb-recent-logo" style={{background:logoColor(job.company)+"18",color:logoColor(job.company)}}>{job.company?.[0]||"?"}</div>
+                  <div className="jb-recent-info">
+                    <div className="jb-recent-title">{job.company} – {job.title}</div>
+                    <div className="jb-recent-time">{fmtRel(job.createdAt||new Date())}</div>
+                  </div>
+                  <span className={`jb-status-pill jb-status-${["review","applied","interview"][i%3]}`}>{["In Review","Applied","Interview"][i%3]}</span>
+                </div>
+              ))}
+            </div>
+            <button className="jb-sidebar-link" style={{marginTop:".5rem",display:"block"}}>View All Applications →</button>
+          </div>
+
+          <div className="jb-sidebar-card">
+            <div className="jb-sidebar-header"><span className="jb-sidebar-title">Career Resources</span><button className="jb-sidebar-link">View All</button></div>
+            <div className="jb-res-list">
+              {CAREER_RESOURCES.map(r=>(
+                <div key={r.title} className="jb-res-item">
+                  <div className="jb-res-icon"><span className="material-symbols-outlined" style={{fontSize:18,color:"#6366f1"}}>{r.icon}</span></div>
+                  <div><div className="jb-res-title">{r.title}</div><div className="jb-res-sub">{r.sub}</div></div>
+                  <span className="material-symbols-outlined" style={{fontSize:16,color:"#94a3b8",marginLeft:"auto"}}>chevron_right</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {selectedJob&&(
+        <ApplyModal
+          job={selectedJob}
+          coverLetter={coverLetter} setCoverLetter={setCoverLetter}
+          resumeFile={resumeFile} setResumeFile={setResumeFile}
+          onApply={()=>applyMutation.mutate({coverLetter})}
+          onClose={()=>setSelectedJobId(null)}
+          isPending={applyMutation.isPending}
+          isSuccess={!!applicationSuccess}
+          canApply={!!selectedJob.canApply}
+        />
+      )}
+      {deleteMutation.isError&&<p style={{color:"#ef4444",fontSize:"0.8rem"}}>{deleteMutation.error.message}</p>}
+    </div>
+  );
+}

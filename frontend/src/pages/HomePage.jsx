@@ -3,391 +3,339 @@ import { Link } from "react-router-dom";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 
 /**
- * HomePage — platform landing page for the main domain (non-tenant context).
- * Tenant portals are handled by TenantHomePage via the RootPage router wrapper in App.jsx.
+ * HomePage — redesigned platform landing page matching the AlumNet hero design.
  */
 
-const featureCards = [
-  {
-    title: "Member Directory",
-    description:
-      "Find graduates or former students using institution-aware filters like batch or leaving year, class or department, organization, and location.",
-    icon: "AD"
-  },
-  {
-    title: "Community Hub",
-    description:
-      "Enable mentorship, collaborations, reunions, and meaningful networking inside one trusted ecosystem.",
-    icon: "PH"
-  },
-  {
-    title: "Opportunities",
-    description:
-      "Share openings, referrals, volunteering needs, and community opportunities with the right members first.",
-    icon: "JO"
-  },
-  {
-    title: "Event Management",
-    description:
-      "Run reunions, webinars, assemblies, and campus events with seamless RSVP tracking and updates.",
-    icon: "EM"
-  }
+const institutions = [
+  { name: "SPIT", abbr: "SPIT" },
+  { name: "IIT BOMBAY", abbr: "IIT" },
+  { name: "IIM AHMEDABAD", abbr: "IIM" },
+  { name: "BITS PILANI", abbr: "BITS" },
+  { name: "NITIE MUMBAI", abbr: "NITIE" },
+  { name: "XLRI JAMSHEDPUR", abbr: "XLRI" },
 ];
 
-const steps = [
-  {
-    number: "1",
-    title: "Institution Registration",
-    description:
-      "Schools, colleges, and universities launch branded portals and import member records through a guided onboarding flow."
-  },
-  {
-    number: "2",
-    title: "Member Joining",
-    description:
-      "Graduates and former students activate their accounts, complete profiles, and verify institutional access."
-  },
-  {
-    number: "3",
-    title: "Build Your Network",
-    description:
-      "Communities grow through opportunities, mentorship, event participation, and ongoing engagement."
-  }
-];
-
-const testimonials = [
-  {
-    quote:
-      "I found my current mentor through the platform. It has made reconnecting with my institute effortless.",
-    name: "Sarah Johnson",
-    role: "Business Admin '18",
-    rating: 5
-  },
-  {
-    quote:
-      "We unified graduate outreach across departments and saw stronger engagement within the first semester.",
-    name: "Dr. Robert Lee",
-    role: "Dean of Community Relations",
-    rating: 5
-  },
-  {
-    quote:
-      "We posted a junior developer role and received highly relevant community referrals almost immediately.",
-    name: "Michael Chen",
-    role: "Computer Science '12",
-    rating: 5
-  }
-];
-
-function StarRating({ rating = 5, max = 5 }) {
+function InstitutionLogo({ name, abbr }) {
   return (
-    <span
-      className="landing-stars"
-      role="img"
-      aria-label={`${rating} out of ${max} stars`}
-    >
-      {Array.from({ length: max }, (_, i) => (
-        <span key={i} aria-hidden="true" style={{ color: i < rating ? "#f59e0b" : "#d1d5db" }}>
-          ★
-        </span>
-      ))}
-    </span>
+    <div className="hp-inst-logo">
+      <div className="hp-inst-icon">{abbr}</div>
+      <span className="hp-inst-name">{name}</span>
+    </div>
   );
 }
 
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+function DashboardMockup() {
+  return (
+    <div className="hp-mockup-card">
+      {/* Mockup header */}
+      <div className="hp-mockup-header">
+        <div className="hp-mockup-logo">
+          <div className="hp-mockup-logo-icon">
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>school</span>
+          </div>
+          <div>
+            <div className="hp-mockup-logo-name">AlumNet</div>
+            <div className="hp-mockup-logo-sub">SPIT</div>
+          </div>
+        </div>
+        <div className="hp-mockup-topbar">
+          <span className="hp-mockup-greeting">Good morning, Aarav 👋</span>
+          <span className="hp-mockup-sub-greeting">Your alumni community is thriving today.</span>
+        </div>
+        <div className="hp-mockup-search">
+          <span className="material-symbols-outlined" style={{ fontSize: 14, color: "#94a3b8" }}>search</span>
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>Search anything...</span>
+        </div>
+      </div>
+
+      <div className="hp-mockup-body">
+        {/* Sidebar */}
+        <div className="hp-mockup-sidebar">
+          {[
+            { icon: "dashboard", label: "Dashboard", active: true },
+            { icon: "dynamic_feed", label: "Feed" },
+            { icon: "people", label: "Members" },
+            { icon: "handshake", label: "Mentorship" },
+            { icon: "work", label: "Jobs" },
+            { icon: "event", label: "Events" },
+            { icon: "groups", label: "Groups" },
+            { icon: "contacts", label: "Directory" },
+            { icon: "newspaper", label: "Newsroom" },
+            { icon: "photo_library", label: "Gallery" },
+            { icon: "settings", label: "Settings" },
+          ].map((item) => (
+            <div key={item.label} className={`hp-sidebar-item ${item.active ? "hp-sidebar-item--active" : ""}`}>
+              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </div>
+          ))}
+          <div className="hp-sidebar-upgrade">
+            <div className="hp-sidebar-upgrade-title">Upgrade to Pro ✦</div>
+            <div className="hp-sidebar-upgrade-sub">Unlock premium features</div>
+            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>arrow_forward</span>
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="hp-mockup-main">
+          {/* Stats row */}
+          <div className="hp-stats-row">
+            {[
+              { icon: "dynamic_feed", label: "Feed Posts", value: "128", change: "+12%", color: "#6366f1" },
+              { icon: "group", label: "Network", value: "2.4K", change: "+8%", color: "#0ea5e9" },
+              { icon: "handshake", label: "Mentorships", value: "320", change: "+16%", color: "#10b981" },
+              { icon: "event", label: "Events", value: "24", change: "+5%", color: "#f59e0b" },
+            ].map((stat) => (
+              <div key={stat.label} className="hp-stat-card">
+                <div className="hp-stat-icon" style={{ color: stat.color }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{stat.icon}</span>
+                  <span>{stat.label}</span>
+                </div>
+                <div className="hp-stat-value">{stat.value}</div>
+                <div className="hp-stat-change" style={{ color: "#10b981" }}>{stat.change}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom two columns */}
+          <div className="hp-mockup-bottom">
+            {/* Recent activity */}
+            <div className="hp-activity-section">
+              <div className="hp-section-header">
+                <span className="hp-section-title">Recent Activity</span>
+                <span className="hp-section-viewall">View All</span>
+              </div>
+              {[
+                { name: "Riya Desai", role: "Product Manager at Finaverse", time: "2h ago", text: "Excited to share that our community mixer was a huge success! 🎉", likes: 42, comments: 12, shares: 8, color: "#6366f1" },
+                { name: "Dev Mehta", role: "Engineering Lead at Orbit Systems", time: "5h ago", text: "Looking forward to mentoring 5 final-year students this month.", likes: 25, comments: 8, shares: 4, color: "#0ea5e9" },
+                { name: "SPIT Alumni Association", role: "Official", time: "1d ago", text: "Registrations open for the Annual Alumni Meet 2026!", likes: 67, comments: 18, shares: 12, color: "#10b981" },
+              ].map((post) => (
+                <div key={post.name} className="hp-activity-item">
+                  <div className="hp-activity-avatar" style={{ background: post.color }}>{post.name[0]}</div>
+                  <div className="hp-activity-content">
+                    <div className="hp-activity-name">{post.name} <span className="hp-activity-role">{post.role}</span> <span className="hp-activity-time">{post.time}</span></div>
+                    <div className="hp-activity-text">{post.text}</div>
+                    <div className="hp-activity-actions">
+                      <span>❤️ {post.likes}</span>
+                      <span>💬 {post.comments}</span>
+                      <span>↗ {post.shares}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Upcoming events */}
+            <div className="hp-events-section">
+              <div className="hp-section-header">
+                <span className="hp-section-title">Upcoming Events</span>
+                <span className="hp-section-viewall">View All</span>
+              </div>
+              {[
+                { month: "MAY", day: "24", title: "Annual Alumni Meet 2026", details: "May 24, 2026 • 10:00 AM\nSPIT Campus, Mumbai", color: "#6366f1" },
+                { month: "JUN", day: "07", title: "Startup Networking Night", details: "Jun 07, 2026 • 6:30 PM\nWeWork, BKC Mumbai", color: "#10b981" },
+                { month: "JUN", day: "21", title: "Career Mentorship Summit", details: "Jun 21, 2026 • 11:00 AM\nOnline Event", color: "#f59e0b" },
+              ].map((ev) => (
+                <div key={ev.title} className="hp-event-item">
+                  <div className="hp-event-date" style={{ borderLeftColor: ev.color }}>
+                    <div className="hp-event-month" style={{ color: ev.color }}>{ev.month}</div>
+                    <div className="hp-event-day">{ev.day}</div>
+                  </div>
+                  <div className="hp-event-details">
+                    <div className="hp-event-title">{ev.title}</div>
+                    <div className="hp-event-meta" style={{ whiteSpace: "pre-line" }}>{ev.details}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function HomePage() {
   const tenant = useTenantContext();
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [newsletterStatus, setNewsletterStatus] = useState("");
-
-  function handleNewsletterSubmit(event) {
-    event.preventDefault();
-    const email = newsletterEmail.trim();
-
-    if (!email) {
-      setNewsletterStatus("error:Please enter your email address.");
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setNewsletterStatus("error:Please enter a valid email address.");
-      return;
-    }
-
-    try {
-      const stored = JSON.parse(localStorage.getItem("newsletter_subscribers") || "[]");
-      if (stored.includes(email.toLowerCase())) {
-        setNewsletterStatus("success:You're already subscribed! We'll keep you updated.");
-        return;
-      }
-      stored.push(email.toLowerCase());
-      localStorage.setItem("newsletter_subscribers", JSON.stringify(stored));
-    } catch {
-      // localStorage unavailable — still show success
-    }
-
-    setNewsletterEmail("");
-    setNewsletterStatus("success:Thanks for subscribing! We'll keep you updated.");
-
-    setTimeout(() => setNewsletterStatus(""), 5000);
-  }
-
-  const newsletterIsError = newsletterStatus.startsWith("error:");
-  const newsletterMessage = newsletterStatus.replace(/^(error:|success:)/, "");
+  const [instPage, setInstPage] = useState(0);
 
   return (
-    <div className="landing-page bg-white selection:bg-brand-100 selection:text-brand-900 overflow-x-hidden">
-      {/* Dynamic Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center pt-24 pb-32 lg:pt-32 lg:pb-48 px-4 overflow-hidden" id="main-content">
-        {/* Animated Background Blobs */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/40 rounded-full blur-[120px] animate-[blob_7s_infinite] mix-blend-multiply opacity-70"></div>
-        <div className="absolute top-[20%] right-[-10%] w-[35%] h-[35%] bg-purple-200/40 rounded-full blur-[120px] animate-[blob_7s_infinite_2s] mix-blend-multiply opacity-70"></div>
-        <div className="absolute bottom-[-10%] left-[20%] w-[30%] h-[30%] bg-blue-200/40 rounded-full blur-[120px] animate-[blob_7s_infinite_4s] mix-blend-multiply opacity-70"></div>
+    <div className="hp-root">
+      {/* ── Navbar ─────────────────────────────────────────────── */}
+      <header className="hp-navbar">
+        <Link className="hp-nav-logo" to={tenant.getTenantAwarePath("/")}>
+          <div className="hp-nav-logo-icon">
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>school</span>
+          </div>
+          <div>
+            <div className="hp-nav-logo-name">AlumNet</div>
+            <div className="hp-nav-logo-sub">SPIT</div>
+          </div>
+        </Link>
 
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 xl:gap-24 items-center relative">
-          <div className="relative z-10 text-center lg:text-left">
-            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-[13px] font-bold uppercase tracking-widest mb-8 shadow-sm">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-600"></span>
-              </span>
-              The Future of Alumni Engagement
+        <nav className="hp-nav-links">
+          <a href="#features" className="hp-nav-link">Features</a>
+          <a href="#process" className="hp-nav-link">Process</a>
+          <a href="#institutes" className="hp-nav-link">Institutes</a>
+          <a href="#about" className="hp-nav-link">About Us</a>
+          <a href="#contact" className="hp-nav-link">Contact</a>
+        </nav>
+
+        <div className="hp-nav-actions">
+          <Link to={tenant.getTenantAwarePath("/login")} className="hp-nav-login">Login</Link>
+          <Link to={tenant.getTenantAwarePath("/register")} className="hp-nav-join">Join Now</Link>
+        </div>
+      </header>
+
+      {/* ── Hero ───────────────────────────────────────────────── */}
+      <section className="hp-hero" id="main-content">
+        {/* Background blobs */}
+        <div className="hp-blob hp-blob--tl" />
+        <div className="hp-blob hp-blob--br" />
+
+        <div className="hp-hero-inner">
+          {/* Left copy */}
+          <div className="hp-hero-copy">
+            <div className="hp-hero-badge">
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>diversity_3</span>
+              The Official Alumni Network
             </div>
-            
-            <h1 className="text-6xl lg:text-8xl font-black text-slate-900 leading-[1.05] tracking-tight mb-10">
-              Reconnect with <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600">
-                your Legacy.
-              </span>
+
+            <h1 className="hp-hero-headline">
+              Reconnect with your <br />
+              <span className="hp-hero-highlight">alumni network.</span>
             </h1>
-            
-            <p className="text-2xl text-slate-500 font-medium leading-relaxed mb-12 max-w-xl mx-auto lg:mx-0">
-              Transform your institutional network into a thriving ecosystem of mentorship, opportunities, and lifelong growth.
+
+            <p className="hp-hero-sub">
+              Build meaningful connections, explore career opportunities, and give back to your alma mater.
             </p>
-            
-            <div className="flex flex-wrap justify-center lg:justify-start gap-5">
-              <Link className="btn-primary px-8 py-4 text-lg flex items-center gap-3 shadow-2xl shadow-brand-500/40 hover:scale-105 transition-all" to={tenant.getTenantAwarePath("/request-portal")}>
-                Launch Your Portal
-                <span className="material-symbols-outlined font-bold">arrow_forward</span>
+
+            <div className="hp-hero-ctas">
+              <Link
+                to={tenant.getTenantAwarePath("/register")}
+                className="hp-cta-primary"
+                id="hero-join-btn"
+              >
+                Join Alumni Network
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
               </Link>
-              <Link className="btn-secondary px-8 py-4 text-lg flex items-center gap-3 hover:bg-slate-50 border-2 border-slate-100" to={tenant.getTenantAwarePath("/portal")}>
-                Experience Demo
+              <Link
+                to={tenant.getTenantAwarePath("/request-portal")}
+                className="hp-cta-secondary"
+                id="hero-explore-btn"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>account_balance</span>
+                Explore Institutes
               </Link>
             </div>
-            
-            <div className="mt-16 flex flex-col sm:flex-row items-center gap-6 justify-center lg:justify-start">
-              <div className="flex -space-x-4">
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="h-12 w-12 rounded-full border-4 border-white bg-slate-100 overflow-hidden shadow-md ring-2 ring-brand-50/50">
-                    <img src={`https://i.pravatar.cc/150?u=${i+10}`} alt="avatar" />
-                  </div>
-                ))}
-                <div className="h-12 w-12 rounded-full border-4 border-white bg-brand-600 text-white flex items-center justify-center font-bold text-sm shadow-md">+</div>
-              </div>
-              <div className="text-left">
-                <p className="text-lg font-bold text-slate-900 leading-none">Joined by 500+</p>
-                <p className="text-sm font-semibold text-slate-500">World-class institutions globally</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="relative lg:h-[600px] flex items-center justify-center">
-            {/* Decorative circles */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-brand-50/50 rounded-full blur-[100px] -z-10"></div>
-            
-            <div className="relative w-full max-w-[600px] group">
-              {/* Main Illustration */}
-              <div className="relative premium-card p-2 bg-white/40 backdrop-blur-xl border-white/50 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] transition-transform duration-700 group-hover:scale-[1.02]">
-                <img 
-                  src="alumni_network_hero_modern_1777903544265.png" 
-                  alt="Alumni Networking" 
-                  className="w-full h-auto object-cover rounded-[2.5rem]"
-                />
-                
-                {/* Floating UI Elements */}
-                <div className="absolute -top-6 -right-6 glass-card p-4 rounded-2xl animate-bounce shadow-2xl border-brand-100/50 hidden md:flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-green-500 text-white grid place-items-center">
-                    <span className="material-symbols-outlined">verified</span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Status</p>
-                    <p className="text-sm font-bold text-slate-900">Verified Alumni</p>
-                  </div>
-                </div>
-
-                <div className="absolute -bottom-10 -left-6 glass-card p-5 rounded-[2rem] shadow-2xl border-white/50 hidden md:block">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="h-12 w-12 rounded-2xl bg-brand-600 text-white grid place-items-center">
-                      <span className="material-symbols-outlined">groups</span>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-black text-slate-400 uppercase">Communities</p>
-                      <p className="text-lg font-black text-slate-900 leading-none">12,482+</p>
-                    </div>
-                  </div>
-                  <div className="flex -space-x-2">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="h-8 w-8 rounded-full border-2 border-white bg-slate-200" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-32 bg-white relative" id="features">
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-24">
-            <h2 className="text-5xl font-black text-slate-900 mb-8 tracking-tight">Built for thriving <br/>communities</h2>
-            <p className="text-xl text-slate-500 font-medium">Everything you need to maintain a vibrant, supportive institutional network in one seamless platform.</p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-10">
-            {featureCards.map((feature, i) => (
-              <div key={i} className="premium-card p-10 group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-brand-50/50 rounded-bl-[100px] -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-500"></div>
-                
-                <div className="h-16 w-16 rounded-[20px] bg-brand-50 text-brand-600 grid place-items-center mb-8 group-hover:bg-brand-600 group-hover:text-white group-hover:rotate-6 transition-all duration-300 font-black text-xl">
-                  {feature.icon}
-                </div>
-                <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">{feature.title}</h3>
-                <p className="text-slate-500 font-medium leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works / Process */}
-      <section className="py-32 bg-slate-50/50 relative overflow-hidden" id="how-it-works">
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-24 items-center">
-            <div>
-              <div className="inline-block px-4 py-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-black uppercase tracking-widest mb-6">The Process</div>
-              <h2 className="text-5xl font-black text-slate-900 mb-10 leading-[1.1] tracking-tight">Simplified onboarding for institutions</h2>
-              <div className="space-y-12">
-                {steps.map((step, i) => (
-                  <div key={i} className="flex gap-8 group">
-                    <div className="flex-shrink-0 h-14 w-14 rounded-2xl bg-white shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center justify-center font-black text-2xl text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-all duration-300">
-                      {step.number}
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">{step.title}</h4>
-                      <p className="text-lg text-slate-500 font-medium leading-relaxed">{step.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="relative">
-              <div className="absolute -inset-10 bg-brand-100/50 rounded-full blur-[100px] -z-10 animate-pulse"></div>
-              <div className="premium-card p-4 bg-white/60 backdrop-blur-xl border-white rounded-[3rem] shadow-2xl">
-                <div className="bg-slate-900 rounded-[2.2rem] h-[450px] relative overflow-hidden group cursor-pointer">
-                  <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=1000" alt="Dashboard" className="w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-700" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="h-24 w-24 rounded-full bg-brand-600/90 text-white flex items-center justify-center backdrop-blur-md shadow-2xl group-hover:scale-110 transition-all">
-                      <span className="material-symbols-outlined text-5xl font-bold">play_arrow</span>
-                    </div>
-                  </div>
-                  <div className="absolute bottom-8 left-8 right-8">
-                    <div className="glass-card p-4 rounded-2xl flex items-center justify-between border-white/20">
-                      <p className="text-white font-bold">Platform Overview</p>
-                      <span className="text-white/60 text-sm">2:45</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-32 bg-white relative" id="testimonials">
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-24">
-            <h2 className="text-5xl font-black text-slate-900 tracking-tight">Trusted by community leaders</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-12">
-            {testimonials.map((t, i) => (
-              <div key={i} className="premium-card p-10 flex flex-col justify-between">
+            {/* Stats */}
+            <div className="hp-hero-stats">
+              <div className="hp-stat-pill">
+                <span className="material-symbols-outlined hp-stat-pill-icon" style={{ color: "#6366f1" }}>diversity_3</span>
                 <div>
-                  <div className="flex gap-1 text-amber-400 mb-8">
-                    {[...Array(5)].map((_, j) => <span key={j} className="material-symbols-outlined font-bold text-[20px]">star</span>)}
-                  </div>
-                  <p className="text-xl text-slate-700 font-medium italic mb-12 leading-relaxed">"{t.quote}"</p>
-                </div>
-                <div className="flex items-center gap-5 pt-8 border-t border-slate-100">
-                  <div className="h-14 w-14 rounded-2xl bg-brand-600 text-white grid place-items-center font-black text-xl shadow-lg shadow-brand-500/20">
-                    {t.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h5 className="font-black text-slate-900 text-lg leading-none mb-1">{t.name}</h5>
-                    <p className="text-sm font-bold text-brand-600/70 uppercase tracking-wider">{t.role}</p>
-                  </div>
+                  <div className="hp-stat-pill-value">120K+</div>
+                  <div className="hp-stat-pill-label">Alumni</div>
                 </div>
               </div>
+              <div className="hp-stat-divider" />
+              <div className="hp-stat-pill">
+                <span className="material-symbols-outlined hp-stat-pill-icon" style={{ color: "#0ea5e9" }}>account_balance</span>
+                <div>
+                  <div className="hp-stat-pill-value">450+</div>
+                  <div className="hp-stat-pill-label">Institutes</div>
+                </div>
+              </div>
+              <div className="hp-stat-divider" />
+              <div className="hp-stat-pill">
+                <span className="material-symbols-outlined hp-stat-pill-icon" style={{ color: "#f59e0b" }}>work</span>
+                <div>
+                  <div className="hp-stat-pill-value">15K+</div>
+                  <div className="hp-stat-pill-label">Mentorships</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right dashboard mockup */}
+          <div className="hp-hero-mockup-wrap">
+            <DashboardMockup />
+
+            {/* Floating join notification */}
+            <div className="hp-floating-notif">
+              <div className="hp-floating-notif-avatars">
+                {["A", "B", "C"].map((l, i) => (
+                  <div key={i} className="hp-floating-avatar" style={{ zIndex: 3 - i, background: i === 0 ? "#6366f1" : i === 1 ? "#0ea5e9" : "#10b981" }}>{l}</div>
+                ))}
+              </div>
+              <div className="hp-floating-notif-text">
+                <span className="hp-floating-notif-name">Arjun and 24 others</span>
+                <span className="hp-floating-notif-sub">joined the community this week</span>
+              </div>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#10b981" }}>trending_up</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Trusted by institutions strip */}
+        <div className="hp-trust-strip" id="institutes">
+          <div className="hp-trust-title">Trusted by leading institutions</div>
+          <div className="hp-trust-logos">
+            <button className="hp-trust-arrow" onClick={() => setInstPage(p => Math.max(0, p - 1))} aria-label="Previous">
+              <span className="material-symbols-outlined">chevron_left</span>
+            </button>
+            {institutions.map((inst) => (
+              <InstitutionLogo key={inst.name} name={inst.name} abbr={inst.abbr} />
             ))}
+            <button className="hp-trust-arrow" onClick={() => setInstPage(p => p + 1)} aria-label="Next">
+              <span className="material-symbols-outlined">chevron_right</span>
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 pt-20 pb-10 text-slate-400">
-        <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
-          <div className="col-span-full lg:col-span-1">
-            <div className="flex items-center gap-3 text-white mb-6">
-              <div className="h-10 w-10 rounded-xl bg-brand-600 grid place-items-center font-bold">AN</div>
-              <strong className="text-2xl font-bold tracking-tight">AlumNet</strong>
+      {/* ── Features ───────────────────────────────────────────── */}
+      <section className="hp-features" id="features">
+        <div className="hp-section-label">Platform Features</div>
+        <h2 className="hp-features-title">Built for thriving communities</h2>
+        <p className="hp-features-sub">Everything you need to maintain a vibrant, supportive institutional network.</p>
+        <div className="hp-features-grid">
+          {[
+            { icon: "contacts", title: "Member Directory", desc: "Find graduates using institution-aware filters like batch, department, organization, and location.", color: "#6366f1" },
+            { icon: "groups", title: "Community Hub", desc: "Enable mentorship, collaborations, reunions, and meaningful networking inside one trusted ecosystem.", color: "#0ea5e9" },
+            { icon: "work", title: "Opportunities", desc: "Share openings, referrals, volunteering needs, and community opportunities with the right members.", color: "#f59e0b" },
+            { icon: "event", title: "Event Management", desc: "Run reunions, webinars, and campus events with seamless RSVP tracking and real-time updates.", color: "#10b981" },
+          ].map((f) => (
+            <div key={f.title} className="hp-feature-card">
+              <div className="hp-feature-icon" style={{ background: f.color + "18", color: f.color }}>
+                <span className="material-symbols-outlined">{f.icon}</span>
+              </div>
+              <h3 className="hp-feature-card-title">{f.title}</h3>
+              <p className="hp-feature-card-desc">{f.desc}</p>
             </div>
-            <p className="leading-relaxed">Empowering lifelong connections between institutions and their graduates through modern community infrastructure.</p>
-          </div>
-          
-          <div>
-            <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Company</h4>
-            <ul className="space-y-4">
-              <li><a href="#features" className="hover:text-brand-400 transition-colors">About Us</a></li>
-              <li><a href="#how-it-works" className="hover:text-brand-400 transition-colors">How it Works</a></li>
-              <li><a href="mailto:support@alumniconnect.com" className="hover:text-brand-400 transition-colors">Contact</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Legal</h4>
-            <ul className="space-y-4">
-              <li><Link to={tenant.getTenantAwarePath("/legal/privacy")} className="hover:text-brand-400 transition-colors">Privacy Policy</Link></li>
-              <li><Link to={tenant.getTenantAwarePath("/legal/terms")} className="hover:text-brand-400 transition-colors">Terms of Service</Link></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Subscribe</h4>
-            <form className="flex gap-2" onSubmit={handleNewsletterSubmit}>
-              <input 
-                type="email" 
-                placeholder="Email address"
-                className="bg-slate-800 border-slate-700 text-white rounded-xl px-4 py-2 flex-1 focus:ring-2 focus:ring-brand-500 outline-none"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-              />
-              <button className="bg-brand-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-brand-700 transition-colors">Join</button>
-            </form>
-            {newsletterMessage && (
-              <p className={`mt-2 text-sm ${newsletterIsError ? 'text-red-400' : 'text-brand-400'}`}>{newsletterMessage}</p>
-            )}
-          </div>
+          ))}
         </div>
-        
-        <div className="max-w-7xl mx-auto px-4 pt-10 border-t border-slate-800 text-center text-sm">
-          <p>&copy; 2026 AlumNet Professional Network. All rights reserved.</p>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────────────── */}
+      <footer className="hp-footer">
+        <div className="hp-footer-inner">
+          <div className="hp-footer-logo">
+            <div className="hp-footer-logo-icon">
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>school</span>
+            </div>
+            <div>
+              <div className="hp-footer-logo-name">AlumNet</div>
+              <div className="hp-footer-logo-sub">Professional Network</div>
+            </div>
+          </div>
+          <p className="hp-footer-copy">Empowering lifelong connections between institutions and their graduates.</p>
+          <div className="hp-footer-links">
+            <Link to={tenant.getTenantAwarePath("/legal/privacy")} className="hp-footer-link">Privacy Policy</Link>
+            <Link to={tenant.getTenantAwarePath("/legal/terms")} className="hp-footer-link">Terms of Service</Link>
+            <a href="mailto:support@alumnet.com" className="hp-footer-link">Contact</a>
+          </div>
+          <p className="hp-footer-cr">© 2026 AlumNet Professional Network. All rights reserved.</p>
         </div>
       </footer>
     </div>

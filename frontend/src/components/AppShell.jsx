@@ -5,10 +5,15 @@ function AppShell({ children }) {
   const location = useLocation();
   const isPortalRoute = location.pathname.startsWith("/portal");
   const isSuperAdminRoute = location.pathname.startsWith("/super-admin");
-
   const isAuthRoute = ["/login", "/register", "/forgot-password"].includes(location.pathname);
+  const isHomePage = location.pathname === "/";
 
-  if (isPortalRoute || isSuperAdminRoute || isAuthRoute) {
+  // Portal and super-admin get a full-height wrapper so DashboardLayout flex works correctly
+  if (isPortalRoute || isSuperAdminRoute) {
+    return <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>{children}</div>;
+  }
+
+  if (isAuthRoute || isHomePage) {
     return <div className="w-full">{children}</div>;
   }
 
