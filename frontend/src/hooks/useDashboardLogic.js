@@ -140,6 +140,57 @@ export function useDashboardLogic() {
     return items.slice(0, 4);
   }, [feedQuery.data, eventsQuery.data, jobsQuery.data]);
 
+  const communityHighlights = useMemo(() => {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    const joinedThisWeek = alumni.filter(a => new Date(a.createdAt) >= oneWeekAgo);
+    
+    // Simple top contributor logic: person who authored the most posts in the current fetch
+    const posts = postsQuery.data || [];
+    const authorCounts = {};
+    posts.forEach(p => {
+      const authorId = p.author?.id;
+      if (authorId) {
+        authorCounts[authorId] = (authorCounts[authorId] || 0) + 1;
+      }
+    });
+    
+    let topAuthorId = null;
+    let maxPosts = 0;
+    Object.entries(authorCounts).forEach(([id, count]) => {
+      if (count > maxPosts) {
+        maxPosts = count;
+        topAuthorId = id;
+      }
+    });
+    
+    const topContributor = topAuthorId ? posts.find(p => p.author?.id === topAuthorId)?.author : null;
+
+    return {
+      joinedThisWeek,
+      topContributor
+    };
+  }, [alumni, postsQuery.data]);
+
+  const suggestedConnections = useMemo(() => {
+    if (!alumni.length) return [];
+    const currentUserId = auth.user?.id;
+    // Simple logic: exclude self, then maybe prioritize same batch, then random
+    const others = alumni.filter(a => a.userId !== currentUserId && a.userId?._id !== currentUserId);
+    
+    // Sort: same batch first, then random
+    return others
+      .sort((a, b) => {
+        const aSameBatch = (a.batch || a.leavingYear) === (profile?.batch || profile?.leavingYear);
+        const bSameBatch = (b.batch || b.leavingYear) === (profile?.batch || profile?.leavingYear);
+        if (aSameBatch && !bSameBatch) return -1;
+        if (!aSameBatch && bSameBatch) return 1;
+        return 0;
+      })
+      .slice(0, 4);
+  }, [alumni, auth.user?.id, profile]);
+
   return {
     tenant,
     tenantDisplay,
@@ -186,6 +237,8 @@ export function useDashboardLogic() {
       sameBatchCount,
       sameCompanyCount,
       activityFeed,
+      communityHighlights,
+      suggestedConnections,
     },
     composerDraftKey,
   };

@@ -512,3 +512,35 @@
   .feed-composer-types { gap: 0; }
   .feed-composer-type-btn { padding: 0.4rem 0.5rem; font-size: 0.72rem; }
 }
+
+/* ─── Empty States ────────────────────────────────────────── */
+.feed-empty-state {
+  padding: 3rem 2rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.feed-empty-state p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.feed-sidebar-empty {
+  padding: 1.5rem;
+  text-align: center;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+}

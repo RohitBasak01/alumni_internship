@@ -110,6 +110,14 @@ export function useAlumniLogic() {
     [data, isAdmin, selfUserId],
   );
 
+  const activeMembers = directoryEntries.filter((item) => {
+    const userStatus = item?.userId?.isActive;
+    if (typeof userStatus === "boolean") {
+      return userStatus;
+    }
+    return Boolean(item?.isActive);
+  });
+
   return {
     auth,
     tenant,
@@ -146,14 +154,38 @@ export function useAlumniLogic() {
       pendingApprovals: data.filter(
         (item) => (item.registrationReviewStatus || "pending") === "pending",
       ),
-      activeMembers: directoryEntries.filter((item) => {
-        const userStatus = item?.userId?.isActive;
-        if (typeof userStatus === "boolean") {
-          return userStatus;
-        }
-
-        return Boolean(item?.isActive);
-      }),
+      activeMembers,
+      filterStats: (() => {
+        const stats = { industry: {}, availability: { mentorship: 0, open: 0, looking: 0 } };
+        data.forEach(m => {
+          if (m.industry) stats.industry[m.industry] = (stats.industry[m.industry] || 0) + 1;
+          if (m.isAvailableForMentorship) stats.availability.mentorship++;
+          if (m.isLookingForOpportunity) stats.availability.open++;
+          if (m.isActivelyJobHunting) stats.availability.looking++;
+        });
+        return stats;
+      })(),
+      uniqueValues: (() => {
+        const values = { years: new Set(), industries: new Set(), companies: new Set() };
+        data.forEach(m => {
+          if (m.batch || m.leavingYear) values.years.add(String(m.batch || m.leavingYear));
+          if (m.industry) values.industries.add(m.industry);
+          if (m.company) values.companies.add(m.company);
+        });
+        return {
+          years: Array.from(values.years).sort((a,b) => b-a),
+          industries: Array.from(values.industries).sort(),
+          companies: Array.from(values.companies).sort(),
+        };
+      })(),
+      insights: {
+        total: data.length,
+        countries: new Set(data.filter(m => m.location).map(m => m.location.split(",").pop().trim())).size || 1,
+        topIndustry: Object.entries(
+          data.reduce((acc, m) => { if(m.industry) acc[m.industry] = (acc[m.industry] || 0) + 1; return acc; }, {})
+        ).sort((a,b) => b[1] - a[1])[0]?.[0] || "None",
+        activeThisMonth: data.filter(m => m.updatedAt && new Date(m.updatedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+      }
     },
   };
 }

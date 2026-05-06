@@ -9,58 +9,6 @@ import "../styles/Dashboard.css";
 import "../styles/AdminDashboard.css";
 
 
-/* ── Static sample data shown when live data is loading/empty ── */
-const SAMPLE_POSTS = [
-  {
-    _id: "s1",
-    author: { name: "Riya Desai", initials: "RD" },
-    role: "Product Manager at Finverse",
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    content: "Excited to share that our community mixer was a huge success! 🎉\nThanks to everyone who joined and made it special.",
-    likeCount: 42, commentCount: 12, shareCount: 8,
-    accentColor: "#6366f1",
-  },
-  {
-    _id: "s2",
-    author: { name: "Dev Mehta", initials: "DM" },
-    role: "Engineering Lead at Orbit Systems",
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    content: "Looking forward to mentoring 5 final-year students this month.\nFeel free to reach out if you need guidance!",
-    likeCount: 25, commentCount: 6, shareCount: 4,
-    accentColor: "#0ea5e9",
-  },
-  {
-    _id: "s3",
-    author: { name: "SPIT Alumni Association", initials: "SA" },
-    role: "Official",
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    content: "Registrations open for the Annual Alumni Meet 2026!\nJoin us for a memorable experience. Register now.",
-    likeCount: 67, commentCount: 18, shareCount: 12,
-    accentColor: "#10b981",
-  },
-];
-
-const SAMPLE_CONNECTIONS = [
-  { id: "c1", name: "Sneha Iyer",  role: "Data Scientist at Google",    batch: "Batch of 2018", color: "#6366f1" },
-  { id: "c2", name: "Arjun Kapoor", role: "Product Manager at Microsoft", batch: "Batch of 2017", color: "#0ea5e9" },
-  { id: "c3", name: "Megha Nair",  role: "UX Designer at Adobe",         batch: "Batch of 2019", color: "#f59e0b" },
-  { id: "c4", name: "Kunal Joshi", role: "Founder & CEO at TechNova",    batch: "Batch of 2016", color: "#10b981" },
-];
-
-const UPCOMING_EVENTS = [
-  { month: "MAY", day: "24", title: "Annual Alumni Meet 2026", detail: "May 24, 2026 • 10:00 AM\nSPIT Campus, Mumbai", color: "#6366f1" },
-  { month: "JUN", day: "07", title: "Startup Networking Night", detail: "Jun 07, 2026 • 6:30 PM\nWeWork, BKC Mumbai", color: "#10b981" },
-  { month: "JUN", day: "21", title: "Career Mentorship Summit", detail: "Jun 21, 2026 • 11:00 AM\nOnline Event", color: "#f59e0b" },
-];
-
-const QUICK_ACTIONS = [
-  { icon: "edit_note",   label: "Post Update",    to: "/portal" },
-  { icon: "person_search", label: "Find Alumni", to: "/portal/alumni" },
-  { icon: "work",        label: "Browse Jobs",    to: "/portal/jobs" },
-  { icon: "diversity_3", label: "Join Groups",    to: "/portal/groups" },
-  { icon: "event",       label: "Create Event",   to: "/portal/events" },
-  { icon: "feedback",    label: "Give Feedback",  to: "/portal" },
-];
 
 /* ── Sparkline mini-chart (SVG) ───────────────────────────── */
 function Sparkline({ color = "#6366f1", rising = true }) {
@@ -138,17 +86,27 @@ function AlumniDashboard({ logic }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  /* Use live posts if available, else show samples */
-  const displayPosts = posts.length > 0
-    ? posts.slice(0, 3).map(p => ({
-        ...p,
-        role: p.author?.designation || p.author?.occupation || "",
-        likeCount: p.likes?.length ?? 0,
-        commentCount: p.comments?.length ?? 0,
-        shareCount: 0,
-        accentColor: ["#6366f1","#0ea5e9","#10b981"][Math.floor(Math.random()*3)],
-      }))
-    : SAMPLE_POSTS;
+  const displayPosts = posts.slice(0, 3).map(p => ({
+    ...p,
+    role: p.author?.designation || p.author?.occupation || p.author?.company || "",
+    likeCount: p.likes?.length ?? 0,
+    commentCount: p.comments?.length ?? 0,
+    shareCount: 0,
+    accentColor: ["#6366f1","#0ea5e9","#10b981"][Math.floor(Math.random()*3)],
+  }));
+
+  const QUICK_ACTIONS = [
+    { icon: "edit_note",   label: "Post Update",    to: "/portal/feed" },
+    { icon: "person_search", label: "Find Alumni", to: "/portal/alumni" },
+    { icon: "work",        label: "Browse Jobs",    to: "/portal/jobs" },
+    { icon: "diversity_3", label: "Join Groups",    to: "/portal/groups" },
+    { icon: "event",       label: "Create Event",   to: "/portal/events/create" },
+    { icon: "feedback",    label: "Give Feedback",  to: "/portal/settings" },
+  ];
+
+  const { communityHighlights, suggestedConnections } = derived;
+  const recentJoins = communityHighlights.joinedThisWeek;
+  const topContributor = communityHighlights.topContributor;
 
   return (
     <div className="adb-root">
@@ -178,11 +136,11 @@ function AlumniDashboard({ logic }) {
 
       {/* ── Stat cards row ──────────────────────────────────── */}
       <div className="adb-stats-row">
-        <StatCard icon="diversity_3"   label="Total Alumni"     value={alumni.length || "12.8K"} change="12%"  color="#6366f1" />
-        <StatCard icon="hub"           label="Active Network"   value={`${Math.max(alumni.length, 2400).toLocaleString()}`} change="8%"   color="#0ea5e9" />
-        <StatCard icon="handshake"     label="Mentorships"      value={mentorship.filter(m => m.status === "accepted").length || 320}  change="16%" color="#10b981" />
-        <StatCard icon="event"         label="Events"           value={events.length || 24}   change="5%"  color="#f59e0b" />
-        <StatCard icon="work"          label="Jobs Posted"      value={jobs.length || 56}     change="10%" color="#8b5cf6" />
+        <StatCard icon="diversity_3"   label="Total Alumni"     value={alumni.length} change="12%"  color="#6366f1" />
+        <StatCard icon="hub"           label="Active Network"   value={`${Math.max(alumni.filter(a => a.isActive).length, alumni.length).toLocaleString()}`} change="8%"   color="#0ea5e9" />
+        <StatCard icon="handshake"     label="Mentorships"      value={mentorship.filter(m => m.status === "accepted").length}  change="16%" color="#10b981" />
+        <StatCard icon="event"         label="Events"           value={events.length}   change="5%"  color="#f59e0b" />
+        <StatCard icon="work"          label="Jobs Posted"      value={jobs.length}     change="10%" color="#8b5cf6" />
       </div>
 
       {/* ── Main 3-col layout ───────────────────────────────── */}
@@ -194,10 +152,14 @@ function AlumniDashboard({ logic }) {
             <Link to="/portal/alumni" className="adb-view-all">View All</Link>
           </div>
           <div className="adb-activity-list">
-            {displayPosts.map(post => (
-              <ActivityCard key={post._id} post={post} />
-            ))}
-            <button className="adb-load-more">Load more posts ▾</button>
+            {displayPosts.length > 0 ? (
+              displayPosts.map(post => (
+                <ActivityCard key={post._id} post={post} />
+              ))
+            ) : (
+              <div className="adb-empty-state">No recent activity found.</div>
+            )}
+            {displayPosts.length > 0 && <button className="adb-load-more">Load more posts ▾</button>}
           </div>
         </div>
 
@@ -208,19 +170,27 @@ function AlumniDashboard({ logic }) {
             <Link to="/portal/alumni" className="adb-view-all">View All</Link>
           </div>
           <div className="adb-connections-list">
-            {SAMPLE_CONNECTIONS.map(c => (
-              <div key={c.id} className="adb-connection-item">
-                <div className="adb-connection-avatar" style={{ background: c.color }}>{c.name[0]}</div>
-                <div className="adb-connection-info">
-                  <div className="adb-connection-name">{c.name}</div>
-                  <div className="adb-connection-batch">{c.batch} · {c.role}</div>
+            {suggestedConnections.length > 0 ? (
+              suggestedConnections.map((c, i) => (
+                <div key={c._id || i} className="adb-connection-item">
+                  <div className="adb-connection-avatar" style={{ background: ["#6366f1","#0ea5e9","#f59e0b","#10b981"][i % 4] }}>
+                    {c.name?.[0] || "?"}
+                  </div>
+                  <div className="adb-connection-info">
+                    <div className="adb-connection-name">{c.name}</div>
+                    <div className="adb-connection-batch">
+                      {c.batch || c.leavingYear ? `Batch of ${c.batch || c.leavingYear}` : "Alumni"} · {c.designation || c.occupation || c.company || "Member"}
+                    </div>
+                  </div>
+                  <Link to="/portal/alumni" className="adb-connect-btn">
+                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>person_add</span>
+                    Connect
+                  </Link>
                 </div>
-                <Link to="/portal/alumni" className="adb-connect-btn">
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>person_add</span>
-                  Connect
-                </Link>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="adb-empty-state">No suggestions at the moment.</div>
+            )}
           </div>
 
           {/* Find Your Mentor CTA */}
@@ -231,12 +201,12 @@ function AlumniDashboard({ logic }) {
               <Link to="/portal/messages" className="adb-mentor-cta-btn">Explore Mentors →</Link>
             </div>
             <div className="adb-mentor-avatars">
-              {["#6366f1","#0ea5e9","#10b981","#f59e0b","#8b5cf6"].map((c, i) => (
-                <div key={i} className="adb-mentor-avatar" style={{ background: c, zIndex: 5 - i }}>
-                  {String.fromCharCode(65 + i)}
+              {suggestedConnections.slice(0, 5).map((c, i) => (
+                <div key={i} className="adb-mentor-avatar" style={{ background: ["#6366f1","#0ea5e9","#10b981","#f59e0b","#8b5cf6"][i], zIndex: 5 - i }}>
+                  {c.name?.[0] || "?"}
                 </div>
               ))}
-              <div className="adb-mentor-avatar adb-mentor-avatar--more">+12</div>
+              {alumni.length > 5 && <div className="adb-mentor-avatar adb-mentor-avatar--more">+{alumni.length - 5}</div>}
             </div>
           </div>
         </div>
@@ -250,24 +220,27 @@ function AlumniDashboard({ logic }) {
               <Link to="/portal/events" className="adb-view-all">View All</Link>
             </div>
             <div className="adb-events-list">
-              {(events.length > 0 ? events.slice(0, 3).map((ev, i) => ({
-                month: new Date(ev.date || ev.startDate || Date.now()).toLocaleString("default", { month: "short" }).toUpperCase(),
-                day: new Date(ev.date || ev.startDate || Date.now()).getDate(),
-                title: ev.title,
-                detail: ev.location || "Online",
-                color: UPCOMING_EVENTS[i]?.color || "#6366f1",
-              })) : UPCOMING_EVENTS).map((ev, i) => (
-                <div key={i} className="adb-event-item">
-                  <div className="adb-event-date" style={{ borderLeftColor: ev.color }}>
-                    <div className="adb-event-month" style={{ color: ev.color }}>{ev.month}</div>
-                    <div className="adb-event-day">{ev.day}</div>
-                  </div>
-                  <div className="adb-event-info">
-                    <div className="adb-event-title">{ev.title}</div>
-                    <div className="adb-event-detail" style={{ whiteSpace: "pre-line" }}>{ev.detail}</div>
-                  </div>
-                </div>
-              ))}
+              {events.length > 0 ? (
+                events.slice(0, 3).map((ev, i) => {
+                  const date = new Date(ev.date || ev.startDate || Date.now());
+                  return (
+                    <div key={ev._id || i} className="adb-event-item">
+                      <div className="adb-event-date" style={{ borderLeftColor: ["#6366f1", "#10b981", "#f59e0b"][i % 3] }}>
+                        <div className="adb-event-month" style={{ color: ["#6366f1", "#10b981", "#f59e0b"][i % 3] }}>
+                          {date.toLocaleString("default", { month: "short" }).toUpperCase()}
+                        </div>
+                        <div className="adb-event-day">{date.getDate()}</div>
+                      </div>
+                      <div className="adb-event-info">
+                        <div className="adb-event-title">{ev.title}</div>
+                        <div className="adb-event-detail" style={{ whiteSpace: "pre-line" }}>{ev.location || "Online"}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="adb-empty-state">No upcoming events.</div>
+              )}
             </div>
           </div>
 
@@ -289,26 +262,38 @@ function AlumniDashboard({ logic }) {
             <div className="adb-section-title" style={{ marginBottom: "0.75rem" }}>Community Highlights</div>
             <div className="adb-highlight-row">
               <div className="adb-highlight-avatars">
-                {["#6366f1","#0ea5e9","#10b981"].map((c, i) => (
-                  <div key={i} className="adb-highlight-avatar" style={{ background: c }}>
-                    {String.fromCharCode(65 + i)}
+                {recentJoins.slice(0, 3).map((c, i) => (
+                  <div key={i} className="adb-highlight-avatar" style={{ background: ["#6366f1","#0ea5e9","#10b981"][i] }}>
+                    {c.name?.[0] || "?"}
                   </div>
                 ))}
               </div>
               <div className="adb-highlight-text">
-                <div className="adb-highlight-name">Arjun and 24 others</div>
+                <div className="adb-highlight-name">
+                  {recentJoins.length > 0 ? (
+                    <>
+                      {recentJoins[0].name.split(" ")[0]} 
+                      {recentJoins.length > 1 && ` and ${recentJoins.length - 1} others`}
+                    </>
+                  ) : "New members"}
+                </div>
                 <div className="adb-highlight-sub">joined the community this week</div>
               </div>
               <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#10b981" }}>trending_up</span>
             </div>
-            <div className="adb-top-contributor">
-              <span className="adb-contributor-label">Top Contributor</span>
-              <div className="adb-contributor-row">
-                <div className="adb-contributor-avatar">R</div>
-                <span className="adb-contributor-name">Riya Desai</span>
-                <span className="adb-contributor-pts">⭐ 120 points</span>
+            
+            {topContributor && (
+              <div className="adb-top-contributor">
+                <span className="adb-contributor-label">Top Contributor</span>
+                <div className="adb-contributor-row">
+                  <div className="adb-contributor-avatar" style={{ background: "#6366f1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: "bold" }}>
+                    {topContributor.initials || topContributor.name?.[0]}
+                  </div>
+                  <span className="adb-contributor-name">{topContributor.name}</span>
+                  <span className="adb-contributor-pts">⭐ Active Member</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

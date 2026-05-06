@@ -150,6 +150,22 @@ export default function GalleryPage() {
 
   const allItems = galleryQuery.data || [];
 
+  const dynamicAlbums = useMemo(() => {
+    const albums = {};
+    allItems.forEach(item => {
+      const section = item.section || "General";
+      if (!albums[section]) {
+        albums[section] = { title: section.replace("_", " "), count: 0, img: item.url };
+      }
+      albums[section].count++;
+    });
+    return Object.values(albums).sort((a, b) => b.count - a.count);
+  }, [allItems]);
+
+  const dynamicHighlights = useMemo(() => {
+    return allItems.slice(0, 8).map(i => i.url);
+  }, [allItems]);
+
   const grouped = useMemo(() => ({
     images:          allItems.filter(i=>i.section==="images"),
     videos:          allItems.filter(i=>i.section==="videos"),
@@ -328,16 +344,20 @@ export default function GalleryPage() {
               <button className="gl-sidebar-link">View All</button>
             </div>
             <div className="gl-albums-list">
-              {MOCK_ALBUMS.map(album=>(
-                <div key={album.title} className="gl-album-item">
-                  <img src={album.img} alt={album.title} className="gl-album-thumb" loading="lazy"/>
-                  <div className="gl-album-info">
-                    <div className="gl-album-title">{album.title}</div>
-                    <div className="gl-album-date">{album.date}</div>
+              {dynamicAlbums.length > 0 ? (
+                dynamicAlbums.slice(0, 5).map(album => (
+                  <div key={album.title} className="gl-album-item">
+                    <img src={album.img} alt={album.title} className="gl-album-thumb" loading="lazy" />
+                    <div className="gl-album-info">
+                      <div className="gl-album-title" style={{ textTransform: "capitalize" }}>{album.title}</div>
+                      <div className="gl-album-date">Latest Media</div>
+                    </div>
+                    <span className="gl-album-count">{album.count}</span>
                   </div>
-                  <span className="gl-album-count">{album.count}</span>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p style={{ fontSize: "0.78rem", color: "#94a3b8", padding: "0.5rem 0" }}>No albums yet.</p>
+              )}
             </div>
           </div>
 
@@ -386,8 +406,8 @@ export default function GalleryPage() {
               <button className="gl-sidebar-link">View All</button>
             </div>
             <div className="gl-highlights-grid">
-              {HIGHLIGHT_IMGS.map((src,i)=>(
-                <img key={i} src={src} alt="" className="gl-highlight-img" loading="lazy"/>
+              {(dynamicHighlights.length > 0 ? dynamicHighlights : HIGHLIGHT_IMGS).map((src, i) => (
+                <img key={i} src={src} alt="" className="gl-highlight-img" loading="lazy" />
               ))}
             </div>
             <p className="gl-highlight-caption">Relive your best moments ✨</p>

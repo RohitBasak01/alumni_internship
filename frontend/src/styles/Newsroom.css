@@ -54,21 +54,51 @@
 }
 
 /* ─── Category tabs ───────────────────────────────────────── */
-.nr-tabs-wrap { overflow-x: auto; scrollbar-width: none; }
-.nr-tabs-wrap::-webkit-scrollbar { display: none; }
+.nr-tabs-wrap {
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.25rem;
+}
+
+.nr-tabs-wrap::-webkit-scrollbar {
+  display: none;
+}
+
 .nr-tabs {
-  display: flex; align-items: center; gap: 0.35rem;
-  background: #fff; border-radius: 12px; border: 1px solid #e2e8f0;
-  padding: 0.35rem; width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #f1f5f9;
+  border-radius: 14px;
+  padding: 0.35rem;
+  width: max-content;
+  border: 1px solid #e2e8f0;
 }
+
 .nr-tab {
-  padding: 0.4rem 0.85rem; border-radius: 8px; border: none;
-  background: none; font-size: 0.82rem; font-weight: 600;
-  color: #64748b; cursor: pointer; font-family: inherit;
-  white-space: nowrap; transition: background 150ms, color 150ms;
+  padding: 0.5rem 1.25rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 200ms ease;
 }
-.nr-tab:hover { background: #f8fafc; color: #374151; }
-.nr-tab--active { background: #6366f1; color: #fff; }
+
+.nr-tab:hover {
+  color: #334155;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.nr-tab--active {
+  background: #fff;
+  color: #6366f1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
 
 /* ─── Layout ──────────────────────────────────────────────── */
 .nr-layout {

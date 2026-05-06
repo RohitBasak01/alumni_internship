@@ -55,26 +55,6 @@ const SKILLS_MOCK = {
   "Design Thinking": ["#ffe4e6","#be123c"],
 };
 
-const INDUSTRY_FILTERS = [
-  { label: "All Industries", count: null },
-  { label: "Technology",     count: 4512 },
-  { label: "Finance",        count: 2103 },
-  { label: "Consulting",     count: 1892 },
-  { label: "Healthcare",     count: 1256 },
-];
-
-const AVAIL_OPTIONS = [
-  { key: "mentorship", label: "Available for Mentorship", count: 1248, color: "#6366f1" },
-  { key: "open",       label: "Open to Opportunities",   count: 2134, color: "#10b981" },
-  { key: "looking",    label: "Actively Looking",         count: 856,  color: "#f59e0b" },
-];
-
-const INSIGHTS = [
-  { icon: "groups",   label: "Total Alumni",        value: "12,843",    color: "#6366f1" },
-  { icon: "public",   label: "Countries Represented", value: "56",      color: "#10b981" },
-  { icon: "trending_up", label: "Top Industry",     value: "Technology", color: "#8b5cf6" },
-  { icon: "bolt",     label: "Active This Month",   value: "2,341",      color: "#f59e0b" },
-];
 
 const SORT_OPTIONS = ["Relevance","Name A–Z","Batch Year","Location"];
 
@@ -236,6 +216,26 @@ export default function TenantAlumniPage() {
   const totalPages = Math.max(1, Math.ceil(totalFound / PAGE_SIZE));
   const pageMembers = allMembers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const { uniqueValues, filterStats, insights: liveInsights } = derived;
+  
+  const INDUSTRY_FILTERS = [
+    { label: "All Industries", count: null },
+    ...uniqueValues.industries.map(ind => ({ label: ind, count: filterStats.industry[ind] }))
+  ];
+
+  const AVAIL_OPTIONS = [
+    { key: "mentorship", label: "Available for Mentorship", count: filterStats.availability.mentorship, color: "#6366f1" },
+    { key: "open",       label: "Open to Opportunities",   count: filterStats.availability.open, color: "#10b981" },
+    { key: "looking",    label: "Actively Looking",         count: filterStats.availability.looking, color: "#f59e0b" },
+  ];
+
+  const INSIGHTS_DYNAMIC = [
+    { icon: "groups",   label: "Total Alumni",        value: liveInsights.total.toLocaleString(), color: "#6366f1" },
+    { icon: "public",   label: "Countries Represented", value: String(liveInsights.countries),      color: "#10b981" },
+    { icon: "trending_up", label: "Top Industry",     value: liveInsights.topIndustry,              color: "#8b5cf6" },
+    { icon: "bolt",     label: "Active This Month",   value: liveInsights.activeThisMonth.toLocaleString(), color: "#f59e0b" },
+  ];
+
   /* ── Admin view (unchanged) ───────────────────────────── */
   if (isAdmin) {
     return (
@@ -316,26 +316,25 @@ export default function TenantAlumniPage() {
 
       {/* ── Dropdown filter row ──────────────────────────── */}
       <div className="ad-filter-row">
-        <select className="ad-filter-select" value={filters.batch || ""} onChange={e => { setFilters(f => ({ ...f, batch: e.target.value })); setPage(1); }}>
-          <option value="">Batch / Year</option>
-          {[2024,2023,2022,2021,2020,2019,2018,2017,2016,2015].map(y => <option key={y} value={y}>{y}</option>)}
+        <select className="ad-filter-select" value={filters.batch || filters.leavingYear || ""} onChange={e => { setFilters(f => ({ ...f, batch: e.target.value, leavingYear: e.target.value })); setPage(1); }}>
+          <option value="">{directoryConfig.yearFieldLabel}</option>
+          {uniqueValues.years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         <button
           className={`ad-filter-select ad-location-toggle ${showMap ? "ad-location-toggle--active" : ""}`}
           onClick={() => { setShowMap(s => !s); setFilters(f => ({ ...f, activeTab: showMap ? "name" : "location" })); }}
           type="button"
         >
-          <span className="material-symbols-outlined" style={{ fontSize: 15, marginRight: 4, verticalAlign: "middle" }}>location_on</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 16, marginRight: 6, verticalAlign: "middle" }}>location_on</span>
           Location
-          <span className="material-symbols-outlined" style={{ fontSize: 14, marginLeft: 4, verticalAlign: "middle" }}>{showMap ? "expand_less" : "expand_more"}</span>
         </button>
         <select className="ad-filter-select" value={filters.industry || ""} onChange={e => { setFilters(f => ({ ...f, industry: e.target.value })); setIndustryFilter(e.target.value || "All Industries"); setPage(1); }}>
           <option value="">Industry</option>
-          {["Technology","Finance","Consulting","Healthcare","Education","Media"].map(i => <option key={i} value={i}>{i}</option>)}
+          {uniqueValues.industries.map(i => <option key={i} value={i}>{i}</option>)}
         </select>
         <select className="ad-filter-select" value={filters.company || ""} onChange={e => { setFilters(f => ({ ...f, company: e.target.value })); setPage(1); }}>
           <option value="">Company</option>
-          {["Google","Microsoft","Amazon","Flipkart","Infosys","TCS","Wipro"].map(c => <option key={c} value={c}>{c}</option>)}
+          {uniqueValues.companies.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <button className="ad-more-filters-btn" onClick={() => setFilters(f => ({ ...f, activeTab: "name" }))}>
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>filter_list</span>
@@ -540,7 +539,7 @@ export default function TenantAlumniPage() {
               <button className="ad-sidebar-reset">View Report</button>
             </div>
             <div className="ad-insights-list">
-              {INSIGHTS.map(ins => (
+              {INSIGHTS_DYNAMIC.map(ins => (
                 <div key={ins.label} className="ad-insight-row">
                   <div className="ad-insight-icon" style={{ background: ins.color + "18", color: ins.color }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{ins.icon}</span>

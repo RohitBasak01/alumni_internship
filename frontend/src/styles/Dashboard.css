@@ -803,14 +803,25 @@
   border: 2px solid #fff;
   display: grid;
   place-items: center;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 800;
   color: #fff;
   margin-left: -6px;
 }
 .adb-highlight-avatar:last-child { margin-left: 0; }
 
-.adb-highlight-text { flex: 1; }
+.adb-empty-state {
+  padding: 1.5rem;
+  text-align: center;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.adb-highlight-text { flex: 1; min-width: 0; }
 .adb-highlight-name { font-size: 0.75rem; font-weight: 700; color: #0f172a; }
 .adb-highlight-sub { font-size: 0.65rem; color: #94a3b8; }
 

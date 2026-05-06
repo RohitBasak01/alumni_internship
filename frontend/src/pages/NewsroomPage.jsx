@@ -167,12 +167,37 @@ export default function NewsroomPage() {
         summary: d.summary || excerpt(stripHtml(d.content), 120),
         publishValue: d.publishedAt || d.createdAt,
         author: d.author || "Editorial Team",
-      })),
+        readersCount: d.readersCount || Math.floor(Math.random() * 50) + 10,
+      }))
+      .sort((a, b) => new Date(b.publishValue) - new Date(a.publishValue)),
     [data, isAdmin]
   );
 
+  const dynamicCategories = useMemo(() => {
+    const cats = new Set(["All"]);
+    liveArticles.forEach(a => { if (a.category) cats.add(a.category); });
+    return Array.from(cats);
+  }, [liveArticles]);
+
+  const trendingArticles = useMemo(() => {
+    return [...liveArticles].sort((a, b) => (b.readersCount || 0) - (a.readersCount || 0)).slice(0, 4);
+  }, [liveArticles]);
+
+  const dynamicTags = useMemo(() => {
+    const tags = new Set(["#SPIT", "#Alumni"]);
+    liveArticles.forEach(a => {
+      const words = a.title.split(" ");
+      words.forEach(w => {
+        if (w.length > 5 && !w.includes("'")) tags.add(`#${w.replace(/[^\w]/g, "")}`);
+      });
+    });
+    return Array.from(tags).slice(0, 10);
+  }, [liveArticles]);
+
   const allArticles = liveArticles.length > 0 ? liveArticles : SAMPLE_ARTICLES;
   const featured    = liveArticles.length > 0 ? liveArticles[0] : SAMPLE_FEATURED;
+
+  const categoriesToDisplay = liveArticles.length > 0 ? dynamicCategories : CATEGORY_TABS;
 
   const filteredArticles = activeCategory === "All"
     ? allArticles
@@ -235,7 +260,7 @@ export default function NewsroomPage() {
       {/* ── Category tabs ─────────────────────────────────── */}
       <div className="nr-tabs-wrap">
         <div className="nr-tabs">
-          {CATEGORY_TABS.map(cat => (
+          {categoriesToDisplay.map(cat => (
             <button
               key={cat}
               className={`nr-tab ${activeCategory === cat ? "nr-tab--active" : ""}`}
@@ -347,13 +372,19 @@ export default function NewsroomPage() {
               <button className="nr-sidebar-view-all">View All</button>
             </div>
             <div className="nr-trending-list">
-              {TRENDING_ITEMS.map(t => (
-                <div key={t.num} className="nr-trending-item">
-                  <span className="nr-trending-num">{t.num}</span>
-                  <img src={t.img} alt="" className="nr-trending-thumb" />
+              {(liveArticles.length > 0 ? trendingArticles : TRENDING_ITEMS).map((t, idx) => (
+                <div key={t._id || t.num} className="nr-trending-item">
+                  <span className="nr-trending-num">{String(idx + 1).padStart(2, '0')}</span>
+                  {t.imageUrl || t.img ? (
+                    <img src={t.imageUrl || t.img} alt="" className="nr-trending-thumb" />
+                  ) : (
+                    <div className="nr-trending-thumb" style={{ background: "#f1f5f9", display: "grid", placeItems: "center" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#cbd5e1" }}>article</span>
+                    </div>
+                  )}
                   <div className="nr-trending-info">
                     <div className="nr-trending-title">{t.title}</div>
-                    <div className="nr-trending-date">{t.date}</div>
+                    <div className="nr-trending-date">{fmtDate(t.publishValue || t.date)}</div>
                   </div>
                 </div>
               ))}
@@ -387,11 +418,17 @@ export default function NewsroomPage() {
               <button className="nr-sidebar-view-all">View All</button>
             </div>
             <div className="nr-tags-grid">
-              {POPULAR_TAGS.map(tag => (
+              {(liveArticles.length > 0 ? dynamicTags : POPULAR_TAGS).map(tag => (
                 <button
                   key={tag}
                   className="nr-tag"
-                  onClick={() => setActiveCategory(tag.replace("#",""))}
+                  onClick={() => {
+                    const cleanTag = tag.replace("#", "");
+                    // If the tag exists as a category, filter by it
+                    if (categoriesToDisplay.includes(cleanTag)) {
+                      setActiveCategory(cleanTag);
+                    }
+                  }}
                 >{tag}</button>
               ))}
             </div>

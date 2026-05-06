@@ -474,15 +474,25 @@ export default function BusinessDirectoryPage() {
               <button className="bd-sidebar-view-all">View All</button>
             </div>
             <div className="bd-cat-list">
-              {(industryCategories.length ? industryCategories : Object.entries({Technology:324,Finance:198,Healthcare:156,Education:132,Marketing:98,Consulting:87,"Real Estate":72,Manufacturing:65})).slice(0,8).map(([name,count])=>(
-                <button key={name} className={`bd-cat-item ${industryFilter===name?"bd-cat-item--active":""}`} onClick={()=>{setIndustryFilter(prev=>prev===name?"":name);setPage(1);}}>
-                  <div className="bd-cat-icon">
-                    <span className="material-symbols-outlined" style={{fontSize:16}}>{CATEGORY_ICONS[name]||"category"}</span>
-                  </div>
-                  <span className="bd-cat-label">{name}</span>
-                  <span className="bd-cat-count">{count}</span>
-                </button>
-              ))}
+              {industryCategories.length > 0 ? (
+                industryCategories.slice(0, 8).map(([name, count]) => (
+                  <button 
+                    key={name} 
+                    className={`bd-cat-item ${industryFilter === name ? "bd-cat-item--active" : ""}`} 
+                    onClick={() => { setIndustryFilter(prev => prev === name ? "" : name); setPage(1); }}
+                  >
+                    <div className="bd-cat-icon">
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{CATEGORY_ICONS[name] || "category"}</span>
+                    </div>
+                    <span className="bd-cat-label">{name}</span>
+                    <span className="bd-cat-count">{count}</span>
+                  </button>
+                ))
+              ) : (
+                <div style={{ padding: "0.5rem", textAlign: "center" }}>
+                   <p style={{ fontSize: "0.78rem", color: "#94a3b8", margin: 0 }}>No categories available</p>
+                </div>
+              )}
             </div>
           </div>
 
