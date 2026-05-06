@@ -28,6 +28,11 @@ const signupProviders = [
 ];
 
 function getDemoAccounts() {
+  // Never show demo accounts in production builds
+  if (import.meta.env.PROD) {
+    return [];
+  }
+
   const rawValue = import.meta.env.VITE_DEMO_ACCOUNTS;
 
   if (!rawValue) {

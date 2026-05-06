@@ -49,24 +49,36 @@ export function hashToken(token) {
 
 export function getAuthCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
-  return {
+  const options = {
     httpOnly: true,
     path: "/",
     sameSite: "lax",
     secure: isProduction,
     maxAge: 1000 * 60 * 15 // 15 minutes for access token
   };
+
+  if (isProduction && process.env.AUTH_COOKIE_DOMAIN) {
+    options.domain = process.env.AUTH_COOKIE_DOMAIN;
+  }
+
+  return options;
 }
 
 export function getRefreshCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
-  return {
+  const options = {
     httpOnly: true,
     path: "/api/auth/refresh", // Only send refresh token to the refresh endpoint
     sameSite: "lax",
     secure: isProduction,
     maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
   };
+
+  if (isProduction && process.env.AUTH_COOKIE_DOMAIN) {
+    options.domain = process.env.AUTH_COOKIE_DOMAIN;
+  }
+
+  return options;
 }
 
 export function setAuthCookies(res, accessToken, refreshToken) {
@@ -81,13 +93,19 @@ export function clearAuthCookies(res) {
     httpOnly: true,
     path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NODE_ENV === "production",
+    ...(process.env.NODE_ENV === "production" && process.env.AUTH_COOKIE_DOMAIN
+      ? { domain: process.env.AUTH_COOKIE_DOMAIN }
+      : {})
   });
   res.clearCookie(REFRESH_COOKIE_NAME, {
     httpOnly: true,
     path: "/api/auth/refresh",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NODE_ENV === "production",
+    ...(process.env.NODE_ENV === "production" && process.env.AUTH_COOKIE_DOMAIN
+      ? { domain: process.env.AUTH_COOKIE_DOMAIN }
+      : {})
   });
 }
 

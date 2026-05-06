@@ -14,6 +14,11 @@ import {
 const router = express.Router();
 
 router.use((req, _res, next) => {
+  // Hard guard: never serve mock data in production
+  if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEV_MOCK_MODE !== "true") {
+    return next("router");
+  }
+
   if (!req.app.locals.mockMode) {
     return next("router");
   }

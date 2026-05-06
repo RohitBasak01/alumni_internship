@@ -4,6 +4,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { logAuditEvent } from "../utils/audit.js";
 import { sendInviteEmail } from "../utils/email.js";
 import { hashPassword } from "../utils/auth.js";
+import { buildProfileCompletion, buildProfilePrivacy } from "../utils/profileCompletion.js";
+import { buildTenantConfigSnapshot } from "../utils/tenantConfig.js";
 
 // Helper functions (extracted from route file)
 function hashInviteToken(token) {
@@ -31,6 +33,10 @@ function buildRegex(value) {
   return new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 }
 
+function getInstitutionType(tenant) {
+  return buildTenantConfigSnapshot(tenant)?.institutionType === "school" ? "school" : "college";
+}
+
 /**
  * Controller for Alumni Directory and Management
  */
@@ -51,8 +57,16 @@ export const getAlumni = asyncHandler(async (req, res) => {
     alphaIndex,
     isFaculty,
     registeredOnly,
+    sort: sortParam,
+    page: pageParam,
+    limit: limitParam,
   } = req.query;
   const searchText = String(q || "").trim();
+
+  // Pagination
+  const page = Math.max(1, Number(pageParam) || 1);
+  const limit = Math.min(Math.max(Number(limitParam) || 50, 1), 200);
+  const usePagination = Boolean(pageParam || limitParam);
 
   const profileFilter = { instituteId: req.tenant?._id };
   if (batch) profileFilter.batch = Number(batch);
@@ -71,16 +85,19 @@ export const getAlumni = asyncHandler(async (req, res) => {
   if (alphaIndex) {
     profileFilter.$or = [
       { name: { $regex: new RegExp(`^${alphaIndex}`, "i") } },
-      // Since name is on the User model, we'll need to handle this via the filter later
-      // or aggregate. For now, we'll handle it in the filter step below for simplicity.
     ];
   }
 
   if (skill) profileFilter.skills = { $in: [buildRegex(String(skill))] };
 
+  // Sort options
+  let sortSpec = { createdAt: -1 }; // default: newest
+  if (sortParam === "name") sortSpec = { "userId.name": 1 };
+  if (sortParam === "batch") sortSpec = { batch: -1, leavingYear: -1 };
+
   const alumni = await AlumniProfile.find(profileFilter)
     .populate("userId", "name email isActive passwordSetupCompleted")
-    .sort({ createdAt: -1 });
+    .sort(sortSpec);
 
   let result = alumni;
 
@@ -95,44 +112,69 @@ export const getAlumni = asyncHandler(async (req, res) => {
     );
   }
 
-  if (!searchText) {
-    return res.json(result);
+  // Text search filter
+  if (searchText) {
+    const queryRegex = buildRegex(searchText);
+    result = result.filter((entry) => {
+      const userName = String(entry?.userId?.name || "");
+      const userEmail = String(entry?.userId?.email || "");
+
+      const searchableProfileFields = [
+        entry?.company,
+        entry?.designation,
+        entry?.location,
+        entry?.currentInstitution,
+        entry?.currentEducation,
+        entry?.occupation,
+        entry?.department,
+        entry?.lastClassAttended,
+        entry?.section,
+        entry?.bio,
+      ].map((value) => String(value || ""));
+
+      const skillValues = Array.isArray(entry?.skills)
+        ? entry.skills.map((value) => String(value || ""))
+        : [];
+
+      if (queryRegex.test(userName) || queryRegex.test(userEmail)) {
+        return true;
+      }
+
+      if (searchableProfileFields.some((value) => queryRegex.test(value))) {
+        return true;
+      }
+
+      return skillValues.some((value) => queryRegex.test(value));
+    });
   }
 
-  const queryRegex = buildRegex(searchText);
-  const filtered = result.filter((entry) => {
-    const userName = String(entry?.userId?.name || "");
-    const userEmail = String(entry?.userId?.email || "");
+  // Sort by name (post-populate since name is on User model)
+  if (sortParam === "name") {
+    result.sort((a, b) => {
+      const nameA = String(a.userId?.name || "").toLowerCase();
+      const nameB = String(b.userId?.name || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }
 
-    const searchableProfileFields = [
-      entry?.company,
-      entry?.designation,
-      entry?.location,
-      entry?.currentInstitution,
-      entry?.currentEducation,
-      entry?.occupation,
-      entry?.department,
-      entry?.lastClassAttended,
-      entry?.section,
-      entry?.bio,
-    ].map((value) => String(value || ""));
+  // Return paginated or legacy format
+  if (usePagination) {
+    const total = result.length;
+    const startIndex = (page - 1) * limit;
+    const paginatedData = result.slice(startIndex, startIndex + limit);
+    return res.json({
+      data: paginatedData,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: startIndex + limit < total
+      }
+    });
+  }
 
-    const skillValues = Array.isArray(entry?.skills)
-      ? entry.skills.map((value) => String(value || ""))
-      : [];
-
-    if (queryRegex.test(userName) || queryRegex.test(userEmail)) {
-      return true;
-    }
-
-    if (searchableProfileFields.some((value) => queryRegex.test(value))) {
-      return true;
-    }
-
-    return skillValues.some((value) => queryRegex.test(value));
-  });
-
-  res.json(filtered);
+  res.json(result);
 });
 
 export const getMyProfile = asyncHandler(async (req, res) => {
@@ -146,7 +188,18 @@ export const getMyProfile = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "Alumni profile not found" });
   }
 
-  res.json(profile);
+  const institutionType = getInstitutionType(req.tenant);
+  const profileCompletion = buildProfileCompletion(profile, {
+    institutionType,
+    user: profile.userId
+  });
+  const privacy = buildProfilePrivacy(profile);
+
+  res.json({
+    ...profile.toObject(),
+    profileCompletion,
+    privacy
+  });
 });
 
 export const updateMyProfile = asyncHandler(async (req, res) => {
@@ -161,14 +214,42 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "Profile or User not found" });
   }
 
-  // Update logic (extracted from route)
+  // Update user name if provided
   user.name = req.body.name?.trim?.() || user.name;
-  Object.assign(profile, req.body); // Simplified for extraction
+
+  // Allowlisted profile fields
+  const allowedFields = [
+    "gender", "dateOfBirth", "mobileNumber", "profilePhotoUrl",
+    "rollNo", "isFaculty", "batch", "department", "leavingYear",
+    "lastClassAttended", "section", "currentEducation", "currentInstitution",
+    "occupation", "company", "designation", "location", "country", "state",
+    "city", "industry", "bio", "skills", "linkedinUrl", "websiteUrl",
+    "twitterHandle", "profileVisibility", "showEmail", "showPhone",
+    "allowMentorRequests"
+  ];
+
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      profile[field] = req.body[field];
+    }
+  }
 
   await user.save();
   await profile.save();
 
-  res.json({ ...profile.toObject(), name: user.name });
+  const institutionType = getInstitutionType(req.tenant);
+  const profileCompletion = buildProfileCompletion(profile, {
+    institutionType,
+    user
+  });
+  const privacy = buildProfilePrivacy(profile);
+
+  res.json({
+    ...profile.toObject(),
+    name: user.name,
+    profileCompletion,
+    privacy
+  });
 });
 
 export const inviteAlumni = asyncHandler(async (req, res) => {

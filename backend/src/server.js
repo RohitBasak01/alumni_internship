@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import app from "./app.js";
 import { getJwtSecret, AUTH_COOKIE_NAME } from "./utils/auth.js";
+import { parseAllowedOrigins } from "./utils/runtimeConfig.js";
 
 dotenv.config({ override: true });
 
@@ -18,21 +19,15 @@ const CENTRAL_MONGODB_URI =
   "mongodb://127.0.0.1:27017/alumni-network";
 const ENABLE_DEV_MOCK_MODE = process.env.ENABLE_DEV_MOCK_MODE === "true";
 
-function parseAllowedOrigins() {
-  const configured = String(
-    process.env.CORS_ALLOWED_ORIGINS || process.env.CLIENT_URL || process.env.FRONTEND_URL || ""
-  );
-  return configured
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
 function validateRuntimeEnv() {
   getJwtSecret();
 
   if (process.env.NODE_ENV === "production" && parseAllowedOrigins().length === 0) {
     throw new Error("CORS_ALLOWED_ORIGINS (or CLIENT_URL/FRONTEND_URL) is required in production.");
+  }
+
+  if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEV_MOCK_MODE === "true") {
+    throw new Error("ENABLE_DEV_MOCK_MODE must not be enabled in production.");
   }
 }
 
@@ -69,16 +64,12 @@ io.use((socket, next) => {
     const cookies = cookie.parse(socket.request.headers.cookie || "");
     const token = cookies[AUTH_COOKIE_NAME];
 
-    console.log(`[Socket Auth] Connection attempt from ${socket.id}, Token present: ${!!token}`);
-
     if (!token) {
-      console.log(`[Socket Auth] Token missing for socket ${socket.id}`);
       return next(new Error("Authentication error: Token missing"));
     }
 
     const decoded = jwt.verify(token, getJwtSecret());
     socket.user = decoded; // Attach user info to socket
-    console.log(`[Socket Auth] Authentication successful for socket ${socket.id}, user: ${decoded.id || decoded._id}`);
     next();
   } catch (err) {
     console.error(`[Socket Auth] Authentication error for socket ${socket.id}:`, err.message);
@@ -130,11 +121,9 @@ app.locals.emitMentorshipEvent = (payload) => {
 
 io.on("connection", (socket) => {
   const userId = socket.user?.userId || socket.user?.id || socket.user?._id;
-  console.log(`[Socket] New connection: ${socket.id}, userId: ${userId}`);
   
   if (userId) {
     onlineUsers.set(String(userId), socket.id);
-    console.log(`[Socket] User ${userId} is now online`);
     io.emit("rtc:user-status", { userId, status: "online" });
   }
 

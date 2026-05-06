@@ -28,6 +28,11 @@ const alumniProfileSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    profilePhotoUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     rollNo: {
       type: String,
       trim: true,
@@ -134,6 +139,10 @@ const alumniProfileSchema = new mongoose.Schema(
       default: "institute_only",
     },
     showEmail: {
+      type: Boolean,
+      default: false,
+    },
+    showPhone: {
       type: Boolean,
       default: false,
     },

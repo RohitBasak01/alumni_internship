@@ -31,9 +31,29 @@ export function errorHandler(error, _req, res, _next) {
     message = "Invalid authentication token";
   }
 
+  // Server-side structured error log
+  const isProduction = process.env.NODE_ENV === "production";
+  const logPayload = {
+    level: "error",
+    requestId: _req.requestId,
+    statusCode,
+    message,
+    method: _req.method,
+    path: _req.originalUrl,
+    timestamp: new Date().toISOString()
+  };
+
+  if (!isProduction && error.stack) {
+    logPayload.stack = error.stack;
+  }
+
+  console.error(JSON.stringify(logPayload));
+
   res.status(statusCode).json({
     message,
     requestId: _req.requestId,
-    ...(details ? { details } : {})
+    ...(details ? { details } : {}),
+    // Never expose stack traces in production
+    ...((!isProduction && error.stack) ? { stack: error.stack } : {})
   });
 }

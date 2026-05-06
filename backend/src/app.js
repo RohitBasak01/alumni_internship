@@ -9,6 +9,7 @@ import { apiRateLimiter, authRateLimiter } from "./middleware/rateLimit.middlewa
 import { attachRequestContext, structuredRequestLogger } from "./middleware/requestContext.middleware.js";
 import { resolveTenant } from "./middleware/tenantResolver.middleware.js";
 import { csrfProtection } from "./middleware/csrf.middleware.js";
+import { parseAllowedOrigins } from "./utils/runtimeConfig.js";
 import authRoutes from "./routes/auth.routes.js";
 import instituteRoutes from "./routes/institute.routes.js";
 import alumniRoutes from "./routes/alumni.routes.js";
@@ -27,16 +28,6 @@ import notificationRoutes from "./routes/notification.routes.js";
 import opsRoutes from "./routes/ops.routes.js";
 
 const app = express();
-
-function parseAllowedOrigins() {
-  const configured = String(
-    process.env.CORS_ALLOWED_ORIGINS || process.env.CLIENT_URL || process.env.FRONTEND_URL || ""
-  );
-  return configured
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
 
 const allowedOrigins = parseAllowedOrigins();
 
@@ -67,7 +58,9 @@ app.use(
 app.use(cookieParser());
 app.use(csrfProtection);
 app.use(express.json({ limit: "25mb" }));
-app.use(morgan("dev"));
+if (process.env.NODE_ENV !== "production") {
+  app.use(morgan("dev"));
+}
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 app.use(attachRequestContext);
 app.use(structuredRequestLogger);

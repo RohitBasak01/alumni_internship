@@ -229,7 +229,7 @@ router.get("/summary", protect, requireTenantAccess, async (req, res, next) => {
 
     const unreadByCategory = unreadByCategoryRaw.reduce(
       (accumulator, entry) => ({ ...accumulator, [entry._id]: entry.count }),
-      { connections: 0, jobs: 0, events: 0, system: 0 }
+      { connections: 0, jobs: 0, events: 0, feed: 0, groups: 0, mentorship: 0, system: 0 }
     );
 
     res.json({

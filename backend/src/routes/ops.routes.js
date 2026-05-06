@@ -3,11 +3,13 @@ import mongoose from "mongoose";
 
 import { protect, authorize } from "../middleware/auth.middleware.js";
 import { serverRuntime } from "../utils/runtime.js";
+import { getStorageMode, hasSmtpRuntimeConfig } from "../utils/runtimeConfig.js";
 
 const router = express.Router();
 
-function buildStatusPayload() {
+function buildStatusPayload(req) {
   const uptimeSeconds = Math.floor(process.uptime());
+  const memUsage = process.memoryUsage();
 
   return {
     ok: mongoose.connection.readyState === 1,
@@ -21,10 +23,17 @@ function buildStatusPayload() {
       host: mongoose.connection.host || null,
       name: mongoose.connection.name || null
     },
+    storage: {
+      mode: getStorageMode()
+    },
+    email: {
+      smtpConfigured: hasSmtpRuntimeConfig()
+    },
+    mockMode: Boolean(req?.app?.locals?.mockMode),
     memory: {
-      rss: process.memoryUsage().rss,
-      heapUsed: process.memoryUsage().heapUsed,
-      heapTotal: process.memoryUsage().heapTotal
+      rss: memUsage.rss,
+      heapUsed: memUsage.heapUsed,
+      heapTotal: memUsage.heapTotal
     },
     nodeVersion: process.version
   };
@@ -32,7 +41,7 @@ function buildStatusPayload() {
 
 router.get("/status", protect, authorize("super_admin"), (req, res) => {
   res.json({
-    ...buildStatusPayload(),
+    ...buildStatusPayload(req),
     requestId: req.requestId
   });
 });
