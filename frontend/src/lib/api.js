@@ -551,6 +551,26 @@ export async function bulkResendAlumniInvites(payload) {
   return data;
 }
 
+export async function exportAlumniCsv(params = {}) {
+  const { data } = await api.get("/alumni/export/csv", {
+    params,
+    responseType: "blob"
+  });
+  return data;
+}
+
+export async function importAlumniCsv(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  const { data } = await api.post("/alumni/import/csv", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return data;
+}
+
 export async function fetchAlumniApprovalTurnaroundKpi() {
   const { data } = await api.get("/alumni/approval-turnaround-kpi");
   return data;
@@ -689,6 +709,22 @@ export async function addAlumniPostComment(id, payload) {
 
 export async function reportAlumniPost(id, payload) {
   const { data } = await api.post(`/alumni-posts/${id}/report`, payload);
+  return data;
+}
+
+// Admin moderation functions
+export async function fetchReportedPosts(params = {}) {
+  const { data } = await api.get("/alumni-posts/admin/reported", { params });
+  return data;
+}
+
+export async function fetchModerationStats() {
+  const { data } = await api.get("/alumni-posts/admin/moderation-stats");
+  return data;
+}
+
+export async function moderatePost(id, payload) {
+  const { data } = await api.post(`/alumni-posts/admin/${id}/moderate`, payload);
   return data;
 }
 

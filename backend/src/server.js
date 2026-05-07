@@ -7,8 +7,20 @@ import cookie from "cookie";
 import app from "./app.js";
 import { getJwtSecret, AUTH_COOKIE_NAME } from "./utils/auth.js";
 import { parseAllowedOrigins } from "./utils/runtimeConfig.js";
+import logger, { logError, logSocket } from "./utils/logger.js";
+import { initSentry, captureError } from "./utils/sentry.js";
+import { startMetricsCollection } from "./utils/metrics.js";
 
 dotenv.config({ override: true });
+
+// Initialize Sentry error tracking
+initSentry();
+
+// Start metrics collection for performance monitoring
+if (process.env.PROMETHEUS_ENABLED === "true") {
+  startMetricsCollection();
+  logger.info("Performance metrics collection enabled (Prometheus)");
+}
 
 const onlineUsers = new Map(); // userId -> socketId
 
@@ -72,7 +84,7 @@ io.use((socket, next) => {
     socket.user = decoded; // Attach user info to socket
     next();
   } catch (err) {
-    console.error(`[Socket Auth] Authentication error for socket ${socket.id}:`, err.message);
+    logError(err, { context: "Socket Authentication", socketId: socket.id });
     next(new Error("Authentication error: Invalid token"));
   }
 });
@@ -205,26 +217,49 @@ async function startServer() {
     });
     app.locals.mockMode = false;
     app.locals.centralDatabaseUri = CENTRAL_MONGODB_URI;
-    console.log("Central MongoDB connected");
+    logger.info("Central MongoDB connected", { uri: CENTRAL_MONGODB_URI.replace(/\/\/[^@]+@/, '//***@') });
 
     httpServer.on("error", (error) => {
-      console.error("HTTP Server error:", error);
+      logError(error, { context: "HTTP Server error" });
+      captureError(error, { tags: { errorType: "http_server_error" } });
     });
 
     process.on("unhandledRejection", (reason, promise) => {
-      console.error("Unhandled Rejection:", reason);
+      const error = reason instanceof Error ? reason : new Error(`Unhandled Rejection: ${reason}`);
+      logError(error, { context: "unhandledRejection", promise });
+      captureError(error, {
+        tags: { errorType: "unhandled_rejection" },
+        extra: { promise: promise?.toString() }
+      });
+    });
+
+    process.on("uncaughtException", (error) => {
+      logError(error, { context: "uncaughtException" });
+      captureError(error, {
+        tags: { errorType: "uncaught_exception" },
+        level: "fatal"
+      });
+      // In production, we might want to restart the process after logging
+      if (process.env.NODE_ENV === "production") {
+        logger.error("Uncaught exception in production, exiting process", { error: error.message });
+        process.exit(1);
+      }
     });
 
     httpServer.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      logger.info(`Server running on port ${PORT}`, {
+        port: PORT,
+        nodeEnv: process.env.NODE_ENV,
+        logLevel: process.env.LOG_LEVEL || 'info'
+      });
     });
   } catch (error) {
     const isDevelopment = process.env.NODE_ENV !== "production";
 
     if (!isDevelopment || !ENABLE_DEV_MOCK_MODE) {
-      console.error("Failed to start server", error);
+      logError(error, { context: "Failed to start server" });
       if (isDevelopment && !ENABLE_DEV_MOCK_MODE) {
-        console.error("Set ENABLE_DEV_MOCK_MODE=true only if you explicitly want mock API data.");
+        logger.warn("Set ENABLE_DEV_MOCK_MODE=true only if you explicitly want mock API data.");
       }
       process.exit(1);
     }
@@ -232,11 +267,17 @@ async function startServer() {
     app.locals.mockMode = true;
     app.locals.mockReason = error.message;
 
-    console.warn("MongoDB unavailable. Starting API in development mock mode.");
-    console.warn(error.message);
+    logger.warn("MongoDB unavailable. Starting API in development mock mode.", {
+      error: error.message,
+      mode: "mock"
+    });
 
     httpServer.listen(PORT, () => {
-      console.log(`Server running on port ${PORT} (mock mode)`);
+      logger.info(`Server running on port ${PORT} (mock mode)`, {
+        port: PORT,
+        mode: "mock",
+        reason: error.message
+      });
     });
   }
 }

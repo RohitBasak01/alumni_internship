@@ -1,0 +1,75 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+# Check if there are any staged files
+if [ -z "$STAGED_FILES" ]; then
+  echo "No staged files to check."
+  exit 0
+fi
+
+# Function to check if file is in backend
+is_backend_file() {
+  echo "$1" | grep -q "^backend/"
+}
+
+# Function to check if file is in frontend
+is_frontend_file() {
+  echo "$1" | grep -q "^frontend/"
+}
+
+# Run checks for backend files
+BACKEND_FILES=$(echo "$STAGED_FILES" | grep "^backend/" || true)
+if [ -n "$BACKEND_FILES" ]; then
+  echo "📦 Checking backend files..."
+  
+  # Run ESLint on backend files
+  echo "  Running ESLint..."
+  cd backend
+  npm run lint -- --quiet
+  if [ $? -ne 0 ]; then
+    echo "❌ ESLint failed for backend. Please fix the issues."
+    exit 1
+  fi
+  
+  # Run Prettier check on backend files
+  echo "  Checking formatting..."
+  npm run format:check -- --loglevel=error
+  if [ $? -ne 0 ]; then
+    echo "❌ Code formatting issues found in backend. Run 'npm run format' to fix."
+    exit 1
+  fi
+  
+  cd ..
+fi
+
+# Run checks for frontend files
+FRONTEND_FILES=$(echo "$STAGED_FILES" | grep "^frontend/" || true)
+if [ -n "$FRONTEND_FILES" ]; then
+  echo "🎨 Checking frontend files..."
+  
+  # Run ESLint on frontend files
+  echo "  Running ESLint..."
+  cd frontend
+  npm run lint -- --quiet
+  if [ $? -ne 0 ]; then
+    echo "❌ ESLint failed for frontend. Please fix the issues."
+    exit 1
+  fi
+  
+  # Run Prettier check on frontend files
+  echo "  Checking formatting..."
+  npm run format:check -- --loglevel=error
+  if [ $? -ne 0 ]; then
+    echo "❌ Code formatting issues found in frontend. Run 'npm run format' to fix."
+    exit 1
+  fi
+  
+  cd ..
+fi
+
+echo "✅ All pre-commit checks passed!"

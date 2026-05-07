@@ -1,3 +1,6 @@
+import { logError } from "../utils/logger.js";
+import { captureError } from "../utils/sentry.js";
+
 export function notFoundHandler(req, res) {
   res.status(404).json({
     message: `Route not found: ${req.method} ${req.originalUrl}`,
@@ -31,23 +34,56 @@ export function errorHandler(error, _req, res, _next) {
     message = "Invalid authentication token";
   }
 
-  // Server-side structured error log
-  const isProduction = process.env.NODE_ENV === "production";
-  const logPayload = {
-    level: "error",
+  // Log the error using structured logger
+  const context = {
     requestId: _req.requestId,
     statusCode,
-    message,
     method: _req.method,
     path: _req.originalUrl,
-    timestamp: new Date().toISOString()
+    userId: _req.user ? _req.user._id : 'anonymous',
+    tenantId: _req.tenant ? _req.tenant._id : 'unknown',
+    ip: _req.ip,
+    userAgent: _req.get('user-agent'),
+    details
   };
 
-  if (!isProduction && error.stack) {
-    logPayload.stack = error.stack;
+  logError(error, context);
+
+  // Capture server errors (5xx) in Sentry
+  if (statusCode >= 500) {
+    const sentryContext = {
+      user: _req.user ? {
+        id: _req.user._id,
+        email: _req.user.email,
+        username: _req.user.username,
+        tenantId: _req.tenant?._id
+      } : undefined,
+      request: {
+        method: _req.method,
+        url: _req.originalUrl,
+        headers: _req.headers,
+        query: _req.query,
+        body: _req.body,
+        ip: _req.ip,
+        userAgent: _req.get('user-agent')
+      },
+      tags: {
+        statusCode: statusCode.toString(),
+        errorType: error.name || 'Unknown',
+        tenantId: _req.tenant?._id || 'unknown',
+        route: _req.originalUrl
+      },
+      extra: {
+        requestId: _req.requestId,
+        details,
+        stack: error.stack
+      }
+    };
+
+    captureError(error, sentryContext);
   }
 
-  console.error(JSON.stringify(logPayload));
+  const isProduction = process.env.NODE_ENV === "production";
 
   res.status(statusCode).json({
     message,

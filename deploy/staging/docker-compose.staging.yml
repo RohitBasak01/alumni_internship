@@ -1,0 +1,148 @@
+# Staging environment Docker Compose configuration
+version: '3.8'
+
+services:
+  # MongoDB for staging
+  mongodb:
+    image: mongo:7
+    container_name: alumni-mongodb-staging
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-staging_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-staging_password}
+      MONGO_INITDB_DATABASE: alumni-staging
+    volumes:
+      - mongodb_staging_data:/data/db
+      - ../../backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    command: ["--auth", "--bind_ip_all"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - alumni-staging-network
+
+  # Backend API for staging
+  backend:
+    image: ${DOCKER_USERNAME:-alumni}/alumni-backend:${TAG:-latest}
+    container_name: alumni-backend-staging
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: staging
+      PORT: 5000
+      CENTRAL_MONGODB_URI: mongodb://${MONGO_ROOT_USER:-staging_admin}:${MONGO_ROOT_PASSWORD:-staging_password}@mongodb:27017/alumni-staging?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-staging-jwt-secret-change-in-production}
+      CLIENT_URL: ${CLIENT_URL:-https://staging.alumni-network.example.com}
+      FRONTEND_URL: ${FRONTEND_URL:-https://staging.alumni-network.example.com}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://staging.alumni-network.example.com}
+      ENABLE_DEV_MOCK_MODE: "false"
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      SENTRY_DSN: ${SENTRY_DSN}
+      SENTRY_ENVIRONMENT: staging
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: 5000, path: '/health', timeout: 5000 }; const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => { process.exit(1); }); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - alumni-staging-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-staging.rule=Host(`api.staging.alumni-network.example.com`)"
+      - "traefik.http.routers.backend-staging.entrypoints=websecure"
+      - "traefik.http.routers.backend-staging.tls.certresolver=letsencrypt"
+
+  # Frontend for staging
+  frontend:
+    image: ${DOCKER_USERNAME:-alumni}/alumni-frontend:${TAG:-latest}
+    container_name: alumni-frontend-staging
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-https://api.staging.alumni-network.example.com/api}
+      VITE_WS_URL: ${VITE_WS_URL:-wss://api.staging.alumni-network.example.com}
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - alumni-staging-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend-staging.rule=Host(`staging.alumni-network.example.com`)"
+      - "traefik.http.routers.frontend-staging.entrypoints=websecure"
+      - "traefik.http.routers.frontend-staging.tls.certresolver=letsencrypt"
+
+  # Traefik reverse proxy with SSL (optional)
+  traefik:
+    image: traefik:v3.0
+    container_name: alumni-traefik-staging
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - alumni-staging-network
+
+  # Monitoring stack for staging
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: alumni-prometheus-staging
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_staging_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+    networks:
+      - alumni-staging-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: alumni-grafana-staging
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-staging-admin}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_staging_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - alumni-staging-network
+
+volumes:
+  mongodb_staging_data:
+  prometheus_staging_data:
+  grafana_staging_data:
+
+networks:
+  alumni-staging-network:
+    driver: bridge

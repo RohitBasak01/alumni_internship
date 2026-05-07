@@ -66,45 +66,80 @@ export const getAlumni = asyncHandler(async (req, res) => {
   // Pagination
   const page = Math.max(1, Number(pageParam) || 1);
   const limit = Math.min(Math.max(Number(limitParam) || 50, 1), 200);
+  const skip = (page - 1) * limit;
   const usePagination = Boolean(pageParam || limitParam);
 
+  // Build base filter - apply all filters that can be done at database level
   const profileFilter = { instituteId: req.tenant?._id };
+  
+  // Exact match filters
   if (batch) profileFilter.batch = Number(batch);
   if (leavingYear) profileFilter.leavingYear = Number(leavingYear);
+  if (isFaculty === "true") profileFilter.isFaculty = true;
 
+  // Regex filters for text fields
   if (department) profileFilter.department = buildRegex(String(department));
   if (company) profileFilter.company = buildRegex(String(company));
   if (industry) profileFilter.industry = buildRegex(String(industry));
-  if (lastClassAttended)
-    profileFilter.lastClassAttended = buildRegex(String(lastClassAttended));
+  if (lastClassAttended) profileFilter.lastClassAttended = buildRegex(String(lastClassAttended));
   if (section) profileFilter.section = buildRegex(String(section));
   if (location) profileFilter.location = buildRegex(String(location));
   if (rollNo) profileFilter.rollNo = buildRegex(String(rollNo));
-  if (isFaculty === "true") profileFilter.isFaculty = true;
 
+  // Alpha index filter (name starts with letter)
   if (alphaIndex) {
-    profileFilter.$or = [
-      { name: { $regex: new RegExp(`^${alphaIndex}`, "i") } },
-    ];
+    // We'll handle this in JavaScript after populating user data
   }
 
-  if (skill) profileFilter.skills = { $in: [buildRegex(String(skill))] };
+  // Skill filter - use regex for partial match
+  if (skill) {
+    profileFilter.skills = { $regex: buildRegex(String(skill)), $options: 'i' };
+  }
+
+  // Text search across profile fields at database level
+  if (searchText) {
+    const searchRegex = buildRegex(searchText);
+    profileFilter.$or = [
+      { company: searchRegex },
+      { designation: searchRegex },
+      { location: searchRegex },
+      { currentInstitution: searchRegex },
+      { currentEducation: searchRegex },
+      { occupation: searchRegex },
+      { department: searchRegex },
+      { lastClassAttended: searchRegex },
+      { section: searchRegex },
+      { bio: searchRegex }
+    ];
+    // Skills are already handled by the skills filter above
+  }
 
   // Sort options
   let sortSpec = { createdAt: -1 }; // default: newest
   if (sortParam === "name") sortSpec = { "userId.name": 1 };
   if (sortParam === "batch") sortSpec = { batch: -1, leavingYear: -1 };
 
-  const alumni = await AlumniProfile.find(profileFilter)
+  // Build query with database-level filtering
+  const query = AlumniProfile.find(profileFilter)
     .populate("userId", "name email isActive passwordSetupCompleted")
     .sort(sortSpec);
 
+  // For paginated requests, use skip/limit at database level
+  if (usePagination) {
+    query.skip(skip).limit(limit);
+  }
+
+  const alumni = await query;
+
+  // Apply filters that require JavaScript processing
   let result = alumni;
 
+  // Registered only filter
   if (registeredOnly === "true") {
     result = result.filter((entry) => entry.userId?.passwordSetupCompleted);
   }
 
+  // Alpha index filter
   if (alphaIndex) {
     const letter = String(alphaIndex).toUpperCase();
     result = result.filter((entry) =>
@@ -112,39 +147,16 @@ export const getAlumni = asyncHandler(async (req, res) => {
     );
   }
 
-  // Text search filter
+  // Text search on user fields (name, email) - only if not already filtered at DB level
   if (searchText) {
     const queryRegex = buildRegex(searchText);
     result = result.filter((entry) => {
       const userName = String(entry?.userId?.name || "");
       const userEmail = String(entry?.userId?.email || "");
-
-      const searchableProfileFields = [
-        entry?.company,
-        entry?.designation,
-        entry?.location,
-        entry?.currentInstitution,
-        entry?.currentEducation,
-        entry?.occupation,
-        entry?.department,
-        entry?.lastClassAttended,
-        entry?.section,
-        entry?.bio,
-      ].map((value) => String(value || ""));
-
-      const skillValues = Array.isArray(entry?.skills)
-        ? entry.skills.map((value) => String(value || ""))
-        : [];
-
-      if (queryRegex.test(userName) || queryRegex.test(userEmail)) {
-        return true;
-      }
-
-      if (searchableProfileFields.some((value) => queryRegex.test(value))) {
-        return true;
-      }
-
-      return skillValues.some((value) => queryRegex.test(value));
+      
+      // Check if already matched by database $or filter
+      // If not, check user fields
+      return queryRegex.test(userName) || queryRegex.test(userEmail);
     });
   }
 
@@ -157,23 +169,49 @@ export const getAlumni = asyncHandler(async (req, res) => {
     });
   }
 
-  // Return paginated or legacy format
+  // For paginated requests, we need total count for pagination metadata
   if (usePagination) {
-    const total = result.length;
-    const startIndex = (page - 1) * limit;
-    const paginatedData = result.slice(startIndex, startIndex + limit);
+    // Count total matching documents (with all filters applied)
+    const countQuery = AlumniProfile.find(profileFilter);
+    const totalAlumni = await countQuery;
+    
+    // Apply JavaScript filters to count
+    let filteredCount = totalAlumni;
+    if (registeredOnly === "true") {
+      filteredCount = filteredCount.filter((entry) => entry.userId?.passwordSetupCompleted);
+    }
+    if (alphaIndex) {
+      const letter = String(alphaIndex).toUpperCase();
+      filteredCount = filteredCount.filter((entry) =>
+        String(entry.userId?.name || "").toUpperCase().startsWith(letter),
+      );
+    }
+    if (searchText) {
+      const queryRegex = buildRegex(searchText);
+      filteredCount = filteredCount.filter((entry) => {
+        const userName = String(entry?.userId?.name || "");
+        const userEmail = String(entry?.userId?.email || "");
+        return queryRegex.test(userName) || queryRegex.test(userEmail);
+      });
+    }
+    
+    const total = filteredCount.length;
+    const totalPages = Math.ceil(total / limit);
+    const hasMore = page < totalPages;
+
     return res.json({
-      data: paginatedData,
+      data: result,
       pagination: {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
-        hasMore: startIndex + limit < total
+        totalPages,
+        hasMore: skip + limit < total
       }
     });
   }
 
+  // Legacy behavior: return all results
   res.json(result);
 });
 
@@ -299,3 +337,311 @@ export const inviteAlumni = asyncHandler(async (req, res) => {
 
   res.status(201).json({ profile });
 });
+
+/**
+ * Export alumni data as CSV
+ */
+export const exportAlumniCsv = asyncHandler(async (req, res) => {
+  const { AlumniProfile } = getTenantModels(req);
+  const { format = "csv" } = req.query;
+
+  // Build query based on filters
+  const query = { instituteId: req.tenant._id };
+  
+  // Apply optional filters from query params
+  if (req.query.batch) query.batch = req.query.batch;
+  if (req.query.department) query.department = req.query.department;
+  if (req.query.status) query.registrationReviewStatus = req.query.status;
+  if (req.query.q) {
+    const searchRegex = new RegExp(req.query.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    query.$or = [
+      { name: searchRegex },
+      { email: searchRegex },
+      { company: searchRegex },
+      { designation: searchRegex },
+      { location: searchRegex }
+    ];
+  }
+
+  const alumni = await AlumniProfile.find(query)
+    .populate("userId", "email name")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const isSchool = getInstitutionType(req.tenant) === "school";
+  const yearFieldLabel = isSchool ? "Leaving Year" : "Batch Year";
+  const educationFieldLabel = isSchool ? "Last Class Attended" : "Course";
+
+  // Build CSV rows
+  const rows = [
+    [
+      "Name",
+      "Email",
+      "Status",
+      yearFieldLabel,
+      "Department",
+      educationFieldLabel,
+      "Occupation",
+      "Company",
+      "Designation",
+      "Location",
+      "Skills",
+      "Created At",
+      "Last Updated"
+    ],
+    ...alumni.map((profile) => [
+      profile.name || "",
+      profile.userId?.email || "",
+      profile.registrationReviewStatus || "pending",
+      profile.batch || profile.leavingYear || "",
+      profile.department || "",
+      profile.lastClassAttended || profile.currentEducation || "",
+      profile.occupation || "",
+      profile.company || "",
+      profile.designation || "",
+      profile.location || "",
+      Array.isArray(profile.skills) ? profile.skills.join(", ") : "",
+      profile.createdAt ? new Date(profile.createdAt).toISOString().split("T")[0] : "",
+      profile.updatedAt ? new Date(profile.updatedAt).toISOString().split("T")[0] : ""
+    ])
+  ];
+
+  // Convert to CSV string
+  const csvContent = rows.map(row =>
+    row.map(cell => {
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      const cellStr = String(cell || "");
+      if (cellStr.includes(",") || cellStr.includes('"') || cellStr.includes("\n")) {
+        return `"${cellStr.replace(/"/g, '""')}"`;
+      }
+      return cellStr;
+    }).join(",")
+  ).join("\n");
+
+  // Set response headers for file download
+  const timestamp = new Date().toISOString().slice(0, 10);
+  const filename = `alumni-export-${timestamp}.csv`;
+  
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(csvContent);
+});
+
+/**
+ * Bulk import alumni from CSV
+ */
+export const importAlumniCsv = asyncHandler(async (req, res) => {
+  const { AlumniProfile, User } = getTenantModels(req);
+  
+  if (!req.file) {
+    const error = new Error("No CSV file uploaded");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const csvContent = req.file.buffer.toString("utf-8");
+  const lines = csvContent.split("\n").filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    const error = new Error("CSV file must have at least a header row and one data row");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+  const requiredHeaders = ["name", "email"];
+  const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+  
+  if (missingHeaders.length > 0) {
+    const error = new Error(`Missing required headers: ${missingHeaders.join(", ")}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const results = {
+    total: lines.length - 1,
+    processed: 0,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    errors: []
+  };
+
+  const isSchool = getInstitutionType(req.tenant) === "school";
+
+  // Process each row
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const values = parseCsvLine(line);
+    
+    if (values.length !== headers.length) {
+      results.skipped++;
+      results.errors.push({
+        row: i + 1,
+        error: `Column count mismatch: expected ${headers.length}, got ${values.length}`
+      });
+      continue;
+    }
+
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index]?.trim() || "";
+    });
+
+    try {
+      const email = row.email.toLowerCase();
+      
+      // Check if user already exists
+      const existingUser = await User.findOne({
+        instituteId: req.tenant._id,
+        email
+      });
+
+      if (existingUser) {
+        // Update existing profile
+        const existingProfile = await AlumniProfile.findOne({
+          instituteId: req.tenant._id,
+          userId: existingUser._id
+        });
+
+        if (existingProfile) {
+          // Update profile fields
+          const updateFields = {};
+          if (row.name && row.name !== existingProfile.name) updateFields.name = row.name;
+          if (row.batch) updateFields.batch = row.batch;
+          if (row.department) updateFields.department = row.department;
+          if (row.occupation) updateFields.occupation = row.occupation;
+          if (row.company) updateFields.company = row.company;
+          if (row.designation) updateFields.designation = row.designation;
+          if (row.location) updateFields.location = row.location;
+          
+          if (Object.keys(updateFields).length > 0) {
+            await AlumniProfile.updateOne(
+              { _id: existingProfile._id },
+              { $set: updateFields }
+            );
+            results.updated++;
+          } else {
+            results.skipped++;
+          }
+        } else {
+          // Create new profile for existing user
+          await AlumniProfile.create({
+            instituteId: req.tenant._id,
+            userId: existingUser._id,
+            name: row.name || existingUser.name,
+            batch: row.batch || "",
+            department: row.department || "",
+            occupation: row.occupation || "",
+            company: row.company || "",
+            designation: row.designation || "",
+            location: row.location || "",
+            registrationReviewStatus: "pending"
+          });
+          results.created++;
+        }
+      } else {
+        // Create new user and profile
+        const user = await User.create({
+          instituteId: req.tenant._id,
+          name: row.name,
+          email,
+          passwordHash: await hashPassword(
+            `Pending@${crypto.randomBytes(4).toString("hex")}`
+          ),
+          role: "alumni",
+          isActive: false,
+          passwordSetupCompleted: false
+        });
+
+        const { inviteUrl, expiresAt } = issueInviteToken(user);
+        await user.save();
+
+        await AlumniProfile.create({
+          instituteId: req.tenant._id,
+          userId: user._id,
+          name: row.name,
+          batch: row.batch || "",
+          department: row.department || "",
+          occupation: row.occupation || "",
+          company: row.company || "",
+          designation: row.designation || "",
+          location: row.location || "",
+          registrationReviewStatus: "pending"
+        });
+
+        // Send invite email
+        await sendInviteEmail({
+          to: user.email,
+          recipientName: user.name,
+          instituteName: req.tenant.name,
+          inviteUrl,
+          expiresAt,
+          portalRoleLabel: isSchool ? "former student" : "alumni",
+          institutionType: isSchool ? "school" : "college"
+        });
+
+        results.created++;
+      }
+
+      results.processed++;
+    } catch (error) {
+      results.skipped++;
+      results.errors.push({
+        row: i + 1,
+        error: error.message
+      });
+    }
+  }
+
+  // Log audit event
+  await logAuditEvent(req, {
+    action: "alumni.bulk_import",
+    targetType: "AlumniProfile",
+    instituteId: req.tenant._id,
+    metadata: {
+      totalRows: results.total,
+      created: results.created,
+      updated: results.updated,
+      skipped: results.skipped,
+      errorCount: results.errors.length
+    }
+  });
+
+  res.json({
+    message: `Bulk import completed: ${results.created} created, ${results.updated} updated, ${results.skipped} skipped`,
+    ...results
+  });
+});
+
+// Helper function to parse CSV line with quoted values
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Escaped quote
+        current += '"';
+        i++;
+      } else {
+        // Start or end of quoted value
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // End of value
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  
+  // Add last value
+  values.push(current);
+  return values;
+}

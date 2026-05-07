@@ -436,5 +436,209 @@ router.delete(
   }
 );
 
+// Admin moderation endpoints
+router.get(
+  "/admin/reported",
+  protect,
+  authorize("institute_admin"),
+  requireTenantAccess,
+  async (req, res, next) => {
+    try {
+      const { AlumniPost } = getTenantModels(req);
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+
+      // Get posts with reports, sorted by number of reports (descending)
+      const posts = await AlumniPost.find({
+        instituteId: req.tenant._id,
+        "reports.0": { $exists: true }, // Has at least one report
+        status: "active" // Only show active posts (not hidden/deleted)
+      })
+        .populate("authorUserId", "name email")
+        .populate("reports.reporterUserId", "name email")
+        .sort({ "reports.length": -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      const total = await AlumniPost.countDocuments({
+        instituteId: req.tenant._id,
+        "reports.0": { $exists: true },
+        status: "active"
+      });
+
+      res.json({
+        posts: posts.map(post => ({
+          _id: post._id,
+          title: post.title,
+          content: post.content,
+          author: post.authorUserId,
+          reports: post.reports.map(report => ({
+            reporter: report.reporterUserId,
+            reason: report.reason,
+            createdAt: report.createdAt
+          })),
+          reportCount: post.reports.length,
+          createdAt: post.createdAt,
+          updatedAt: post.updatedAt
+        })),
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/admin/moderation-stats",
+  protect,
+  authorize("institute_admin"),
+  requireTenantAccess,
+  async (req, res, next) => {
+    try {
+      const { AlumniPost } = getTenantModels(req);
+
+      const [reportedPosts, totalPosts, recentReports] = await Promise.all([
+        // Count posts with reports
+        AlumniPost.countDocuments({
+          instituteId: req.tenant._id,
+          "reports.0": { $exists: true },
+          status: "active"
+        }),
+        // Count total active posts
+        AlumniPost.countDocuments({
+          instituteId: req.tenant._id,
+          status: "active"
+        }),
+        // Count reports in last 7 days
+        AlumniPost.aggregate([
+          {
+            $match: {
+              instituteId: req.tenant._id,
+              "reports.0": { $exists: true },
+              status: "active"
+            }
+          },
+          { $unwind: "$reports" },
+          {
+            $match: {
+              "reports.createdAt": {
+                $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+              }
+            }
+          },
+          { $count: "count" }
+        ])
+      ]);
+
+      res.json({
+        reportedPosts,
+        totalPosts,
+        recentReports: recentReports[0]?.count || 0,
+        reportRate: totalPosts > 0 ? (reportedPosts / totalPosts * 100).toFixed(2) : 0
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/admin/:id/moderate",
+  protect,
+  authorize("institute_admin"),
+  requireTenantAccess,
+  validateParams(validatePostId),
+  async (req, res, next) => {
+    try {
+      const { AlumniPost } = getTenantModels(req);
+      const { action, reason } = req.body;
+
+      if (!["hide", "warn", "dismiss", "delete"].includes(action)) {
+        const error = new Error("Invalid moderation action");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const post = await AlumniPost.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!post) {
+        const error = new Error("Post not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      let message = "";
+      let notificationData = null;
+
+      switch (action) {
+        case "hide":
+          post.status = "hidden";
+          message = "Post hidden successfully";
+          notificationData = {
+            type: "post_hidden",
+            title: "Your post has been hidden",
+            message: `Your post "${post.title || "Untitled"}" has been hidden by an administrator.${reason ? ` Reason: ${reason}` : ""}`,
+            userId: post.authorUserId,
+            metadata: { postId: post._id, reason }
+          };
+          break;
+
+        case "warn":
+          // Post remains active, but we track the warning
+          message = "Warning issued to post author";
+          notificationData = {
+            type: "post_warning",
+            title: "Content warning",
+            message: `Your post "${post.title || "Untitled"}" has received a warning from an administrator.${reason ? ` Reason: ${reason}` : ""}`,
+            userId: post.authorUserId,
+            metadata: { postId: post._id, reason }
+          };
+          break;
+
+        case "dismiss":
+          // Clear all reports (dismiss them)
+          post.reports = [];
+          message = "Reports dismissed successfully";
+          break;
+
+        case "delete":
+          await post.softDelete();
+          message = "Post deleted successfully";
+          notificationData = {
+            type: "post_deleted",
+            title: "Your post has been removed",
+            message: `Your post "${post.title || "Untitled"}" has been removed by an administrator.${reason ? ` Reason: ${reason}` : ""}`,
+            userId: post.authorUserId,
+            metadata: { postId: post._id, reason }
+          };
+          break;
+      }
+
+      if (action !== "delete") {
+        await post.save();
+      }
+
+      // Create notification for the user if applicable
+      if (notificationData) {
+        await createNotification(req.tenant._id, notificationData);
+      }
+
+      res.json({ message });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;
 

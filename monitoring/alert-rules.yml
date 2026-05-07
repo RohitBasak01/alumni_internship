@@ -1,0 +1,117 @@
+groups:
+  - name: alumni-backend-alerts
+    rules:
+      # Service availability alerts
+      - alert: BackendDown
+        expr: up{job="alumni-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "Backend service is down"
+          description: "The alumni backend service has been down for more than 1 minute."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#backend-down"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status_code=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate (5xx) is above 5% for the last 5 minutes."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#high-error-rate"
+
+      # Performance alerts
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is above 2 seconds for the last 5 minutes."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#high-response-time"
+
+      - alert: HighEventLoopLag
+        expr: nodejs_eventloop_lag_seconds > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High event loop lag detected"
+          description: "Event loop lag is above 500ms for the last 2 minutes."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#event-loop-lag"
+
+      # Resource alerts
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / (1024 * 1024 * 1024) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 1.5GB for the last 5 minutes."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#high-memory"
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% for the last 5 minutes."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#high-cpu"
+
+      # Database alerts
+      - alert: DatabaseDown
+        expr: mongodb_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mongodb
+        annotations:
+          summary: "MongoDB is down"
+          description: "MongoDB database connection has been down for more than 1 minute."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#database-down"
+
+      - alert: HighDatabaseQueryTime
+        expr: rate(database_query_duration_seconds_sum[5m]) / rate(database_query_duration_seconds_count[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: mongodb
+        annotations:
+          summary: "High database query time"
+          description: "Average database query time is above 1 second for the last 5 minutes."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#slow-queries"
+
+      # Business metrics alerts
+      - alert: NoNewPosts
+        expr: increase(alumni_posts_created_total[1h]) == 0
+        for: 2h
+        labels:
+          severity: info
+          service: business
+        annotations:
+          summary: "No new posts in the last 2 hours"
+          description: "No new alumni posts have been created in the last 2 hours (unusual activity pattern)."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#no-activity"
+
+      - alert: ActiveUsersDrop
+        expr: alumni_active_users < 1
+        for: 10m
+        labels:
+          severity: warning
+          service: business
+        annotations:
+          summary: "No active users detected"
+          description: "No active users have been detected for the last 10 minutes."
+          runbook_url: "https://github.com/your-org/alumni-network/docs/RUNBOOK.md#no-active-users"

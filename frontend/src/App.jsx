@@ -43,6 +43,7 @@ const TenantDashboardPage = lazy(
 );
 const TenantHomePage = lazy(() => import("./pages/TenantHomePage.jsx"));
 const FeedPage = lazy(() => import("./pages/FeedPage.jsx"));
+const ContentModerationPage = lazy(() => import("./pages/ContentModerationPage.jsx"));
 
 /**
  * RootPage — serves the platform landing page for the main domain
@@ -102,6 +103,14 @@ function App() {
             <Route
               path="approvals"
               element={<Navigate replace to="/portal/alumni" />}
+            />
+            <Route
+              path="moderation"
+              element={
+                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
+                  <ContentModerationPage />
+                </ProtectedRoute>
+              }
             />
             <Route path="messages" element={<MentorshipPage />} />
             <Route

@@ -2,27 +2,22 @@ import express from "express";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, requireTenantAccess } from "../middleware/auth.middleware.js";
+import { CachedDataService } from "../services/cachedDataService.js";
 
 const router = express.Router();
 
 router.get("/", protect, requireTenantAccess, async (req, res, next) => {
   try {
-    const { Announcement, Event, Job } = getTenantModels(req);
+    const tenantModels = getTenantModels(req);
     const instituteId = req.tenant._id;
-    const announcementFilter =
-      req.user.role === "institute_admin"
-        ? { instituteId }
-        : { instituteId, status: "published" };
-    const jobFilter =
-      req.user.role === "institute_admin"
-        ? { instituteId }
-        : { instituteId, status: "published" };
-
-    const [announcements, events, jobs] = await Promise.all([
-      Announcement.find(announcementFilter).sort({ createdAt: -1 }).limit(5),
-      Event.find({ instituteId }).sort({ eventDate: 1 }).limit(5),
-      Job.find(jobFilter).sort({ createdAt: -1 }).limit(5)
-    ]);
+    const userId = req.user._id.toString();
+    
+    // Use cached data service for feed
+    const { announcements, events, jobs } = await CachedDataService.getFeed(
+      tenantModels,
+      instituteId,
+      req.user.role === "institute_admin" ? null : userId
+    );
 
     const feed = [
       ...announcements.map((item) => ({

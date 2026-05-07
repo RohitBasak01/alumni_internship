@@ -10,6 +10,9 @@ import {
 
 import DevTenantSwitcher from "../components/DevTenantSwitcher.jsx";
 import TenantPublicStatus from "../components/TenantPublicStatus.jsx";
+import { ButtonLoadingSpinner } from "../components/LoadingSpinner.jsx";
+import { getErrorMessage } from "../utils/errorMessages.js";
+import { schemas, rules, createValidator } from "../utils/formValidation.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useCurrentTenantPublicProfile } from "../hooks/useCurrentTenantPublicProfile.js";
 import { useTenantBranding } from "../hooks/useTenantBranding.js";
@@ -60,15 +63,6 @@ function getDemoAccounts() {
   }
 }
 
-function getErrorMessage(error) {
-  return (
-    error?.response?.data?.message ||
-    error?.response?.data?.details?.[0] ||
-    error?.message ||
-    "Login failed. Please check your credentials and try again."
-  );
-}
-
 function LoginPage() {
   const auth = useAuth();
   const location = useLocation();
@@ -80,6 +74,18 @@ function LoginPage() {
     remember: false,
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+  
+  // Login form validation schema
+  const loginValidator = createValidator({
+    email: [
+      rules.required("Email"),
+      rules.email("Email")
+    ],
+    password: [
+      rules.required("Password")
+    ]
+  });
   const tenant = useTenantContext();
   const tenantProfileQuery = useCurrentTenantPublicProfile();
   const tenantProfile = tenantProfileQuery.data || null;
@@ -171,10 +177,34 @@ function LoginPage() {
       ...current,
       [name]: type === "checkbox" ? checked : value,
     }));
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors((current) => ({
+        ...current,
+        [name]: [],
+      }));
+    }
   }
 
   function handleSubmit(event) {
     event.preventDefault();
+
+    // Validate form before submission
+    const { isValid, errors } = loginValidator(form);
+    setValidationErrors(errors);
+    
+    if (!isValid) {
+      // Focus on first field with error
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        const errorElement = document.querySelector(`[name="${firstErrorField}"]`);
+        if (errorElement) {
+          errorElement.focus();
+        }
+      }
+      return;
+    }
 
     if (typeof window !== "undefined") {
       const matchedDemoAccount = demoAccounts.find(
@@ -285,9 +315,21 @@ function LoginPage() {
                   type="email"
                   value={form.email}
                   style={{ paddingLeft: '64px' }}
-                  className="w-full pr-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all placeholder:text-slate-400"
+                  className={`w-full pr-4 py-4 bg-white/50 border rounded-[1.25rem] focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all placeholder:text-slate-400 ${
+                    validationErrors.email ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-brand-500'
+                  }`}
                 />
               </div>
+              {validationErrors.email && validationErrors.email.length > 0 && (
+                <div className="ml-1 mt-1 space-y-1">
+                  {validationErrors.email.map((error, index) => (
+                    <p key={index} className="text-sm text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-base">error</span>
+                      {error}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -302,7 +344,9 @@ function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   style={{ paddingLeft: '64px' }}
-                  className="w-full pr-12 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all placeholder:text-slate-400"
+                  className={`w-full pr-12 py-4 bg-white/50 border rounded-[1.25rem] focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition-all placeholder:text-slate-400 ${
+                    validationErrors.password ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-brand-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -312,6 +356,16 @@ function LoginPage() {
                   <span className="material-symbols-outlined text-xl">{showPassword ? "visibility_off" : "visibility"}</span>
                 </button>
               </div>
+              {validationErrors.password && validationErrors.password.length > 0 && (
+                <div className="ml-1 mt-1 space-y-1">
+                  {validationErrors.password.map((error, index) => (
+                    <p key={index} className="text-sm text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-base">error</span>
+                      {error}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between px-1">
@@ -333,8 +387,9 @@ function LoginPage() {
             <button
               disabled={mutation.isPending}
               type="submit"
-              className="btn-primary w-full py-4 text-base shadow-xl"
+              className="btn-primary w-full py-4 text-base shadow-xl flex items-center justify-center gap-2"
             >
+              {mutation.isPending && <ButtonLoadingSpinner size="sm" color="white" />}
               {mutation.isPending ? "Logging in..." : "Login to Portal"}
             </button>
           </form>

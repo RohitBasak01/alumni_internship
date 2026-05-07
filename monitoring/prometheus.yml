@@ -1,0 +1,66 @@
+# Prometheus configuration for Alumni Network Platform
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "alert-rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Alumni Network Backend metrics
+  - job_name: "alumni-backend"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["backend:5000"]
+        labels:
+          service: "alumni-backend"
+          environment: "production"
+          component: "api"
+
+  # Alumni Network Frontend (optional - if you have frontend metrics)
+  # - job_name: 'alumni-frontend'
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ['frontend:80']
+  #       labels:
+  #         service: 'alumni-frontend'
+  #         environment: 'production'
+  #         component: 'ui'
+
+  # MongoDB metrics (requires mongodb_exporter)
+  # - job_name: 'mongodb'
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+  #       labels:
+  #         service: 'mongodb'
+  #         environment: 'production'
+  #         component: 'database'
+
+  # Node.js system metrics (if running node_exporter)
+  # - job_name: 'node-exporter'
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+  #       labels:
+  #         service: 'node'
+  #         environment: 'production'
+  #         component: 'infrastructure'

@@ -63,6 +63,10 @@ function buildAdminSections(tenant) {
   if (tenant.featureFlags.enableAnnouncements) community.links.push({ to: "/portal/newsroom", label: "Newsroom", icon: "campaign" });
   if (community.links.length > 0) sections.push(community);
 
+  const admin = { label: "ADMIN", links: [] };
+  admin.links.push({ to: "/portal/moderation", label: "Content Moderation", icon: "shield" });
+  sections.push(admin);
+
   const general = { label: "GENERAL", links: [] };
   general.links.push({ to: "/portal/settings", label: "Settings", icon: "settings" });
   sections.push(general);

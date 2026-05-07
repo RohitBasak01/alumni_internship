@@ -2,31 +2,47 @@
 
 Multi-tenant alumni management platform built with MongoDB, Express, React, and Node.js.
 
-## Product Direction
+## 📋 Project Status
 
-This repo is set up for a SaaS model where:
+**Current Version**: 1.0.0 (Development)
+**Last Updated**: May 2026
 
-- each institute gets its own portal
-- all institutes share the same platform infrastructure
-- tenant data is isolated using `instituteId`
-- custom domains and subdomains resolve to the correct institute
+### ✅ Implemented Features
 
-Example tenants:
+- Multi-tenant architecture with shared/dedicated database support
+- JWT authentication with role-based access control (super_admin, institute_admin, alumni)
+- Alumni directory with profiles and search
+- Mentorship system with real-time chat (Socket.IO)
+- Event management and registration
+- Job board with applications
+- Business directory
+- Community groups
+- Newsroom/announcements
+- Gallery/media management
+- Notifications system
+- File uploads with Multer
+- OAuth integration (Google, LinkedIn)
 
-- `spit.yourplatform.com`
-- `mit.yourplatform.com`
-- `alumni.spit.ac.in`
+### 🚧 In Progress / Planned
 
-## Suggested Stack
+- Advanced analytics dashboard
+- Payment integration (Razorpay/Stripe)
+- Mobile app (React Native)
+- AI-powered recommendations
+- White-labeling capabilities
 
-- Frontend: React + Vite + React Router + TanStack Query + Tailwind CSS
-- Backend: Node.js + Express + Mongoose
-- Database: MongoDB
-- Auth: JWT with role-based access
-- Payments: Razorpay for India, Stripe if needed later
-- Hosting: Vercel or Netlify for frontend, Render/AWS/DigitalOcean for backend
+## 🏗️ Architecture Overview
 
-## Multi-Tenant Approach
+### Tech Stack
+
+- **Frontend**: React 19 + Vite + React Router + TanStack Query + Tailwind CSS
+- **Backend**: Node.js + Express + Mongoose + Socket.IO
+- **Database**: MongoDB with multi-tenant support
+- **Authentication**: JWT with refresh tokens, OAuth 2.0
+- **Real-time**: Socket.IO for chat and notifications
+- **Styling**: Tailwind CSS with component-specific CSS
+
+### Multi-Tenant Approach
 
 Start with a shared database and shared collections.
 
@@ -43,86 +59,173 @@ Requests are resolved by:
 
 This is the best tradeoff for an MVP because it is simple, affordable, and easy to operate.
 
-## MVP Scope
+Example tenants:
 
-Phase 1:
+- `spit.yourplatform.com`
+- `mit.yourplatform.com`
+- `alumni.spit.ac.in`
 
-- institute signup request
-- super admin approval
-- tenant portal activation
-- alumni profiles
-- alumni directory
-- institute admin dashboard
+## 🚀 Quick Start
 
-Phase 2:
+### Prerequisites
 
-- events
-- jobs
-- announcements
-- email invites
+- Node.js 18+ and npm
+- MongoDB 6+ (running locally or Atlas connection)
+- Git
 
-Phase 3:
+### 1. Clone and Install
 
-- donations
-- mentorship
-- analytics
-- AI-powered alumni search
+```bash
+# Clone the repository
+git clone <repository-url>
+cd alumni_internship
 
-## Repo Layout
+# Install backend dependencies
+cd backend
+npm install
 
-```text
-backend/
-  src/
-    config/
-    controllers/
-    middleware/
-    models/
-    routes/
-    utils/
-    app.js
-    server.js
-frontend/
+# Install frontend dependencies
+cd ../frontend
+npm install
 ```
 
-## Backend Status
+### 2. Environment Setup
 
-This starter includes:
+#### Backend Configuration
 
-- tenant resolver middleware
-- role-aware auth middleware scaffold
-- core Mongoose models for institutes, users, alumni, events, jobs
-- API route skeletons for auth, institutes, alumni, events, jobs
+Copy the example environment file and update values:
 
-## Next Build Steps
+```bash
+cd backend
+cp .env.example .env
+```
 
-1. Start MongoDB locally
-2. Seed demo data with `cd backend && npm.cmd run seed`
-3. Start the API with `cd backend && npm.cmd run dev`
-4. Start the frontend with `cd frontend && npm.cmd run dev`
-5. Log in with the seeded demo accounts from the login page
+Edit `.env` with your configuration:
 
-## Email Invites
+```env
+PORT=5000
+MONGODB_URI=mongodb://127.0.0.1:27017/alumni-network
+JWT_SECRET=your-super-secret-jwt-key-here
+CLIENT_URL=http://localhost:5173
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+```
 
-Alumni invites support SMTP delivery.
+#### Frontend Configuration
 
-Add these values to [backend/.env](c:\Users\hp\Desktop\internship_2\alumni-network\backend.env):
+```bash
+cd frontend
+cp .env.example .env
+```
 
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_SECURE`
-- `SMTP_USER`
-- `SMTP_PASS`
-- `EMAIL_FROM`
+Edit `.env`:
 
-If SMTP is not configured, the backend will still create the invite and log the setup link for local development.
+```env
+VITE_API_URL=http://localhost:5000/api
+```
 
-## Core Roles
+### 3. Database Setup
 
-- `super_admin`: platform owner
-- `institute_admin`: manages a single institute portal
-- `alumni`: alumni user
+```bash
+# Start MongoDB (if running locally)
+# On Windows with MongoDB installed as service, it should already be running
 
-## Key Backend Rule
+# Seed demo data
+cd backend
+npm run seed
+```
+
+### 4. Start Development Servers
+
+#### Terminal 1 - Backend
+
+```bash
+cd backend
+npm run dev
+```
+
+#### Terminal 2 - Frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+### 5. Access the Application
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:5000
+- API Health Check: http://localhost:5000/api/health
+
+## 👥 Demo Accounts
+
+Use these credentials to log in:
+
+| Email                          | Password            | Role            |
+| ------------------------------ | ------------------- | --------------- |
+| `superadmin@alumninetwork.com` | `Admin@123`         | Super Admin     |
+| `admin@spit.edu`               | `Institute@123`     | Institute Admin |
+| `aarav@spit.edu`               | `Alumni@123`        | Alumni          |
+| `admin@greenwoodschool.edu`    | `School@123`        | Institute Admin |
+| `maya@greenwoodschool.edu`     | `FormerStudent@123` | Alumni          |
+
+## 📁 Project Structure
+
+```
+alumni_internship/
+├── backend/                 # Node.js/Express backend
+│   ├── src/
+│   │   ├── controllers/    # Request handlers
+│   │   ├── models/         # Mongoose schemas
+│   │   ├── routes/         # API routes
+│   │   ├── middleware/     # Express middleware
+│   │   ├── utils/          # Utility functions
+│   │   ├── db/             # Database connection management
+│   │   ├── scripts/        # Database scripts and migrations
+│   │   ├── app.js          # Express app configuration
+│   │   └── server.js       # Server entry point
+│   ├── uploads/            # File uploads directory
+│   ├── .env.example        # Environment variables template
+│   └── package.json
+├── frontend/               # React frontend
+│   ├── src/
+│   │   ├── components/     # Reusable React components
+│   │   ├── pages/          # Page components
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── context/        # React context providers
+│   │   ├── lib/            # Library utilities
+│   │   ├── styles/         # CSS stylesheets
+│   │   ├── utils/          # Utility functions
+│   │   ├── App.jsx         # Main app component
+│   │   └── main.jsx        # Entry point
+│   ├── .env.example        # Frontend environment variables
+│   └── package.json
+├── docs/                   # Documentation
+├── plans/                  # Project plans and assessments
+└── README.md               # This file
+```
+
+## 🔧 Development
+
+### Backend Development
+
+```bash
+cd backend
+npm run dev        # Start with nodemon (auto-restart)
+npm start          # Start without auto-restart
+npm run seed       # Seed database with demo data
+```
+
+### Frontend Development
+
+```bash
+cd frontend
+npm run dev        # Start Vite dev server
+npm run build      # Build for production
+npm run preview    # Preview production build
+npm test           # Run tests
+```
+
+### Key Backend Rule
 
 Any tenant-owned query must include `instituteId`.
 
@@ -133,20 +236,140 @@ AlumniProfile.find({ instituteId: req.tenant._id });
 Job.find({ instituteId: req.tenant._id, status: "published" });
 ```
 
-## Recommended Frontend Structure
+## 🌐 API Documentation
 
-You can split the UI into:
+### Base URL
 
-- marketing site on root domain
-- tenant portal UI for institute-specific pages
-- super admin dashboard for approvals and subscriptions
+`http://localhost:5000/api`
 
-If you want, the next step can be scaffolding the React frontend and wiring it to this backend.
+### Key Endpoints
 
-## Demo Accounts
+| Method | Endpoint              | Description               | Authentication |
+| ------ | --------------------- | ------------------------- | -------------- |
+| GET    | `/health`             | Health check              | Public         |
+| POST   | `/auth/login`         | User login                | Public         |
+| POST   | `/auth/register`      | User registration         | Public         |
+| GET    | `/alumni`             | Get alumni directory      | Required       |
+| GET    | `/events`             | Get events                | Required       |
+| GET    | `/jobs`               | Get job listings          | Required       |
+| POST   | `/mentorship/request` | Create mentorship request | Required       |
 
-- `superadmin@alumninetwork.com` / `Admin@123`
-- `admin@spit.edu` / `Institute@123`
-- `aarav@spit.edu` / `Alumni@123`
-- `admin@greenwoodschool.edu` / `School@123`
-- `maya@greenwoodschool.edu` / `FormerStudent@123`
+### Authentication
+
+Include JWT token in Authorization header:
+
+```
+Authorization: Bearer <token>
+```
+
+## 🛠️ Environment Variables
+
+### Backend (.env)
+
+| Variable                                           | Description                     | Default                                    |
+| -------------------------------------------------- | ------------------------------- | ------------------------------------------ |
+| `PORT`                                             | Server port                     | `5000`                                     |
+| `MONGODB_URI`                                      | MongoDB connection URI          | `mongodb://127.0.0.1:27017/alumni-network` |
+| `CENTRAL_MONGODB_URI`                              | Central database URI            | Same as MONGODB_URI                        |
+| `JWT_SECRET`                                       | Secret for signing JWT tokens   | `change-this-secret`                       |
+| `CLIENT_URL`                                       | Frontend URL for CORS           | `http://localhost:5173`                    |
+| `CORS_ALLOWED_ORIGINS`                             | Comma-separated allowed origins | `http://localhost:5173`                    |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Email configuration             | (Empty)                                    |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`         | Google OAuth credentials        | (Empty)                                    |
+| `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`     | LinkedIn OAuth credentials      | (Empty)                                    |
+
+### Frontend (.env)
+
+| Variable                | Description                      | Default                     |
+| ----------------------- | -------------------------------- | --------------------------- |
+| `VITE_API_URL`          | Backend API URL                  | `http://localhost:5000/api` |
+| `VITE_TENANT_SUBDOMAIN` | Tenant subdomain for development | (Empty)                     |
+| `VITE_TENANT_DOMAIN`    | Tenant domain for development    | (Empty)                     |
+| `VITE_DEMO_ACCOUNTS`    | Demo accounts JSON               | `[]`                        |
+
+## 🧪 Testing
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm test
+```
+
+### Backend Tests
+
+_(To be implemented)_
+
+## 🐳 Docker Deployment
+
+_(To be implemented)_
+
+## 📈 Monitoring & Logging
+
+- Backend uses Morgan for HTTP request logging
+- Structured logging with request IDs
+- Health check endpoint at `/api/health`
+- Error tracking middleware
+
+## 🔒 Security Features
+
+- JWT authentication with refresh tokens
+- CSRF protection middleware
+- Rate limiting on API endpoints
+- Input validation middleware
+- Helmet.js security headers (to be implemented)
+- Password hashing with bcryptjs
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Code Style
+
+- Use ESLint and Prettier (configuration to be added)
+- Follow existing code conventions
+- Write meaningful commit messages
+
+## 📄 License
+
+This project is proprietary. All rights reserved.
+
+## 🆘 Support
+
+For issues and questions:
+
+1. Check the [docs](docs/) directory
+2. Review existing issues
+3. Contact the development team
+
+## 🎯 Roadmap
+
+### Phase 1 (Completed)
+
+- [x] Multi-tenant architecture
+- [x] Core authentication system
+- [x] Alumni directory
+- [x] Basic admin dashboard
+
+### Phase 2 (In Progress)
+
+- [ ] Advanced analytics
+- [ ] Payment integration
+- [ ] Mobile responsiveness improvements
+- [ ] Performance optimization
+
+### Phase 3 (Planned)
+
+- [ ] AI-powered features
+- [ ] White-labeling
+- [ ] Mobile app
+- [ ] Marketplace integrations
+
+---
+
+**Last Updated**: May 2026  
+**Maintained by**: Alumni Network Development Team

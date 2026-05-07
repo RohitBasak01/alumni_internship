@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import express from "express";
+import multer from "multer";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
@@ -11,6 +12,21 @@ import { buildTenantConfigSnapshot } from "../utils/tenantConfig.js";
 import { hasMinLength, isEmail, isNonEmptyString, isObjectIdLike, isPositiveYear } from "../utils/validation.js";
 
 const router = express.Router();
+
+// Configure multer for CSV file upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are allowed"), false);
+    }
+  },
+});
 
 function hashInviteToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -145,17 +161,20 @@ function validateInvitePayloadForTenant(req, body) {
   return issues;
 }
 
-import { 
-  getAlumni, 
-  getMyProfile, 
-  updateMyProfile, 
-  inviteAlumni 
+import {
+  getAlumni,
+  getMyProfile,
+  updateMyProfile,
+  inviteAlumni,
+  exportAlumniCsv,
+  importAlumniCsv
 } from "../controllers/alumni.controller.js";
 
 router.get("/", protect, requireTenantAccess, validateQuery(validateAlumniQuery), getAlumni);
 router.get("/me", protect, requireTenantAccess, getMyProfile);
 router.patch("/me", protect, authorize("alumni"), requireTenantAccess, validateBody(validateMentorshipLikeBody), updateMyProfile);
 router.post("/invite", protect, authorize("institute_admin"), requireTenantAccess, validateBody(validateInviteBody), inviteAlumni);
+router.get("/export/csv", protect, authorize("institute_admin"), requireTenantAccess, exportAlumniCsv);
 
 // Handlers migrated to alumni.controller.js
 
@@ -537,6 +556,16 @@ router.post(
       next(error);
     }
   }
+);
+
+// Bulk import alumni from CSV
+router.post(
+  "/import/csv",
+  protect,
+  authorize("institute_admin"),
+  requireTenantAccess,
+  upload.single("file"),
+  importAlumniCsv
 );
 
 export default router;

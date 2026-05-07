@@ -158,6 +158,7 @@ function DashboardMockup() {
 function HomePage() {
   const tenant = useTenantContext();
   const [instPage, setInstPage] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="hp-root">
@@ -184,7 +185,47 @@ function HomePage() {
         <div className="hp-nav-actions">
           <Link to={tenant.getTenantAwarePath("/login")} className="hp-nav-login">Login</Link>
           <Link to={tenant.getTenantAwarePath("/register")} className="hp-nav-join">Join Now</Link>
+          <button
+            className="hp-mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="hp-mobile-menu"
+          >
+            <span className="material-symbols-outlined">
+              {mobileMenuOpen ? 'close' : 'menu'}
+            </span>
+          </button>
         </div>
+
+        {/* Mobile menu overlay */}
+        {mobileMenuOpen && (
+          <div
+            className="hp-mobile-menu-overlay"
+            onClick={() => setMobileMenuOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mobile navigation menu"
+          >
+            <div className="hp-mobile-menu" onClick={(e) => e.stopPropagation()}>
+              <nav
+                id="hp-mobile-menu"
+                className="hp-mobile-nav-links"
+                aria-label="Mobile navigation"
+              >
+                <a href="#features" className="hp-mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>Features</a>
+                <a href="#process" className="hp-mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>Process</a>
+                <a href="#institutes" className="hp-mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>Institutes</a>
+                <a href="#about" className="hp-mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>About Us</a>
+                <a href="#contact" className="hp-mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>Contact</a>
+                <div className="hp-mobile-nav-actions">
+                  <Link to={tenant.getTenantAwarePath("/login")} className="hp-mobile-nav-login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
+                  <Link to={tenant.getTenantAwarePath("/register")} className="hp-mobile-nav-join" onClick={() => setMobileMenuOpen(false)}>Join Now</Link>
+                </div>
+              </nav>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ── Hero ───────────────────────────────────────────────── */}

@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SectionCard from "../components/SectionCard.jsx";
@@ -7,7 +7,9 @@ import {
   approveAlumniRegistration,
   bulkResendAlumniInvites,
   bulkReviewAlumniRegistrations,
+  exportAlumniCsv,
   fetchAlumni,
+  importAlumniCsv,
   inviteAlumni,
   revokeAlumniInvite
 } from "../lib/api.js";
@@ -147,6 +149,47 @@ function ApproveRegistrationsPage() {
     }
   });
 
+  const exportMutation = useMutation({
+    mutationFn: exportAlumniCsv,
+    onSuccess: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `alumni-export-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setActionNotification({
+        type: "success",
+        message: "CSV export downloaded successfully"
+      });
+      setTimeout(() => setActionNotification(null), 3000);
+    },
+    onError: (error) => {
+      setActionNotification({ type: "error", message: error.message });
+      setTimeout(() => setActionNotification(null), 3000);
+    }
+  });
+
+  const importMutation = useMutation({
+    mutationFn: importAlumniCsv,
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      setActionNotification({
+        type: "success",
+        message: response?.message || `Successfully imported ${response?.imported || 0} alumni records`
+      });
+      setTimeout(() => setActionNotification(null), 3000);
+    },
+    onError: (error) => {
+      setActionNotification({ type: "error", message: error.message });
+      setTimeout(() => setActionNotification(null), 3000);
+    }
+  });
+
+  const fileInputRef = useRef(null);
+
   const pendingApprovals = useMemo(
     () => data.filter((item) => (item.registrationReviewStatus || "pending") === "pending"),
     [data]
@@ -162,7 +205,9 @@ function ApproveRegistrationsPage() {
     revokeMutation.isPending ||
     inviteMutation.isPending ||
     bulkReviewMutation.isPending ||
-    bulkResendMutation.isPending;
+    bulkResendMutation.isPending ||
+    exportMutation.isPending ||
+    importMutation.isPending;
 
   useEffect(() => {
     setSelectedProfileIds((current) => current.filter((profileId) => pendingProfileIds.includes(profileId)));
@@ -279,6 +324,50 @@ function ApproveRegistrationsPage() {
     });
   }
 
+  function handleExportCsv() {
+    exportMutation.mutate(filters);
+  }
+
+  function handleImportCsv(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setActionNotification({
+        type: "error",
+        message: "Please select a CSV file"
+      });
+      setTimeout(() => setActionNotification(null), 3000);
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setActionNotification({
+        type: "error",
+        message: "File size must be less than 5MB"
+      });
+      setTimeout(() => setActionNotification(null), 3000);
+      return;
+    }
+
+    importMutation.mutate(file);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function triggerFileInput() {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }
+
   function getInviteFormErrors() {
     const errors = {};
     if (!inviteForm.name.trim()) {
@@ -323,6 +412,31 @@ function ApproveRegistrationsPage() {
         <div>
           <h1>Approve Registrations</h1>
           <p>{config.subtitle}</p>
+        </div>
+        <div className="admin-approvals-header-actions">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportCsv}
+            accept=".csv"
+            style={{ display: "none" }}
+          />
+          <button
+            className="button secondary compact"
+            onClick={triggerFileInput}
+            disabled={importMutation.isPending || isActionPending}
+            type="button"
+          >
+            {importMutation.isPending ? "Importing..." : "Import CSV"}
+          </button>
+          <button
+            className="button primary compact"
+            onClick={handleExportCsv}
+            disabled={exportMutation.isPending || isActionPending}
+            type="button"
+          >
+            {exportMutation.isPending ? "Exporting..." : "Export CSV"}
+          </button>
         </div>
       </header>
 
