@@ -112,7 +112,7 @@ function CommunityGroupsPage() {
   const conversationsQuery = useQuery({
     queryKey: ["alumni-conversations"],
     queryFn: fetchAlumniConversations,
-    enabled: tenant?.featureFlags?.enableMentorship !== false
+    enabled: tenant?.featureFlags?.enableFriendship !== false
   });
 
   const groups = groupsQuery.data || [];

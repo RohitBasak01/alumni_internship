@@ -12,18 +12,34 @@ import {
 import RefreshToken from "../models/RefreshToken.js";
 import { sendPasswordResetEmail } from "../utils/email.js";
 import crypto from "node:crypto";
+import mongoose from "mongoose";
 
 /**
  * Controller for Authentication
  */
 export const login = asyncHandler(async (req, res) => {
-  const { User } = getTenantModels(req);
+  const { User: TenantUser } = getTenantModels(req);
   const { email, password } = req.body;
+  const normalizedEmail = email.toLowerCase().trim();
 
-  const user = await User.findOne({ 
-    email: email.toLowerCase().trim(),
-    instituteId: req.tenant._id 
+  // Try to find user: first check for super_admin in central DB, then check tenant-specific users
+  let user = null;
+  
+  // Always check central User model first for super_admin (they live in the central DB)
+  // Use the central connection (default mongoose connection) to find super admin
+  const CentralUser = mongoose.model("User");
+  user = await CentralUser.findOne({ 
+    email: normalizedEmail,
+    role: "super_admin"
   }).select("+passwordHash");
+  
+  // If not found and we have a tenant, check tenant-specific users
+  if (!user && req.tenant) {
+    user = await TenantUser.findOne({ 
+      email: normalizedEmail,
+      instituteId: req.tenant._id 
+    }).select("+passwordHash");
+  }
 
   if (!user || !(await comparePassword(password, user.passwordHash))) {
     return res.status(401).json({ message: "Invalid email or password" });

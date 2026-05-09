@@ -308,7 +308,7 @@ export const demoJobs = [
   }
 ];
 
-export const demoMentorshipRequests = [];
+export const demoFriendships = [];
 
 export const demoCommunityGroups = [
   {
@@ -435,7 +435,7 @@ export function createMockStore() {
     announcements: demoAnnouncements.map((item) => structuredClone(item)),
     events: demoEvents.map((item) => structuredClone(item)),
     jobs: demoJobs.map((item) => structuredClone(item)),
-    mentorshipRequests: demoMentorshipRequests.map((item) => structuredClone(item)),
+    friendships: demoFriendships.map((item) => structuredClone(item)),
     communityGroups: demoCommunityGroups.map((item) => structuredClone(item)),
     auditLogs: demoAuditLogs.map((item) => structuredClone(item))
   };

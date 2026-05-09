@@ -37,6 +37,17 @@ const eventSchema = new mongoose.Schema(
       min: 0,
       default: null
     },
+    fees: [
+      {
+        name: { type: String, required: true },
+        amount: { type: Number, required: true },
+        type: { type: String },
+        minQty: { type: Number },
+        maxQty: { type: Number },
+        validFrom: { type: Date },
+        options: { type: String }
+      }
+    ],
     registrations: [
       {
         userId: {
@@ -47,6 +58,12 @@ const eventSchema = new mongoose.Schema(
         registeredAt: {
           type: Date,
           default: Date.now
+        },
+        paymentId: {
+          type: String
+        },
+        orderId: {
+          type: String
         }
       }
     ],

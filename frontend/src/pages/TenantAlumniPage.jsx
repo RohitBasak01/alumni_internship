@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useAlumniLogic } from "../hooks/useAlumniLogic.js";
 import { AlumniMap } from "../components/AlumniMap.jsx";
 import { BrowseByEntity } from "../components/BrowseByEntity.jsx";
-import SectionCard from "../components/SectionCard.jsx";
 import "../styles/AlumniDirectory.css";
 
 /* ── Helpers ──────────────────────────────────────────────── */
@@ -17,121 +16,97 @@ function getDirectoryConfig(tenant) {
     filterPlaceholder: isSchool
       ? "Search by name, email, institution, or location"
       : "Search by name, company, skill or keyword...",
-    roleFallback: isSchool ? "Community Member" : "Alumni Member",
-    inviteTitle: isSchool ? "Invite Former Student" : "Invite Alumni",
-    inviteButtonLabel: isSchool ? "Add Former Student" : "Add Alumni",
-    approvalDescription: isSchool
-      ? "Review former-student registrations."
-      : "Review alumni registrations.",
   };
 }
 
-const AVATAR_COLORS = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#8b5cf6","#ef4444","#ec4899"];
+const AVATAR_COLORS = [
+  "linear-gradient(135deg,#6366f1,#8b5cf6)",
+  "linear-gradient(135deg,#0ea5e9,#38bdf8)",
+  "linear-gradient(135deg,#10b981,#34d399)",
+  "linear-gradient(135deg,#f59e0b,#fbbf24)",
+  "linear-gradient(135deg,#ec4899,#f472b6)",
+];
+
 function avatarColor(name = "") {
   return AVATAR_COLORS[(name.charCodeAt(0) || 65) % AVATAR_COLORS.length];
 }
+
 function initials(name = "") {
   return name.split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase() || "?";
 }
 
 const SKILLS_MOCK = {
-  "React": ["#dbeafe","#1d4ed8"],
-  "Node.js": ["#dcfce7","#15803d"],
-  "System Design": ["#fef3c7","#d97706"],
-  "Python": ["#f3e8ff","#7c3aed"],
-  "ML": ["#ffe4e6","#be123c"],
-  "Data Analysis": ["#e0f2fe","#0369a1"],
-  "Product": ["#fce7f3","#be185d"],
-  "Analytics": ["#dcfce7","#15803d"],
-  "Leadership": ["#fef9c3","#854d0e"],
-  "AWS": ["#ffe4e6","#be123c"],
-  "DevOps": ["#e0f2fe","#0369a1"],
-  "Microservices": ["#f3e8ff","#6d28d9"],
-  "Entrepreneurship": ["#fef3c7","#b45309"],
-  "Strategy": ["#dcfce7","#047857"],
-  "Fundraising": ["#e0f2fe","#0369a1"],
-  "UI/UX": ["#fce7f3","#be185d"],
-  "Figma": ["#f3e8ff","#7c3aed"],
-  "Design Thinking": ["#ffe4e6","#be123c"],
+  "React": ["#eff0ff","#6366f1"],
+  "Node.js": ["#f0fdf4","#10b981"],
+  "System Design": ["#fff7ed","#f59e0b"],
+  "Python": ["#fdf4ff","#8b5cf6"],
+  "Accessibility": ["#eff6ff","#3b82f6"],
+  "Design Systems": ["#fef2f2","#ef4444"],
+  "Embedded": ["#f1f5f9","#475569"],
+  "Leadership": ["#fefce8","#a16207"],
+  "Friendship": ["#ecfdf5","#059669"],
 };
-
 
 const SORT_OPTIONS = ["Relevance","Name A–Z","Batch Year","Location"];
 
+const COMMON_INDUSTRIES = [
+  "Technology", "Finance", "Healthcare", "Education", "Engineering",
+  "Manufacturing", "Consulting", "Retail", "Energy", "Media",
+  "Real Estate", "Legal", "Hospitality", "Government", "Other"
+];
+
 /* ── Skill chip ───────────────────────────────────────────── */
 function SkillChip({ skill }) {
-  const [bg, color] = SKILLS_MOCK[skill] || ["#f1f5f9","#475569"];
-  return <span className="ad-skill-chip" style={{ background: bg, color }}>{skill}</span>;
+  const [bg, color] = SKILLS_MOCK[skill] || ["#f8fafc","#64748b"];
+  return <span className="ad-card-v2-tag" style={{ background: bg, color }}>{skill}</span>;
 }
 
-/* ── Alumni card ──────────────────────────────────────────── */
-function AlumniDirCard({ alumni, onConnect, onViewProfile, isSelf }) {
+/* ── Alumni card V2 ───────────────────────────────────────── */
+function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf }) {
   const name = alumni.name || alumni.userId?.name || "Alumni";
   const role = alumni.designation || alumni.occupation || "Alumni Member";
   const company = alumni.company || "";
   const batch = alumni.batch || alumni.leavingYear || "";
-  const dept = alumni.department || alumni.lastClassAttended || alumni.currentEducation || "";
+  const dept = alumni.department || alumni.lastClassAttended || "";
   const location = alumni.location || alumni.city || "";
-  const skills = Array.isArray(alumni.skills)
-    ? alumni.skills.slice(0, 3)
-    : [];
-  const extraSkills = Array.isArray(alumni.skills) ? Math.max(0, alumni.skills.length - 3) : 0;
+  const skills = Array.isArray(alumni.skills) ? alumni.skills.slice(0, 3) : ["React", "Node.js", "Leadership"].slice(0, 3);
   const avatar = alumni.profilePicture || alumni.userId?.profilePicture;
 
-  const cardColors = [
-    ["#eff0ff","#c7d2fe"],
-    ["#f0fdf4","#bbf7d0"],
-    ["#fff7ed","#fed7aa"],
-    ["#fdf4ff","#e9d5ff"],
-    ["#eff6ff","#bfdbfe"],
-  ];
-  const [topBg, topBorder] = cardColors[(name.charCodeAt(0) || 0) % cardColors.length];
-
   return (
-    <div className="ad-card">
-      <div className="ad-card-top" style={{ background: topBg, borderBottom: `1px solid ${topBorder}` }}>
-        <div className="ad-card-top-actions">
-          <span className="ad-status-dot" />
-          <button className="ad-menu-btn" aria-label="More">
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>more_horiz</span>
-          </button>
-        </div>
-        <div className="ad-avatar-wrap">
-          {avatar
-            ? <img src={avatar} alt={name} className="ad-avatar-img" />
-            : <div className="ad-avatar-initials" style={{ background: avatarColor(name) }}>{initials(name)}</div>
-          }
-        </div>
+    <div className="ad-card-v2">
+      <div className="ad-card-v2-status">
+        <span className="ad-status-dot-v2" />
+        <span className="material-symbols-outlined ad-more-menu-v2" style={{ fontSize: 20 }}>more_horiz</span>
       </div>
-      <div className="ad-card-body">
-        <div className="ad-name-row">
-          <span className="ad-name">{name}</span>
-          {isSelf && <span className="ad-you-badge">You</span>}
+
+      <div className="ad-card-v2-header">
+        <div className="ad-card-v2-avatar" style={{ background: avatarColor(name) }}>
+          {avatar ? <img src={avatar} alt={name} /> : initials(name)}
         </div>
-        <div className="ad-role">{[role, company].filter(Boolean).join(" at ")}</div>
-        <div className="ad-meta">
-          {batch && <span>Batch of {batch}</span>}
-          {dept && <span> · {dept}</span>}
-        </div>
+        <h3 className="ad-card-v2-name">
+          {name}
+          {isSelf && <span className="ad-you-badge" style={{ marginLeft: 6 }}>You</span>}
+        </h3>
+        <p className="ad-card-v2-title">{[role, company].filter(Boolean).join(" at ")}</p>
+        <p className="ad-card-v2-batch">Batch of {batch} · {dept}</p>
         {location && (
-          <div className="ad-location">
-            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>location_on</span>
+          <div className="ad-card-v2-loc">
+            <span className="material-symbols-outlined">location_on</span>
             {location}
           </div>
         )}
-        {skills.length > 0 && (
-          <div className="ad-skills">
-            {skills.map(s => <SkillChip key={s} skill={s} />)}
-            {extraSkills > 0 && <span className="ad-skill-extra">+{extraSkills}</span>}
-          </div>
-        )}
-        <div className="ad-actions">
-          <button className="ad-btn-secondary" onClick={() => onViewProfile?.(alumni)}>View Profile</button>
-          <button className="ad-btn-primary" onClick={() => onConnect?.(alumni)}>
-            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>person_add</span>
-            Connect
-          </button>
-        </div>
+      </div>
+
+      <div className="ad-card-v2-tags">
+        {skills.map(s => <SkillChip key={s} skill={s} />)}
+      </div>
+
+      <div className="ad-card-v2-footer">
+        <button className="ad-btn-ghost" onClick={() => onViewProfile?.(alumni)}>View Profile</button>
+        <button className="ad-btn-solid" onClick={() => onConnect?.(alumni)}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>person_add</span>
+          Connect
+        </button>
       </div>
     </div>
   );
@@ -164,13 +139,14 @@ function ConnectDialog({ person, chatMessage, setChatMessage, onSend, onClose, i
         </div>
         <div className="ad-modal-footer">
           <button
-            className="ad-btn-primary"
+            className="ad-btn-solid"
+            style={{ flex: 1, height: 44 }}
             disabled={isPending || chatMessage.trim().length < 10}
             onClick={onSend}
           >
             {isPending ? "Sending..." : "Request Chat"}
           </button>
-          <button className="ad-btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="ad-btn-ghost" style={{ height: 44 }} onClick={onClose}>Cancel</button>
         </div>
         {isError && <p className="ad-modal-error">{error?.message}</p>}
       </div>
@@ -185,8 +161,6 @@ export default function TenantAlumniPage() {
   const {
     tenant, auth, isAdmin,
     filters, setFilters,
-    activeAdminTab, setActiveAdminTab,
-    isInvitePanelOpen, setIsInvitePanelOpen,
     queries, mutations, derived,
   } = useAlumniLogic();
 
@@ -198,10 +172,9 @@ export default function TenantAlumniPage() {
   const [skillSearch, setSkillSearch]           = useState("");
   const [page, setPage]                         = useState(1);
   const [showMap, setShowMap]                   = useState(false);
-  const PAGE_SIZE = 6;
+  const PAGE_SIZE = 9;
 
   const directoryConfig = useMemo(() => getDirectoryConfig(tenant), [tenant]);
-  const isSchool = directoryConfig.isSchool;
   const selfUserId = String(auth.user?._id || auth.user?.id || "");
 
   const resetFilters = () => setFilters({
@@ -210,86 +183,29 @@ export default function TenantAlumniPage() {
     alphaIndex: "", isFaculty: false, registeredOnly: false, activeTab: "name",
   });
 
-  /* ── Derived data ─────────────────────────────────────── */
   const allMembers = derived.activeMembers;
   const totalFound = allMembers.length;
   const totalPages = Math.max(1, Math.ceil(totalFound / PAGE_SIZE));
   const pageMembers = allMembers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const { uniqueValues, filterStats, insights: liveInsights } = derived;
+  const { uniqueValues, filterStats } = derived;
   
   const INDUSTRY_FILTERS = [
     { label: "All Industries", count: null },
-    ...uniqueValues.industries.map(ind => ({ label: ind, count: filterStats.industry[ind] }))
+    ...Array.from(new Set([...COMMON_INDUSTRIES, ...uniqueValues.industries])).sort().map(ind => ({
+      label: ind,
+      count: filterStats.industry[ind] || 0
+    }))
   ];
 
   const AVAIL_OPTIONS = [
-    { key: "mentorship", label: "Available for Mentorship", count: filterStats.availability.mentorship, color: "#6366f1" },
+    { key: "friendship", label: "Available for Friendship", count: filterStats.availability.friendship, color: "#6366f1" },
     { key: "open",       label: "Open to Opportunities",   count: filterStats.availability.open, color: "#10b981" },
     { key: "looking",    label: "Actively Looking",         count: filterStats.availability.looking, color: "#f59e0b" },
   ];
 
-  const INSIGHTS_DYNAMIC = [
-    { icon: "groups",   label: "Total Alumni",        value: liveInsights.total.toLocaleString(), color: "#6366f1" },
-    { icon: "public",   label: "Countries Represented", value: String(liveInsights.countries),      color: "#10b981" },
-    { icon: "trending_up", label: "Top Industry",     value: liveInsights.topIndustry,              color: "#8b5cf6" },
-    { icon: "bolt",     label: "Active This Month",   value: liveInsights.activeThisMonth.toLocaleString(), color: "#f59e0b" },
-  ];
+  const activeFiltersCount = [filters.batch, filters.industry, filters.company, filters.skill].filter(Boolean).length;
 
-  /* ── Admin view (unchanged) ───────────────────────────── */
-  if (isAdmin) {
-    return (
-      <div className="ad-root">
-        <div className="ad-page-header">
-          <div>
-            <h1 className="ad-page-title">Manage {directoryConfig.memberPlural}</h1>
-            <p className="ad-page-sub">{directoryConfig.approvalDescription}</p>
-          </div>
-          <button className="ad-btn-primary" onClick={() => setIsInvitePanelOpen(true)}>
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>person_add</span>
-            {directoryConfig.inviteButtonLabel}
-          </button>
-        </div>
-        <div className="ad-search-bar-wrap">
-          <span className="material-symbols-outlined ad-search-icon">search</span>
-          <input
-            className="ad-search-input"
-            placeholder={directoryConfig.filterPlaceholder}
-            value={filters.q}
-            onChange={e => setFilters(f => ({ ...f, q: e.target.value, activeTab: "name" }))}
-          />
-        </div>
-        <div className="ad-member-grid">
-          {queries.alumni.isLoading && <p style={{ color: "#94a3b8" }}>Loading...</p>}
-          {derived.directoryEntries.map(alumni => (
-            <AlumniDirCard
-              key={alumni._id}
-              alumni={alumni}
-              isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
-              onConnect={item => { setSelectedForChat(item); }}
-            />
-          ))}
-        </div>
-        {selectedForChat && (
-          <ConnectDialog
-            person={selectedForChat}
-            chatMessage={chatMessage}
-            setChatMessage={setChatMessage}
-            onSend={() => mutations.mentorship.mutate({
-              recipientUserId: selectedForChat.userId?._id || selectedForChat.userId,
-              message: chatMessage,
-            })}
-            onClose={() => setSelectedForChat(null)}
-            isPending={mutations.mentorship.isPending}
-            isError={mutations.mentorship.isError}
-            error={mutations.mentorship.error}
-          />
-        )}
-      </div>
-    );
-  }
-
-  /* ── Alumni (member) view ─────────────────────────────── */
   return (
     <div className="ad-root">
       {/* ── Page header ─────────────────────────────────── */}
@@ -300,186 +216,149 @@ export default function TenantAlumniPage() {
         </div>
       </div>
 
-      {/* ── Search bar ──────────────────────────────────── */}
-      <div className="ad-search-bar-wrap">
-        <span className="material-symbols-outlined ad-search-icon">search</span>
-        <input
-          className="ad-search-input"
-          placeholder={directoryConfig.filterPlaceholder}
-          value={filters.q}
-          onChange={e => { setFilters(f => ({ ...f, q: e.target.value, activeTab: "name" })); setPage(1); }}
-        />
-        <button className="ad-search-btn" aria-label="Search">
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>search</span>
-        </button>
-      </div>
+      {/* ── Filter Card ─────────────────────────────────── */}
+      <div className="ad-filter-card">
+        <div className="ad-search-input-group">
+          <span className="material-symbols-outlined ad-search-icon-main">search</span>
+          <input
+            className="ad-search-input-main"
+            placeholder={directoryConfig.filterPlaceholder}
+            value={filters.q}
+            onChange={e => { setFilters(f => ({ ...f, q: e.target.value, activeTab: "name" })); setPage(1); }}
+          />
+          <span className="material-symbols-outlined ad-search-icon-main" style={{ opacity: 0.5 }}>search</span>
+        </div>
 
-      {/* ── Dropdown filter row ──────────────────────────── */}
-      <div className="ad-filter-row">
-        <select className="ad-filter-select" value={filters.batch || filters.leavingYear || ""} onChange={e => { setFilters(f => ({ ...f, batch: e.target.value, leavingYear: e.target.value })); setPage(1); }}>
-          <option value="">{directoryConfig.yearFieldLabel}</option>
-          {uniqueValues.years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button
-          className={`ad-filter-select ad-location-toggle ${showMap ? "ad-location-toggle--active" : ""}`}
-          onClick={() => { setShowMap(s => !s); setFilters(f => ({ ...f, activeTab: showMap ? "name" : "location" })); }}
-          type="button"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: 16, marginRight: 6, verticalAlign: "middle" }}>location_on</span>
-          Location
-        </button>
-        <select className="ad-filter-select" value={filters.industry || ""} onChange={e => { setFilters(f => ({ ...f, industry: e.target.value })); setIndustryFilter(e.target.value || "All Industries"); setPage(1); }}>
-          <option value="">Industry</option>
-          {uniqueValues.industries.map(i => <option key={i} value={i}>{i}</option>)}
-        </select>
-        <select className="ad-filter-select" value={filters.company || ""} onChange={e => { setFilters(f => ({ ...f, company: e.target.value })); setPage(1); }}>
-          <option value="">Company</option>
-          {uniqueValues.companies.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <button className="ad-more-filters-btn" onClick={() => setFilters(f => ({ ...f, activeTab: "name" }))}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>filter_list</span>
-          More Filters
-        </button>
-        {(filters.q || filters.batch || filters.company || filters.industry) && (
-          <button className="ad-reset-btn" onClick={() => { resetFilters(); setPage(1); setIndustryFilter("All Industries"); setShowMap(false); }}>
-            Reset
-          </button>
-        )}
-      </div>
-
-      {/* ── Location Map panel ────────────────────────────── */}
-      {showMap && (
-        <div className="ad-map-panel">
-          <div className="ad-map-panel-header">
-            <div>
-              <h3 className="ad-map-panel-title">Alumni Locations</h3>
-              <p className="ad-map-panel-sub">Explore where alumni are located across the world</p>
-            </div>
-            <button className="ad-map-close-btn" onClick={() => { setShowMap(false); setFilters(f => ({ ...f, activeTab: "name" })); }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
-              Close Map
-            </button>
+        <div className="ad-filter-controls-row">
+          <div className="ad-dropdown-filter">
+            <span className="material-symbols-outlined">event</span>
+            <select value={filters.batch || filters.leavingYear || ""} onChange={e => { setFilters(f => ({ ...f, batch: e.target.value, leavingYear: e.target.value })); setPage(1); }}>
+              <option value="">{directoryConfig.yearFieldLabel}</option>
+              {uniqueValues.years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
           </div>
+
+          <div className="ad-dropdown-filter" onClick={() => setShowMap(!showMap)}>
+            <span className="material-symbols-outlined">location_on</span>
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: showMap ? "#6366f1" : "#1e293b" }}>
+              {showMap ? "Hide Map" : "Location"}
+            </span>
+          </div>
+
+          <div className="ad-dropdown-filter">
+            <span className="material-symbols-outlined">work</span>
+            <select value={filters.industry || ""} onChange={e => { setFilters(f => ({ ...f, industry: e.target.value })); setIndustryFilter(e.target.value || "All Industries"); setPage(1); }}>
+              <option value="">Industry</option>
+              {Array.from(new Set([...COMMON_INDUSTRIES, ...uniqueValues.industries])).sort().map(i => (
+                <option key={i} value={i}>{i}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="ad-dropdown-filter">
+            <span className="material-symbols-outlined">business</span>
+            <select value={filters.company || ""} onChange={e => { setFilters(f => ({ ...f, company: e.target.value })); setPage(1); }}>
+              <option value="">Company</option>
+              {uniqueValues.companies.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <button className="ad-more-filters-btn-v2">
+            <span className="material-symbols-outlined">tune</span>
+            More Filters
+            {activeFiltersCount > 0 && <span className="ad-filter-badge">{activeFiltersCount}</span>}
+          </button>
+
+          {(filters.q || activeFiltersCount > 0) && (
+            <button className="ad-clear-all-link" onClick={() => { resetFilters(); setPage(1); setIndustryFilter("All Industries"); setShowMap(false); }}>
+              <span className="material-symbols-outlined">restart_alt</span>
+              Clear all
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showMap && (
+        <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8edf3", height: 350 }}>
           <AlumniMap members={derived.activeMembers} />
         </div>
       )}
-      <div className="ad-layout">
 
+      <div className="ad-layout">
         {/* Main column */}
         <div className="ad-main-col">
-          {/* Results header */}
           <div className="ad-results-header">
             <span className="ad-results-count">
               <span className="ad-results-num">{totalFound.toLocaleString()}</span> alumni found
             </span>
             <div className="ad-results-controls">
-              <div className="ad-sort-wrap">
-                <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>Sort by:</span>
-                <select className="ad-sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+              <div className="ad-sort-wrap-v2">
+                <span className="ad-sort-label">Sort by:</span>
+                <select className="ad-sort-select-v2" value={sortBy} onChange={e => setSortBy(e.target.value)}>
                   {SORT_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
-              <div className="ad-view-toggle">
-                <button className="ad-view-btn ad-view-btn--active" aria-label="Grid">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>grid_view</span>
+              <div className="ad-view-toggle-v2">
+                <button className="ad-view-btn-v2 ad-view-btn-v2--active" aria-label="Grid">
+                  <span className="material-symbols-outlined">grid_view</span>
                 </button>
-                <button className="ad-view-btn" aria-label="List">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>view_list</span>
+                <button className="ad-view-btn-v2" aria-label="List">
+                  <span className="material-symbols-outlined">view_list</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Loading / error */}
-          {queries.alumni.isLoading && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Loading members...</p>}
-          {queries.alumni.isError   && <p style={{ color: "#ef4444", fontSize: "0.85rem" }}>{queries.alumni.error.message}</p>}
-
-          {/* Special tab views */}
-          {filters.activeTab === "location" && (
-            <div style={{ margin: "1rem 0" }}>
-              <AlumniMap members={derived.activeMembers} />
+          {/* Grid */}
+          {!queries.alumni.isLoading && allMembers.length === 0 ? (
+            <div className="ad-empty">
+              <span className="material-symbols-outlined" style={{ fontSize: 48, color: "#c7d2fe" }}>search_off</span>
+              <h3>No members found</h3>
+              <p>Try adjusting your filters or search term.</p>
             </div>
-          )}
-          {filters.activeTab === "institute" && (
-            <div style={{ margin: "1rem 0" }}>
-              <BrowseByEntity title="Browse by Institute" items={derived.activeMembers.map(m => m.currentInstitution)}
-                onSelect={val => { setFilters(f => ({ ...f, activeTab: "name", q: val })); setPage(1); }} placeholder="Search institutes..." />
-            </div>
-          )}
-          {filters.activeTab === "company" && (
-            <div style={{ margin: "1rem 0" }}>
-              <BrowseByEntity title="Browse by Company" items={derived.activeMembers.map(m => m.company)}
-                onSelect={val => { setFilters(f => ({ ...f, activeTab: "name", q: val })); setPage(1); }} placeholder="Search companies..." />
-            </div>
-          )}
-          {filters.activeTab === "industry" && (
-            <div style={{ margin: "1rem 0" }}>
-              <BrowseByEntity title="Browse by Industry" items={derived.activeMembers.map(m => m.industry)}
-                onSelect={val => { setFilters(f => ({ ...f, activeTab: "name", q: val })); setPage(1); }} placeholder="Search industries..." />
-            </div>
-          )}
-          {filters.activeTab === "roles" && (
-            <div style={{ margin: "1rem 0" }}>
-              <BrowseByEntity title="Browse by Roles" items={derived.activeMembers.map(m => m.designation)}
-                onSelect={val => { setFilters(f => ({ ...f, activeTab: "name", q: val })); setPage(1); }} placeholder="Search roles..." />
+          ) : (
+            <div className="ad-member-grid">
+              {pageMembers.map(alumni => (
+                <AlumniDirCardV2
+                  key={alumni._id}
+                  alumni={alumni}
+                  isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
+                  onConnect={item => setSelectedForChat(item)}
+                />
+              ))}
             </div>
           )}
 
-          {/* Main grid */}
-          {["name","course","location","work"].includes(filters.activeTab) && (
-            <>
-              {!queries.alumni.isLoading && allMembers.length === 0 && (
-                <div className="ad-empty">
-                  <span className="material-symbols-outlined" style={{ fontSize: 48, color: "#c7d2fe" }}>search_off</span>
-                  <h3>No members found</h3>
-                  <p>Try adjusting your filters or search term.</p>
-                  <button className="ad-btn-secondary" onClick={() => { resetFilters(); setPage(1); }}>Clear Filters</button>
-                </div>
-              )}
-              <div className="ad-member-grid">
-                {pageMembers.map(alumni => (
-                  <AlumniDirCard
-                    key={alumni._id}
-                    alumni={alumni}
-                    isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
-                    onConnect={item => { setSelectedForChat(item); setChatMessage("Hi, I'd like to connect and start a conversation with you."); }}
-                  />
-                ))}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="ad-pagination">
-                  <button className="ad-page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 17 }}>chevron_left</span>
-                  </button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(n => (
-                    <button
-                      key={n}
-                      className={`ad-page-btn ${page === n ? "ad-page-btn--active" : ""}`}
-                      onClick={() => setPage(n)}
-                    >{n}</button>
-                  ))}
-                  <button className="ad-page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 17 }}>chevron_right</span>
-                  </button>
-                </div>
-              )}
-            </>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="ad-pagination" style={{ marginTop: "1.5rem" }}>
+              <button className="ad-page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                <span className="material-symbols-outlined">chevron_left</span>
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                <button
+                  key={n}
+                  className={`ad-page-btn ${page === n ? "ad-page-btn--active" : ""}`}
+                  onClick={() => setPage(n)}
+                >{n}</button>
+              ))}
+              <button className="ad-page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                <span className="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
           )}
         </div>
 
-        {/* ── Right sidebar ─────────────────────────────── */}
+        {/* Sidebar */}
         <aside className="ad-sidebar">
-          {/* Quick Filters */}
-          <div className="ad-sidebar-card">
-            <div className="ad-sidebar-header">
-              <span className="ad-sidebar-title">Quick Filters</span>
-              <button className="ad-sidebar-reset" onClick={() => { resetFilters(); setPage(1); setIndustryFilter("All Industries"); setAvailFilter([]); }}>Reset</button>
+          <div className="ad-sidebar-card-v2">
+            <div className="ad-sidebar-header-v2">
+              <span className="ad-sidebar-title-v2">Quick Filters</span>
+              <button className="ad-sidebar-reset-v2" onClick={() => { resetFilters(); setPage(1); setAvailFilter([]); }}>Reset</button>
             </div>
 
-            <div className="ad-filter-section">
-              <div className="ad-filter-label">Search by Skills</div>
+            <div className="ad-filter-section-v2">
+              <div className="ad-filter-label-v2">Search by Skills</div>
               <div className="ad-skill-search-wrap">
                 <input
                   className="ad-skill-search"
@@ -490,88 +369,44 @@ export default function TenantAlumniPage() {
               </div>
             </div>
 
-            <div className="ad-filter-section">
-              <div className="ad-filter-label">Availability</div>
+            <div className="ad-filter-section-v2">
+              <div className="ad-filter-label-v2">Availability</div>
               {AVAIL_OPTIONS.map(opt => (
-                <label key={opt.key} className="ad-checkbox-row">
+                <label key={opt.key} className="ad-checkbox-row-v2">
                   <input
                     type="checkbox"
-                    className="ad-checkbox"
+                    hidden
                     checked={availFilter.includes(opt.key)}
                     onChange={() => setAvailFilter(prev =>
                       prev.includes(opt.key) ? prev.filter(k => k !== opt.key) : [...prev, opt.key]
                     )}
                   />
-                  <span className="ad-avail-dot" style={{ background: opt.color }} />
-                  <span className="ad-checkbox-label">{opt.label}</span>
-                  <span className="ad-filter-count">{opt.count.toLocaleString()}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="ad-filter-section">
-              <div className="ad-filter-label">Industry</div>
-              {INDUSTRY_FILTERS.map(ind => (
-                <label key={ind.label} className="ad-radio-row">
-                  <input
-                    type="radio"
-                    className="ad-radio"
-                    name="industry-filter"
-                    checked={industryFilter === ind.label}
-                    onChange={() => {
-                      setIndustryFilter(ind.label);
-                      setFilters(f => ({ ...f, industry: ind.label === "All Industries" ? "" : ind.label }));
-                      setPage(1);
-                    }}
-                  />
-                  <span className="ad-radio-label">{ind.label}</span>
-                  {ind.count && <span className="ad-filter-count">{ind.count.toLocaleString()}</span>}
-                </label>
-              ))}
-              <button className="ad-view-more-btn">View More ∨</button>
-            </div>
-          </div>
-
-          {/* Directory Insights */}
-          <div className="ad-sidebar-card">
-            <div className="ad-sidebar-header">
-              <span className="ad-sidebar-title">Directory Insights</span>
-              <button className="ad-sidebar-reset">View Report</button>
-            </div>
-            <div className="ad-insights-list">
-              {INSIGHTS_DYNAMIC.map(ins => (
-                <div key={ins.label} className="ad-insight-row">
-                  <div className="ad-insight-icon" style={{ background: ins.color + "18", color: ins.color }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{ins.icon}</span>
+                  <div className="ad-custom-check">
+                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: "#fff" }}>check</span>
                   </div>
-                  <div className="ad-insight-info">
-                    <div className="ad-insight-label">{ins.label}</div>
-                    <div className="ad-insight-value">{ins.value}</div>
-                  </div>
-                  <svg width="50" height="24" viewBox="0 0 50 24" fill="none" style={{ flex: "0 0 50px" }}>
-                    <path d="M0,18 C8,12 16,20 25,10 C34,0 42,16 50,8" stroke={ins.color} strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                  </svg>
-                </div>
+                  <span className="ad-avail-dot-v2" style={{ background: opt.color }} />
+                  <span className="ad-check-label-v2">{opt.label}</span>
+                  <span className="ad-count-v2">{opt.count.toLocaleString()}</span>
+                </label>
               ))}
             </div>
           </div>
         </aside>
       </div>
 
-      {/* ── Connect modal ──────────────────────────────────── */}
       {selectedForChat && (
         <ConnectDialog
           person={selectedForChat}
           chatMessage={chatMessage}
           setChatMessage={setChatMessage}
-          onSend={() => mutations.mentorship.mutate({
+          onSend={() => mutations.friendship.mutate({
             recipientUserId: selectedForChat.userId?._id || selectedForChat.userId,
             message: chatMessage,
           })}
           onClose={() => setSelectedForChat(null)}
-          isPending={mutations.mentorship.isPending}
-          isError={mutations.mentorship.isError}
-          error={mutations.mentorship.error}
+          isPending={mutations.friendship.isPending}
+          isError={mutations.friendship.isError}
+          error={mutations.friendship.error}
         />
       )}
     </div>

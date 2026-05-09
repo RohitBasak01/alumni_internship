@@ -78,4 +78,4 @@ function InlineLoading({ text = "Loading...", size = "sm", color = "brand" }) {
 }
 
 export default LoadingSpinner;
-export { ButtonLoadingSpinner, PageLoadingOverlay, InlineLoading };
+export { LoadingSpinner, ButtonLoadingSpinner, PageLoadingOverlay, InlineLoading };

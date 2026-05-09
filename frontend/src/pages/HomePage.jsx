@@ -55,7 +55,7 @@ function DashboardMockup() {
             { icon: "dashboard", label: "Dashboard", active: true },
             { icon: "dynamic_feed", label: "Feed" },
             { icon: "people", label: "Members" },
-            { icon: "handshake", label: "Mentorship" },
+            { icon: "handshake", label: "Friendship" },
             { icon: "work", label: "Jobs" },
             { icon: "event", label: "Events" },
             { icon: "groups", label: "Groups" },
@@ -83,7 +83,7 @@ function DashboardMockup() {
             {[
               { icon: "dynamic_feed", label: "Feed Posts", value: "128", change: "+12%", color: "#6366f1" },
               { icon: "group", label: "Network", value: "2.4K", change: "+8%", color: "#0ea5e9" },
-              { icon: "handshake", label: "Mentorships", value: "320", change: "+16%", color: "#10b981" },
+              { icon: "handshake", label: "Friendships", value: "320", change: "+16%", color: "#10b981" },
               { icon: "event", label: "Events", value: "24", change: "+5%", color: "#f59e0b" },
             ].map((stat) => (
               <div key={stat.label} className="hp-stat-card">
@@ -134,7 +134,7 @@ function DashboardMockup() {
               {[
                 { month: "MAY", day: "24", title: "Annual Alumni Meet 2026", details: "May 24, 2026 • 10:00 AM\nSPIT Campus, Mumbai", color: "#6366f1" },
                 { month: "JUN", day: "07", title: "Startup Networking Night", details: "Jun 07, 2026 • 6:30 PM\nWeWork, BKC Mumbai", color: "#10b981" },
-                { month: "JUN", day: "21", title: "Career Mentorship Summit", details: "Jun 21, 2026 • 11:00 AM\nOnline Event", color: "#f59e0b" },
+                { month: "JUN", day: "21", title: "Career Friendship Summit", details: "Jun 21, 2026 • 11:00 AM\nOnline Event", color: "#f59e0b" },
               ].map((ev) => (
                 <div key={ev.title} className="hp-event-item">
                   <div className="hp-event-date" style={{ borderLeftColor: ev.color }}>
@@ -183,6 +183,9 @@ function HomePage() {
         </nav>
 
         <div className="hp-nav-actions">
+          <Link to={tenant.getTenantAwarePath("/request-portal")} className="hp-nav-request">
+            Request Portal
+          </Link>
           <Link to={tenant.getTenantAwarePath("/login")} className="hp-nav-login">Login</Link>
           <Link to={tenant.getTenantAwarePath("/register")} className="hp-nav-join">Join Now</Link>
           <button
@@ -219,6 +222,7 @@ function HomePage() {
                 <a href="#about" className="hp-mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>About Us</a>
                 <a href="#contact" className="hp-mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>Contact</a>
                 <div className="hp-mobile-nav-actions">
+                  <Link to={tenant.getTenantAwarePath("/request-portal")} className="hp-mobile-nav-request" onClick={() => setMobileMenuOpen(false)}>Request Portal</Link>
                   <Link to={tenant.getTenantAwarePath("/login")} className="hp-mobile-nav-login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
                   <Link to={tenant.getTenantAwarePath("/register")} className="hp-mobile-nav-join" onClick={() => setMobileMenuOpen(false)}>Join Now</Link>
                 </div>
@@ -266,7 +270,7 @@ function HomePage() {
                 id="hero-explore-btn"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>account_balance</span>
-                Explore Institutes
+                Request Portal
               </Link>
             </div>
 
@@ -292,7 +296,7 @@ function HomePage() {
                 <span className="material-symbols-outlined hp-stat-pill-icon" style={{ color: "#f59e0b" }}>work</span>
                 <div>
                   <div className="hp-stat-pill-value">15K+</div>
-                  <div className="hp-stat-pill-label">Mentorships</div>
+                  <div className="hp-stat-pill-label">Friendships</div>
                 </div>
               </div>
             </div>
@@ -343,7 +347,7 @@ function HomePage() {
         <div className="hp-features-grid">
           {[
             { icon: "contacts", title: "Member Directory", desc: "Find graduates using institution-aware filters like batch, department, organization, and location.", color: "#6366f1" },
-            { icon: "groups", title: "Community Hub", desc: "Enable mentorship, collaborations, reunions, and meaningful networking inside one trusted ecosystem.", color: "#0ea5e9" },
+            { icon: "groups", title: "Community Hub", desc: "Enable friendship, collaborations, reunions, and meaningful networking inside one trusted ecosystem.", color: "#0ea5e9" },
             { icon: "work", title: "Opportunities", desc: "Share openings, referrals, volunteering needs, and community opportunities with the right members.", color: "#f59e0b" },
             { icon: "event", title: "Event Management", desc: "Run reunions, webinars, and campus events with seamless RSVP tracking and real-time updates.", color: "#10b981" },
           ].map((f) => (
@@ -372,6 +376,7 @@ function HomePage() {
           </div>
           <p className="hp-footer-copy">Empowering lifelong connections between institutions and their graduates.</p>
           <div className="hp-footer-links">
+            <Link to={tenant.getTenantAwarePath("/request-portal")} className="hp-footer-link">Request Portal</Link>
             <Link to={tenant.getTenantAwarePath("/legal/privacy")} className="hp-footer-link">Privacy Policy</Link>
             <Link to={tenant.getTenantAwarePath("/legal/terms")} className="hp-footer-link">Terms of Service</Link>
             <a href="mailto:support@alumnet.com" className="hp-footer-link">Contact</a>

@@ -283,6 +283,7 @@ function formatEvent(req, event) {
     updatedAt: event.updatedAt,
     attendeeCount: event.registrations?.length || 0,
     isRegistered,
+    fees: event.fees || [],
     attendees:
       req.mockUser.role === "institute_admin"
         ? (event.registrations || []).map((entry) => {
@@ -584,8 +585,8 @@ router.get("/admin/analytics", requireMockAuth, requireRole("super_admin"), (req
       totalJobs: store.jobs.length,
       publishedJobs: store.jobs.filter((item) => item.status === "published").length,
       totalRsvps: store.events.reduce((sum, item) => sum + (item.registrations?.length || 0), 0),
-      totalMentorshipRequests: store.mentorshipRequests.length,
-      pendingMentorshipRequests: store.mentorshipRequests.filter((item) => item.status === "pending").length
+      totalfriendships: store.friendships.length,
+      pendingfriendships: store.friendships.filter((item) => item.status === "pending").length
     },
     institutesByPlan: [
       {
@@ -640,12 +641,12 @@ router.get("/admin/institutes/:id", requireMockAuth, requireRole("super_admin"),
       eventsCount: getStore(req).events.length,
       jobsCount: getStore(req).jobs.length,
       announcementsCount: getStore(req).announcements.length,
-      pendingMentorshipRequests: 0
+      pendingfriendships: 0
     },
     support: {
       hasPendingAdminSetup: false,
       inactiveAdminCount: 0,
-      pendingMentorshipRequests: 0
+      pendingfriendships: 0
     },
     recentActivity: []
   });
@@ -672,12 +673,12 @@ router.patch("/admin/institutes/:id/subscription", requireMockAuth, requireRole(
       eventsCount: getStore(req).events.length,
       jobsCount: getStore(req).jobs.length,
       announcementsCount: getStore(req).announcements.length,
-      pendingMentorshipRequests: 0
+      pendingfriendships: 0
     },
     support: {
       hasPendingAdminSetup: false,
       inactiveAdminCount: 0,
-      pendingMentorshipRequests: 0
+      pendingfriendships: 0
     },
     recentActivity: []
   });
@@ -854,6 +855,26 @@ router.get("/announcements", requireMockAuth, ensureTenant, (req, res) => {
   res.json(items);
 });
 
+router.post("/announcements", requireMockAuth, ensureTenant, (req, res) => {
+  const announcement = {
+    _id: crypto.randomUUID(),
+    instituteId: req.tenant._id,
+    title: req.body.title || "Untitled",
+    content: req.body.content || "",
+    summary: req.body.summary || "",
+    category: req.body.category || "News",
+    status: req.body.status || "published",
+    imageUrl: req.body.imageUrl || "",
+    isEditorPick: req.body.isEditorPick || false,
+    groupId: req.body.groupId || null,
+    createdBy: req.mockUser._id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  getStore(req).announcements.unshift(announcement);
+  res.status(201).json(announcement);
+});
+
 router.get("/events", requireMockAuth, ensureTenant, (req, res) => {
   let events = getStore(req).events.filter((item) => item.instituteId === req.tenant._id);
   if (req.query.groupId) {
@@ -864,9 +885,92 @@ router.get("/events", requireMockAuth, ensureTenant, (req, res) => {
   res.json(events.map((item) => formatEvent(req, item)));
 });
 
+router.post("/events", requireMockAuth, ensureTenant, (req, res) => {
+  const event = {
+    _id: crypto.randomUUID(),
+    instituteId: req.tenant._id,
+    title: req.body.title || "Untitled Event",
+    description: req.body.description || "",
+    eventDate: req.body.eventDate || new Date().toISOString(),
+    location: req.body.location || "",
+    groupId: req.body.groupId || null,
+    registrationCap: req.body.registrationCap,
+    fees: req.body.fees || [],
+    registrations: [],
+    createdBy: req.mockUser._id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  getStore(req).events.unshift(event);
+  res.status(201).json(formatEvent(req, event));
+});
+
+router.post("/events/:id/create-order", requireMockAuth, ensureTenant, (req, res) => {
+  res.json({
+    id: "mock_order_" + Math.random().toString(36).substring(2, 10),
+    amount: 10000,
+    currency: "INR"
+  });
+});
+
+router.post("/events/:id/verify-payment", requireMockAuth, ensureTenant, (req, res) => {
+  const event = getStore(req).events.find(e => e._id === req.params.id && e.instituteId === req.tenant._id);
+  if (!event) return res.status(404).json({ message: "Event not found" });
+
+  const alreadyRegistered = event.registrations.some(r => r.userId === req.mockUser._id);
+  if (!alreadyRegistered) {
+    event.registrations.push({
+      userId: req.mockUser._id,
+      registeredAt: new Date().toISOString(),
+      orderId: req.body.razorpay_order_id,
+      paymentId: req.body.razorpay_payment_id
+    });
+  }
+  res.json({ success: true, event: formatEvent(req, event) });
+});
+
+router.delete("/events/:id", requireMockAuth, ensureTenant, (req, res) => {
+  const store = getStore(req);
+  const index = store.events.findIndex(e => e._id === req.params.id && e.instituteId === req.tenant._id);
+  
+  if (index === -1) {
+    return res.status(404).json({ message: "Event not found" });
+  }
+
+  const event = store.events[index];
+  const isAdmin = req.mockUser.role === "institute_admin";
+  const isOwner = event.createdBy === req.mockUser._id;
+
+  if (!isAdmin && !isOwner) {
+    return res.status(403).json({ message: "You do not have permission to delete this event" });
+  }
+
+  store.events.splice(index, 1);
+  res.json({ success: true, message: "Event deleted successfully" });
+});
+
 router.get("/jobs", requireMockAuth, ensureTenant, (req, res) => {
   const jobs = getStore(req).jobs.filter((item) => item.instituteId === req.tenant._id);
   res.json(req.mockUser.role === "institute_admin" ? jobs : jobs.filter((item) => item.status === "published"));
+});
+
+router.post("/jobs", requireMockAuth, ensureTenant, (req, res) => {
+  const job = {
+    _id: crypto.randomUUID(),
+    instituteId: req.tenant._id,
+    title: req.body.title || "Untitled Job",
+    company: req.body.company || "",
+    location: req.body.location || "",
+    description: req.body.description || "",
+    requirements: req.body.requirements || "",
+    applicationUrl: req.body.applicationUrl || "",
+    status: req.body.status || "published",
+    createdBy: req.mockUser._id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  getStore(req).jobs.unshift(job);
+  res.status(201).json(job);
 });
 
 router.get("/feed", requireMockAuth, ensureTenant, (req, res) => {
@@ -899,8 +1003,8 @@ router.get("/feed", requireMockAuth, ensureTenant, (req, res) => {
   res.json([...announcements, ...events, ...jobs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
 });
 
-router.get("/mentorship", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
-  const conversations = getStore(req).mentorshipRequests
+router.get("/friendships", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const conversations = getStore(req).friendships
     .filter((item) => {
       if (item.conversationType === "group") {
         return (item.memberIds || []).includes(req.mockUser._id);
@@ -914,7 +1018,7 @@ router.get("/mentorship", requireMockAuth, requireRole("alumni"), ensureTenant, 
   res.json(conversations);
 });
 
-router.post("/mentorship", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+router.post("/friendships", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
   const recipientUserId = req.body?.recipientUserId || req.body?.mentorUserId;
   const message = String(req.body?.message || "").trim();
 
@@ -953,11 +1057,11 @@ router.post("/mentorship", requireMockAuth, requireRole("alumni"), ensureTenant,
     updatedAt: new Date().toISOString()
   };
 
-  getStore(req).mentorshipRequests.unshift(conversation);
+  getStore(req).friendships.unshift(conversation);
   res.status(201).json(formatMockConversation(req, conversation));
 });
 
-router.post("/mentorship/groups", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+router.post("/friendships/groups", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
   const groupName = String(req.body?.groupName || "").trim();
   const requestedMemberIds = Array.isArray(req.body?.memberUserIds) ? req.body.memberUserIds.map(String) : [];
   const initialMessage = String(req.body?.initialMessage || "").trim();
@@ -1001,12 +1105,12 @@ router.post("/mentorship/groups", requireMockAuth, requireRole("alumni"), ensure
     updatedAt: new Date().toISOString()
   };
 
-  getStore(req).mentorshipRequests.unshift(conversation);
+  getStore(req).friendships.unshift(conversation);
   res.status(201).json(formatMockConversation(req, conversation));
 });
 
-router.patch("/mentorship/:id", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
-  const conversation = getStore(req).mentorshipRequests.find(
+router.patch("/friendships/:id", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const conversation = getStore(req).friendships.find(
     (item) =>
       item._id === req.params.id &&
       item.conversationType !== "group" &&
@@ -1026,14 +1130,14 @@ router.patch("/mentorship/:id", requireMockAuth, requireRole("alumni"), ensureTe
   res.json(formatMockConversation(req, conversation));
 });
 
-router.post("/mentorship/:id/messages", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+router.post("/friendships/:id/messages", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
   const content = String(req.body?.content || "").trim();
 
   if (!content) {
     return res.status(400).json({ message: "Message content is required", requestId: req.requestId });
   }
 
-  const conversation = getStore(req).mentorshipRequests.find((item) => {
+  const conversation = getStore(req).friendships.find((item) => {
     if (item._id !== req.params.id) {
       return false;
     }
@@ -1082,8 +1186,8 @@ router.post("/mentorship/:id/messages", requireMockAuth, requireRole("alumni"), 
   });
 });
 
-router.post("/mentorship/:id/leave", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
-  const conversation = getStore(req).mentorshipRequests.find(
+router.post("/friendships/:id/leave", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+  const conversation = getStore(req).friendships.find(
     (item) =>
       item._id === req.params.id &&
       item.conversationType === "group" &&
@@ -1115,9 +1219,9 @@ router.post("/mentorship/:id/leave", requireMockAuth, requireRole("alumni"), ens
   });
 });
 
-router.delete("/mentorship/:id", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
+router.delete("/friendships/:id", requireMockAuth, requireRole("alumni"), ensureTenant, (req, res) => {
   const store = getStore(req);
-  const index = store.mentorshipRequests.findIndex(
+  const index = store.friendships.findIndex(
     (item) =>
       item._id === req.params.id &&
       item.conversationType === "group" &&
@@ -1128,7 +1232,7 @@ router.delete("/mentorship/:id", requireMockAuth, requireRole("alumni"), ensureT
     return res.status(404).json({ message: "Group conversation not found or you are not an admin", requestId: req.requestId });
   }
 
-  store.mentorshipRequests.splice(index, 1);
+  store.friendships.splice(index, 1);
   res.json({ message: "Group deleted successfully", conversationId: req.params.id });
 });
 
@@ -1268,7 +1372,7 @@ router.post("/community-groups/:id/join", requireMockAuth, ensureTenant, (req, r
   );
 
   if (!group) {
-    group = getStore(req).mentorshipRequests.find(
+    group = getStore(req).friendships.find(
       (item) => item._id === req.params.id && item.conversationType === "group" && item.instituteId === req.tenant._id
     );
   }
@@ -1307,7 +1411,7 @@ router.get("/notifications/summary", requireMockAuth, ensureTenant, (req, res) =
   ).length;
 
   res.json({
-    pendingMentorshipRequests: req.tenant?.featureFlags?.enableMentorship === false ? 0 : 0,
+    pendingfriendships: req.tenant?.featureFlags?.enableMentorship === false ? 0 : 0,
     pendingAlumniInvites
   });
 });

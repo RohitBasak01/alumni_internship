@@ -12,10 +12,10 @@ import SectionCard from "../components/SectionCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import {
-  createMentorshipRequest,
+  createFriendshipRequest,
   fetchAlumni,
-  fetchMentorshipRequests,
-  updateMentorshipRequest
+  fetchFriendshipRequests,
+  updateFriendshipRequest
 } from "../lib/api.js";
 import { getTenantDisplayConfig } from "../utils/tenantDisplay.js";
 
@@ -32,28 +32,28 @@ function ConnectionRequestsPage() {
   const [connectionSuccess, setConnectionSuccess] = useState(null);
 
   const { data = [], isLoading, isError, error } = useQuery({
-    queryKey: ["mentorship-requests"],
-    queryFn: fetchMentorshipRequests,
-    enabled: auth.user?.role === "alumni" && tenant.featureFlags.enableMentorship !== false
+    queryKey: ["friendship-requests"],
+    queryFn: fetchFriendshipRequests,
+    enabled: auth.user?.role === "alumni" && tenant.featureFlags.enableFriendship !== false
   });
 
   const { data: allAlumni = [] } = useQuery({
     queryKey: ["alumni"],
     queryFn: fetchAlumni,
-    enabled: auth.user?.role === "alumni" && tenant.featureFlags.enableMentorship !== false
+    enabled: auth.user?.role === "alumni" && tenant.featureFlags.enableFriendship !== false
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }) => updateMentorshipRequest(id, { status }),
+    mutationFn: ({ id, status }) => updateFriendshipRequest(id, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["friendship-requests"] });
     }
   });
 
   const sendRequestMutation = useMutation({
-    mutationFn: (payload) => createMentorshipRequest(payload),
+    mutationFn: (payload) => createFriendshipRequest(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["friendship-requests"] });
       setConnectionSuccess("Connection request sent.");
       setSelectedForRequest(null);
       setRequestMessage("");
@@ -137,7 +137,7 @@ function ConnectionRequestsPage() {
     );
   }
 
-  if (tenant.featureFlags.enableMentorship === false) {
+  if (tenant.featureFlags.enableFriendship === false) {
     return (
       <SectionCard title="Connections unavailable" subtitle="Feature availability">
         <p className="muted">

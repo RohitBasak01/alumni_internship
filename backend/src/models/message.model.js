@@ -35,7 +35,7 @@ const messageSchema = new mongoose.Schema(
     },
     conversationId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "MentorshipRequest",
+      ref: "Friendship",
       required: true,
       index: true
     },

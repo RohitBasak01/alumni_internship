@@ -163,3 +163,63 @@ export async function persistMentorshipAttachments(attachments, { tenantId, conv
 
   return persisted;
 }
+
+export async function persistFriendshipAttachments(attachments, { tenantId, conversationId }) {
+  const safeTenantId = String(tenantId || "shared");
+  const safeConversationId = String(conversationId || "general");
+  const attachmentList = Array.isArray(attachments) ? attachments : [];
+
+  const uploadDirectory = path.join(
+    process.cwd(),
+    "uploads",
+    "friendship",
+    safeTenantId,
+    safeConversationId
+  );
+
+  await fs.mkdir(uploadDirectory, { recursive: true });
+
+  const persisted = [];
+
+  for (const attachment of attachmentList) {
+    const name = String(attachment?.name || "attachment").trim() || "attachment";
+    const url = String(attachment?.url || "").trim();
+    const mimeType = String(attachment?.mimeType || "application/octet-stream").trim() || "application/octet-stream";
+    const declaredSize = Number(attachment?.size || 0);
+
+    if (!url) {
+      continue;
+    }
+
+    if (isExternalUrl(url) || isUploadPath(url)) {
+      persisted.push({
+        name,
+        url,
+        mimeType,
+        size: Number.isFinite(declaredSize) && declaredSize >= 0 ? declaredSize : 0
+      });
+      continue;
+    }
+
+    const parsedDataUrl = parseDataUrl(url);
+    if (!parsedDataUrl) {
+      continue;
+    }
+
+    const storedFileName = buildStoredFileName(name, parsedDataUrl.mimeType || mimeType);
+    const absolutePath = path.join(uploadDirectory, storedFileName);
+
+    await fs.writeFile(absolutePath, parsedDataUrl.buffer);
+
+    const publicPath = `/uploads/friendship/${safeTenantId}/${safeConversationId}/${storedFileName}`;
+
+    persisted.push({
+      name,
+      url: publicPath,
+      mimeType: parsedDataUrl.mimeType || mimeType,
+      size: parsedDataUrl.buffer.length
+    });
+  }
+
+  return persisted;
+}

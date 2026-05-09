@@ -234,7 +234,8 @@ function CreateEventPage() {
       eventDate,
       location,
       groupId: searchParams.get("groupId") || null,
-      registrationCap: form.disableRegistrations === "yes" ? 0 : undefined
+      registrationCap: form.disableRegistrations === "yes" ? 0 : undefined,
+      fees: fees.length > 0 ? fees : undefined
     });
   }
 

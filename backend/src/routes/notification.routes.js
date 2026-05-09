@@ -167,14 +167,14 @@ router.post("/:id/dismiss", protect, requireTenantAccess, validateParams(validat
 
 router.get("/summary", protect, requireTenantAccess, async (req, res, next) => {
   try {
-    const { AlumniProfile, MentorshipRequest, Notification } = getTenantModels(req);
+    const { AlumniProfile, Friendship, Notification } = getTenantModels(req);
     const instituteId = req.tenant._id;
 
-    const [pendingMentorshipRequests, pendingAlumniInvites, unreadCount, unreadByCategoryRaw] = await Promise.all([
+    const [pendingFriendshipRequests, pendingAlumniInvites, unreadCount, unreadByCategoryRaw] = await Promise.all([
       req.user.role === "alumni"
-        ? MentorshipRequest.countDocuments({
+        ? Friendship.countDocuments({
             instituteId,
-            mentorId: req.user._id,
+            recipientId: req.user._id,
             status: "pending"
           })
         : Promise.resolve(0),
@@ -229,11 +229,11 @@ router.get("/summary", protect, requireTenantAccess, async (req, res, next) => {
 
     const unreadByCategory = unreadByCategoryRaw.reduce(
       (accumulator, entry) => ({ ...accumulator, [entry._id]: entry.count }),
-      { connections: 0, jobs: 0, events: 0, feed: 0, groups: 0, mentorship: 0, system: 0 }
+      { connections: 0, jobs: 0, events: 0, feed: 0, groups: 0, system: 0 }
     );
 
     res.json({
-      pendingMentorshipRequests,
+      pendingFriendshipRequests,
       pendingAlumniInvites,
       unreadCount,
       unreadByCategory

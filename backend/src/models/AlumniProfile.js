@@ -164,6 +164,35 @@ const alumniProfileSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Advanced filtering fields
+    experienceYears: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 50,
+    },
+    companySize: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    availability: {
+      type: [String],
+      default: [],
+      enum: ["mentorship", "opportunities", "freelance", "advising", "hiring", "open", "looking"],
+    },
+    // Additional fields for enhanced filtering
+    companyRevenue: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    educationLevel: {
+      type: String,
+      trim: true,
+      default: "",
+      enum: ["high_school", "bachelors", "masters", "phd", "postdoc", "diploma", "certification", ""],
+    },
   },
   {
     timestamps: true,

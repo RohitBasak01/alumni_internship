@@ -30,7 +30,7 @@ const InstitutionSettingsPage = lazy(
 const JobsPage = lazy(() => import("./pages/JobsPage.jsx"));
 const LegalPage = lazy(() => import("./pages/LegalPage.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
-const MentorshipPage = lazy(() => import("./pages/MentorshipPage.jsx"));
+const ConnectionsPage = lazy(() => import("./pages/ConnectionsPage.jsx"));
 const NewsroomPage = lazy(() => import("./pages/NewsroomPage.jsx"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage.jsx"));
 const PortalRequestPage = lazy(() => import("./pages/PortalRequestPage.jsx"));
@@ -112,9 +112,9 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="messages" element={<MentorshipPage />} />
+            <Route path="messages" element={<ConnectionsPage />} />
             <Route
-              path="mentorship"
+              path="friendship"
               element={<Navigate replace to="/portal/messages" />}
             />
             <Route path="connections" element={<ConnectionRequestsPage />} />

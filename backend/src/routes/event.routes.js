@@ -1,4 +1,6 @@
 import express from "express";
+import Razorpay from "razorpay";
+import crypto from "crypto";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
@@ -60,6 +62,7 @@ function formatEvent(event, user) {
     registrationCap: Number.isFinite(Number(event.registrationCap)) ? Number(event.registrationCap) : null,
     attendeeCount: event.registrations?.length || 0,
     isRegistered: Boolean(isRegistered),
+    fees: event.fees || [],
     attendees:
       user.role === "institute_admin"
         ? (event.registrations || []).map((entry) => ({
@@ -203,6 +206,101 @@ router.delete(
       await event.populate("registrations.userId", "name email");
 
       res.json(formatEvent(event, req.user));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/create-order",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const { Event } = getTenantModels(req);
+      const event = await Event.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      if (!event.fees || event.fees.length === 0) {
+        return res.status(400).json({ message: "Event is free" });
+      }
+
+      const amount = event.fees.reduce((acc, fee) => acc + (fee.amount || 0), 0);
+
+      const razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID || "mock_key_id",
+        key_secret: process.env.RAZORPAY_KEY_SECRET || "mock_key_secret"
+      });
+
+      const options = {
+        amount: amount * 100, // amount in smallest currency unit (paise)
+        currency: "INR",
+        receipt: `receipt_event_${event._id}`
+      };
+
+      const order = await razorpay.orders.create(options);
+      res.json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/verify-payment",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "mock_key_secret")
+        .update(body.toString())
+        .digest("hex");
+
+      if (expectedSignature === razorpay_signature) {
+        const { Event } = getTenantModels(req);
+        const event = await Event.findOne({
+          _id: req.params.id,
+          instituteId: req.tenant._id
+        });
+
+        if (!event) {
+          return res.status(404).json({ message: "Event not found" });
+        }
+
+        const alreadyRegistered = event.registrations.some(
+          (entry) => entry.userId.toString() === req.user._id.toString()
+        );
+
+        if (!alreadyRegistered) {
+          event.registrations.push({
+            userId: req.user._id,
+            registeredAt: new Date(),
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id
+          });
+          await event.save();
+        }
+
+        await event.populate("registrations.userId", "name email");
+        res.json({ success: true, event: formatEvent(event, req.user) });
+      } else {
+        res.status(400).json({ message: "Invalid signature" });
+      }
     } catch (error) {
       next(error);
     }

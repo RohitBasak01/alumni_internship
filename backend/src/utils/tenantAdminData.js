@@ -37,7 +37,7 @@ export async function getInstituteTenantModels(institute) {
 export async function getInstituteTenantSummary(institute, options = {}) {
   const { includeAdmins = false, includeRecentActivity = false } = options;
   const tenantModels = await getInstituteTenantModels(institute);
-  const { AlumniProfile, Announcement, Event, Job, MentorshipRequest, User } = tenantModels;
+  const { AlumniProfile, Announcement, Event, Job, Friendship, User } = tenantModels;
   const instituteId = institute._id;
 
   const [
@@ -48,8 +48,8 @@ export async function getInstituteTenantSummary(institute, options = {}) {
     jobsCount,
     publishedJobsCount,
     announcementsCount,
-    mentorshipRequestsCount,
-    pendingMentorshipRequests,
+    friendshipRequestsCount,
+    pendingFriendships,
     recentEvents,
     recentJobs,
     recentAnnouncements,
@@ -66,8 +66,8 @@ export async function getInstituteTenantSummary(institute, options = {}) {
     Job.countDocuments({ instituteId }),
     Job.countDocuments({ instituteId, status: "published" }),
     Announcement.countDocuments({ instituteId }),
-    MentorshipRequest.countDocuments({ instituteId }),
-    MentorshipRequest.countDocuments({ instituteId, status: "pending" }),
+    Friendship.countDocuments({ instituteId }),
+    Friendship.countDocuments({ instituteId, status: "pending" }),
     includeRecentActivity
       ? Event.find({ instituteId }).select("title eventDate location createdAt").sort({ createdAt: -1 }).limit(3)
       : Promise.resolve([]),
@@ -95,8 +95,8 @@ export async function getInstituteTenantSummary(institute, options = {}) {
       jobsCount,
       publishedJobsCount,
       announcementsCount,
-      mentorshipRequestsCount,
-      pendingMentorshipRequests,
+      friendshipRequestsCount,
+      pendingFriendships,
       totalRsvps
     },
     support: {

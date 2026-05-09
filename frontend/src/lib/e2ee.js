@@ -2,8 +2,8 @@ const ENVELOPE_PREFIX = "enc:v1:";
 const MANAGED_SECRET_PREFIX = "k1:";
 const FILE_ENCRYPTION_VERSION = "file-v1";
 const FILE_ENCRYPTION_ALGORITHM = "AES-GCM";
-const DEVICE_PUBLIC_KEY_STORAGE = "mentorship:e2ee:device-public-jwk";
-const DEVICE_PRIVATE_KEY_STORAGE = "mentorship:e2ee:device-private-jwk";
+const DEVICE_PUBLIC_KEY_STORAGE = "friendship:e2ee:device-public-jwk";
+const DEVICE_PRIVATE_KEY_STORAGE = "friendship:e2ee:device-private-jwk";
 
 function toBase64(bytes) {
   let binary = "";

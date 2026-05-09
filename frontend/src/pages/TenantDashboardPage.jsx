@@ -80,7 +80,7 @@ function AlumniDashboard({ logic }) {
   const alumni = queries.alumni.data || [];
   const events = queries.events.data || [];
   const jobs = queries.jobs.data || [];
-  const mentorship = queries.mentorship.data || [];
+  const friendship = queries.friendship.data || [];
   const posts = queries.posts.data || [];
 
   const hour = new Date().getHours();
@@ -138,7 +138,7 @@ function AlumniDashboard({ logic }) {
       <div className="adb-stats-row">
         <StatCard icon="diversity_3"   label="Total Alumni"     value={alumni.length} change="12%"  color="#6366f1" />
         <StatCard icon="hub"           label="Active Network"   value={`${Math.max(alumni.filter(a => a.isActive).length, alumni.length).toLocaleString()}`} change="8%"   color="#0ea5e9" />
-        <StatCard icon="handshake"     label="Mentorships"      value={mentorship.filter(m => m.status === "accepted").length}  change="16%" color="#10b981" />
+        <StatCard icon="handshake"     label="Friendships"      value={friendship.filter(m => m.status === "accepted").length}  change="16%" color="#10b981" />
         <StatCard icon="event"         label="Events"           value={events.length}   change="5%"  color="#f59e0b" />
         <StatCard icon="work"          label="Jobs Posted"      value={jobs.length}     change="10%" color="#8b5cf6" />
       </div>
@@ -159,7 +159,11 @@ function AlumniDashboard({ logic }) {
             ) : (
               <div className="adb-empty-state">No recent activity found.</div>
             )}
-            {displayPosts.length > 0 && <button className="adb-load-more">Load more posts ▾</button>}
+            {displayPosts.length > 0 && (
+              <Link to="/portal/feed" className="adb-load-more">
+                See more
+              </Link>
+            )}
           </div>
         </div>
 
@@ -272,7 +276,7 @@ function AlumniDashboard({ logic }) {
                 <div className="adb-highlight-name">
                   {recentJoins.length > 0 ? (
                     <>
-                      {recentJoins[0].name.split(" ")[0]} 
+                      {String(recentJoins[0]?.name || recentJoins[0]?.fullName || "New member").split(" ")[0]} 
                       {recentJoins.length > 1 && ` and ${recentJoins.length - 1} others`}
                     </>
                   ) : "New members"}

@@ -849,12 +849,12 @@ router.post("/setup-password", validateBody(validateSetupPasswordBody), async (r
     }
 
     const canLogin = user.role === "super_admin" || req.tenant?.status === "active" || user.instituteId?.status === "active";
-    const sessionToken = canLogin ? generateToken(user) : null;
+    const sessionToken = canLogin ? generateAccessToken(user) : null;
 
     if (sessionToken) {
-      setAuthCookie(res, sessionToken);
+      setAuthCookies(res, sessionToken);
     } else {
-      clearAuthCookie(res);
+      clearAuthCookies(res);
     }
 
     res.json({

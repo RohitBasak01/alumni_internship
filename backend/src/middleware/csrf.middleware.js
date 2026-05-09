@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 
 export function csrfProtection(req, res, next) {
+  if (req.path === "/api/payments/stripe/webhook") {
+    return next();
+  }
+
   // 1. Skip GET, HEAD, OPTIONS
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
     // Generate a CSRF token and set it in a cookie if it doesn't exist

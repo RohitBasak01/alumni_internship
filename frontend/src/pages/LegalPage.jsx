@@ -19,7 +19,7 @@ const legalContent = {
       },
       {
         heading: "Data Security",
-        body: "We implement industry-standard security measures including encryption in transit and at rest, access controls, and regular security audits. Mentorship conversations support end-to-end encryption.",
+        body: "We implement industry-standard security measures including encryption in transit and at rest, access controls, and regular security audits. Friendship conversations support end-to-end encryption.",
       },
       {
         heading: "Your Rights",

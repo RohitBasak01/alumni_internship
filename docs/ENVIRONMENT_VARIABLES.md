@@ -8,6 +8,7 @@ This document provides a comprehensive reference for all environment variables u
 - [Frontend Variables](#frontend-variables)
 - [Database Variables](#database-variables)
 - [Email Configuration](#email-configuration)
+- [Payments](#payments)
 - [OAuth/Social Login](#oauthsocial-login)
 - [Security](#security)
 - [Monitoring & Logging](#monitoring--logging)
@@ -68,6 +69,18 @@ This document provides a comprehensive reference for all environment variables u
 | `SMTP_USER`   | SMTP username        | (empty)                                         | No       | `user@gmail.com`                       |
 | `SMTP_PASS`   | SMTP password        | (empty)                                         | No       | `app-specific-password`                |
 | `EMAIL_FROM`  | Sender email address | `Alumni Network <no-reply@alumninetwork.local>` | No       | `Alumni Network <noreply@example.com>` |
+
+## Payments
+
+| Variable                  | Description                                      | Default | Required | Example       |
+| ------------------------- | ------------------------------------------------ | ------- | -------- | ------------- |
+| `STRIPE_SECRET_KEY`       | Stripe secret key for creating checkout sessions | (empty) | No       | `sk_live_...` |
+| `STRIPE_WEBHOOK_SECRET`   | Stripe webhook signing secret                    | (empty) | No       | `whsec_...`   |
+| `STRIPE_PRICE_BASIC`      | Optional Stripe recurring price for Basic        | (empty) | No       | `price_...`   |
+| `STRIPE_PRICE_PRO`        | Optional Stripe recurring price for Pro          | (empty) | No       | `price_...`   |
+| `STRIPE_PRICE_ENTERPRISE` | Optional Stripe recurring price for Enterprise   | (empty) | No       | `price_...`   |
+
+If Stripe keys are not configured, super admin checkout creation returns a mock checkout URL for local development. In production, configure the webhook endpoint as `/api/payments/stripe/webhook`.
 
 ## OAuth/Social Login
 

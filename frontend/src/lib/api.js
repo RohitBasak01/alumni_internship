@@ -621,6 +621,16 @@ export async function registerForEvent(id) {
   return data;
 }
 
+export async function createEventOrder(id) {
+  const { data } = await api.post(`/events/${id}/create-order`);
+  return data;
+}
+
+export async function verifyEventPayment(id, paymentDetails) {
+  const { data } = await api.post(`/events/${id}/verify-payment`, paymentDetails);
+  return data;
+}
+
 export async function cancelEventRegistration(id) {
   const { data } = await api.delete(`/events/${id}/register`);
   return data;
@@ -817,43 +827,43 @@ export async function fetchNotificationSummary() {
   return data;
 }
 
-export async function updateMentorshipRequest(id, payload) {
-  const { data } = await api.patch(`/mentorship/${id}`, payload);
+export async function updateFriendshipRequest(id, payload) {
+  const { data } = await api.patch(`/friendships/${id}`, payload);
   return data;
 }
 
-export const updateAlumniConversationRequest = updateMentorshipRequest;
+export const updateAlumniConversationRequest = updateFriendshipRequest;
 
-export function sendMentorshipMessage(id, payload) {
+export function sendFriendshipMessage(id, payload) {
   return api
-    .post(`/mentorship/${id}/messages`, payload)
+    .post(`/friendships/${id}/messages`, payload)
     .then((res) => res.data);
 }
 
-export const sendAlumniConversationMessage = sendMentorshipMessage;
+export const sendAlumniConversationMessage = sendFriendshipMessage;
 
-export function fetchMentorshipMessages(id, params = {}) {
+export function fetchFriendshipMessages(id, params = {}) {
   return api
-    .get(`/mentorship/${id}/messages`, { params })
+    .get(`/friendships/${id}/messages`, { params })
     .then((res) => res.data);
 }
 
-export const fetchAlumniConversationMessages = fetchMentorshipMessages;
+export const fetchAlumniConversationMessages = fetchFriendshipMessages;
 
-export async function upsertMentorshipE2eePublicKey(payload) {
-  const { data } = await api.put("/mentorship/e2ee/public-key", payload);
+export async function upsertFriendshipE2eePublicKey(payload) {
+  const { data } = await api.put("/friendships/e2ee/public-key", payload);
   return data;
 }
 
-export async function syncMentorshipConversationEnvelopes(id, payload) {
-  const { data } = await api.patch(`/mentorship/${id}/e2ee/envelopes`, payload);
+export async function syncFriendshipConversationEnvelopes(id, payload) {
+  const { data } = await api.patch(`/friendships/${id}/e2ee/envelopes`, payload);
   return data;
 }
 
-export async function uploadMentorshipAttachment(file, options = {}) {
+export async function uploadFriendshipAttachment(file, options = {}) {
   const formData = new FormData();
   formData.append("file", file);
-  const { data } = await api.post("/mentorship/uploads", formData, {
+  const { data } = await api.post("/friendships/uploads", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -865,63 +875,63 @@ export async function uploadMentorshipAttachment(file, options = {}) {
   return data;
 }
 
-export async function markMentorshipConversationRead(id) {
-  const { data } = await api.post(`/mentorship/${id}/read`);
+export async function markFriendshipConversationRead(id) {
+  const { data } = await api.post(`/friendships/${id}/read`);
   return data;
 }
 
-export const markAlumniConversationRead = markMentorshipConversationRead;
+export const markAlumniConversationRead = markFriendshipConversationRead;
 
-export async function setMentorshipTyping(id, payload) {
-  const { data } = await api.post(`/mentorship/${id}/typing`, payload);
+export async function setFriendshipTyping(id, payload) {
+  const { data } = await api.post(`/friendships/${id}/typing`, payload);
   return data;
 }
 
-export const setAlumniConversationTyping = setMentorshipTyping;
+export const setAlumniConversationTyping = setFriendshipTyping;
 
-export async function editMentorshipMessage(requestId, messageId, payload) {
+export async function editFriendshipMessage(requestId, messageId, payload) {
   const { data } = await api.patch(
-    `/mentorship/${requestId}/messages/${messageId}`,
+    `/friendships/${requestId}/messages/${messageId}`,
     payload,
   );
   return data;
 }
 
-export const editAlumniConversationMessage = editMentorshipMessage;
+export const editAlumniConversationMessage = editFriendshipMessage;
 
-export async function deleteMentorshipMessage(requestId, messageId) {
+export async function deleteFriendshipMessage(requestId, messageId) {
   const { data } = await api.delete(
-    `/mentorship/${requestId}/messages/${messageId}`,
+    `/friendships/${requestId}/messages/${messageId}`,
   );
   return data;
 }
 
-export const deleteAlumniConversationMessage = deleteMentorshipMessage;
+export const deleteAlumniConversationMessage = deleteFriendshipMessage;
 
-export async function clearMentorshipMessages(requestId) {
-  const { data } = await api.delete(`/mentorship/${requestId}/messages`);
+export async function clearFriendshipMessages(requestId) {
+  const { data } = await api.delete(`/friendships/${requestId}/messages`);
   return data;
 }
 
-export const clearAlumniConversationMessages = clearMentorshipMessages;
+export const clearAlumniConversationMessages = clearFriendshipMessages;
 
-export async function toggleMentorshipMessageReaction(
+export async function toggleFriendshipMessageReaction(
   requestId,
   messageId,
   payload,
 ) {
   const { data } = await api.post(
-    `/mentorship/${requestId}/messages/${messageId}/reactions`,
+    `/friendships/${requestId}/messages/${messageId}/reactions`,
     payload,
   );
   return data;
 }
 
-export const toggleAlumniConversationReaction = toggleMentorshipMessageReaction;
+export const toggleAlumniConversationReaction = toggleFriendshipMessageReaction;
 
 export async function updateGroupMemberRole(requestId, userId, payload) {
   const { data } = await api.patch(
-    `/mentorship/${requestId}/members/${userId}/role`,
+    `/friendships/${requestId}/members/${userId}/role`,
     payload,
   );
   return data;
@@ -929,7 +939,7 @@ export async function updateGroupMemberRole(requestId, userId, payload) {
 
 export async function muteGroupMember(requestId, userId, payload) {
   const { data } = await api.patch(
-    `/mentorship/${requestId}/members/${userId}/mute`,
+    `/friendships/${requestId}/members/${userId}/mute`,
     payload,
   );
   return data;
@@ -937,56 +947,56 @@ export async function muteGroupMember(requestId, userId, payload) {
 
 export async function unmuteGroupMember(requestId, userId) {
   const { data } = await api.delete(
-    `/mentorship/${requestId}/members/${userId}/mute`,
+    `/friendships/${requestId}/members/${userId}/mute`,
   );
   return data;
 }
 
 export async function removeGroupMember(requestId, userId) {
   const { data } = await api.delete(
-    `/mentorship/${requestId}/members/${userId}`,
+    `/friendships/${requestId}/members/${userId}`,
   );
   return data;
 }
 
 export async function leaveGroupConversation(id) {
-  const { data } = await api.post(`/mentorship/${id}/leave`);
+  const { data } = await api.post(`/friendships/${id}/leave`);
   return data;
 }
-export async function fetchMentorshipRequests() {
-  const { data } = await api.get("/mentorship");
-  return data;
-}
-
-export const fetchAlumniConversations = fetchMentorshipRequests;
-
-export async function createMentorshipRequest(payload) {
-  const { data } = await api.post("/mentorship", payload);
+export async function fetchFriendshipRequests() {
+  const { data } = await api.get("/friendships");
   return data;
 }
 
-export const createAlumniConversationRequest = createMentorshipRequest;
+export const fetchAlumniConversations = fetchFriendshipRequests;
+
+export async function createFriendshipRequest(payload) {
+  const { data } = await api.post("/friendships", payload);
+  return data;
+}
+
+export const createAlumniConversationRequest = createFriendshipRequest;
 
 export async function createGroupConversation(payload) {
-  const { data } = await api.post("/mentorship/groups", payload);
+  const { data } = await api.post("/friendships/groups", payload);
   return data;
 }
 
 export const createAlumniConversationGroup = createGroupConversation;
 
 export async function toggleMuteAlumniConversation(id) {
-  const { data } = await api.post(`/mentorship/${id}/mute`);
+  const { data } = await api.post(`/friendships/${id}/mute`);
   return data;
 }
 
 export async function toggleBlockAlumniContact(id) {
-  const { data } = await api.post(`/mentorship/${id}/block`);
+  const { data } = await api.post(`/friendships/${id}/block`);
   return data;
 }
 
-export async function deleteMentorshipConversation(id) {
-  const { data } = await api.delete(`/mentorship/${id}`);
+export async function deleteFriendshipConversation(id) {
+  const { data } = await api.delete(`/friendships/${id}`);
   return data;
 }
 
-export const deleteAlumniConversation = deleteMentorshipConversation;
+export const deleteAlumniConversation = deleteFriendshipConversation;

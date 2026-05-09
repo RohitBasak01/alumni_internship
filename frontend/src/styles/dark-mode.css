@@ -1,0 +1,384 @@
+/* 
+ * Dark Mode Styles for AlumNet
+ * These styles complement the existing light mode styles
+ */
+
+/* Base dark mode styles */
+.dark {
+  /* Background colors */
+  background-color: var(--color-surface-50);
+  color: var(--color-ink-50);
+
+  /* Override specific component styles for dark mode */
+}
+
+.dark body {
+  background-color: var(--color-surface-50);
+  color: var(--color-ink-50);
+}
+
+/* Header and navigation dark mode */
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.7) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .btn-primary {
+  background-color: var(--color-brand-600);
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 84, 216, 0.3);
+}
+
+.dark .btn-primary:hover {
+  background-color: var(--color-brand-700);
+  box-shadow: 0 6px 16px rgba(37, 84, 216, 0.4);
+}
+
+.dark .btn-secondary {
+  background-color: var(--color-surface-200);
+  color: var(--color-ink-800);
+  border-color: var(--color-surface-300);
+}
+
+.dark .btn-secondary:hover {
+  background-color: var(--color-surface-300);
+}
+
+/* Dashboard dark mode styles */
+.dark .dl-shell {
+  background-color: var(--color-surface-50);
+  color: var(--color-ink-50);
+}
+
+.dark .dl-sidebar {
+  background-color: var(--color-surface-100);
+  border-right-color: var(--color-surface-200);
+}
+
+.dark .dl-sidebar-logo {
+  border-bottom-color: var(--color-surface-200);
+}
+
+.dark .dl-logo-link {
+  color: var(--color-ink-50);
+}
+
+.dark .dl-logo-sub {
+  color: var(--color-ink-400);
+}
+
+.dark .dl-nav-group-label {
+  color: var(--color-ink-400);
+}
+
+.dark .dl-nav-item {
+  color: var(--color-ink-300);
+}
+
+.dark .dl-nav-item:hover {
+  background-color: var(--color-surface-200);
+  color: var(--color-ink-50);
+}
+
+.dark .dl-nav-item--active {
+  background-color: var(--color-brand-500);
+  color: white;
+}
+
+.dark .dl-nav-item--logout {
+  color: var(--color-error-400);
+}
+
+.dark .dl-nav-item--logout:hover {
+  background-color: var(--color-error-50);
+  color: var(--color-error-600);
+}
+
+.dark .dl-topbar {
+  background-color: var(--color-surface-100);
+  border-bottom-color: var(--color-surface-200);
+}
+
+.dark .dl-search-bar {
+  background-color: var(--color-surface-200);
+  border-color: var(--color-surface-300);
+}
+
+.dark .dl-search-input {
+  background-color: transparent;
+  color: var(--color-ink-50);
+}
+
+.dark .dl-search-input::placeholder {
+  color: var(--color-ink-400);
+}
+
+.dark .dl-topbar-icon-btn {
+  color: var(--color-ink-300);
+  background-color: var(--color-surface-200);
+}
+
+.dark .dl-topbar-icon-btn:hover {
+  background-color: var(--color-surface-300);
+  color: var(--color-ink-50);
+}
+
+.dark .dl-topbar-user {
+  color: var(--color-ink-50);
+}
+
+.dark .dl-topbar-avatar {
+  background-color: var(--color-brand-500);
+  color: white;
+}
+
+.dark .dl-main {
+  background-color: var(--color-surface-50);
+}
+
+/* Card styles for dark mode */
+.dark .premium-card {
+  background-color: var(--color-surface-100);
+  border-color: var(--color-surface-200);
+  color: var(--color-ink-50);
+}
+
+.dark .premium-card:hover {
+  border-color: var(--color-brand-400);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Form elements dark mode */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--color-surface-200);
+  border-color: var(--color-surface-300);
+  color: var(--color-ink-50);
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 3px rgba(37, 84, 216, 0.2);
+}
+
+.dark input::placeholder,
+.dark select::placeholder,
+.dark textarea::placeholder {
+  color: var(--color-ink-400);
+}
+
+/* Table dark mode */
+.dark table {
+  color: var(--color-ink-50);
+}
+
+.dark th {
+  background-color: var(--color-surface-200);
+  color: var(--color-ink-50);
+  border-color: var(--color-surface-300);
+}
+
+.dark td {
+  border-color: var(--color-surface-300);
+  color: var(--color-ink1-100);
+}
+
+.dark tr:hover {
+  background-color: var(--color-surface-200);
+}
+
+/* Modal and dialog dark mode */
+.dark .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.dark .modal-content {
+  background-color: var(--color-surface-100);
+  color: var(--color-ink-50);
+  border-color: var(--color-surface-200);
+}
+
+/* Badge dark mode */
+.dark .badge {
+  background-color: var(--color-surface-300);
+  color: var(--color-ink-50);
+}
+
+.dark .badge-primary {
+  background-color: var(--color-brand-500);
+  color: white;
+}
+
+.dark .badge-success {
+  background-color: var(--color-success-600);
+  color: white;
+}
+
+.dark .badge-warning {
+  background-color: var(--color-warning-600);
+  color: var(--color-ink-900);
+}
+
+.dark .badge-error {
+  background-color: var(--color-error-600);
+  color: white;
+}
+
+/* Alert dark mode */
+.dark .alert {
+  background-color: var(--color-surface-200);
+  border-color: var(--color-surface-300);
+  color: var(--color-ink-50);
+}
+
+.dark .alert-success {
+  background-color: var(--color-success-50);
+  border-color: var(--color-success-200);
+  color: var(--color-success-800);
+}
+
+.dark .alert-warning {
+  background-color: var(--color-warning-50);
+  border-color: var(--color-warning-200);
+  color: var(--color-warning-800);
+}
+
+.dark .alert-error {
+  background-color: var(--color-error-50);
+  border-color: var(--color-error-200);
+  color: var(--color-error-800);
+}
+
+.dark .alert-info {
+  background-color: var(--color-info-50);
+  border-color: var(--color-info-200);
+  color: var(--color-info-800);
+}
+
+/* Progress bar dark mode */
+.dark .progress-bar {
+  background-color: var(--color-surface-300);
+}
+
+.dark .progress-fill {
+  background-color: var(--color-brand-500);
+}
+
+/* Tooltip dark mode */
+.dark .tooltip {
+  background-color: var(--color-surface-900);
+  color: var(--color-ink-50);
+}
+
+.dark .tooltip::before {
+  border-top-color: var(--color-surface-900);
+}
+
+/* Dropdown dark mode */
+.dark .dropdown-menu {
+  background-color: var(--color-surface-100);
+  border-color: var(--color-surface-200);
+  color: var(--color-ink-50);
+}
+
+.dark .dropdown-item {
+  color: var(--color-ink-50);
+}
+
+.dark .dropdown-item:hover {
+  background-color: var(--color-surface-200);
+}
+
+/* Tabs dark mode */
+.dark .tabs {
+  border-color: var(--color-surface-200);
+}
+
+.dark .tab {
+  color: var(--color-ink-300);
+}
+
+.dark .tab:hover {
+  color: var(--color-ink-50);
+  background-color: var(--color-surface-200);
+}
+
+.dark .tab-active {
+  color: var(--color-brand-500);
+  border-color: var(--color-brand-500);
+}
+
+/* Code block dark mode */
+.dark pre,
+.dark code {
+  background-color: var(--color-surface-200);
+  color: var(--color-ink-50);
+  border-color: var(--color-surface-300);
+}
+
+/* Accessibility improvements for dark mode */
+.dark .skip-to-content {
+  background: var(--color-brand-600);
+  color: white;
+}
+
+.dark .skip-to-content:focus {
+  outline: 3px solid var(--color-brand-300);
+}
+
+.dark *:focus {
+  outline-color: var(--color-brand-400);
+}
+
+.dark *:focus-visible {
+  outline-color: var(--color-brand-400);
+}
+
+/* High contrast mode support for dark mode */
+@media (prefers-contrast: high) {
+  .dark {
+    --color-surface-50: #000000;
+    --color-ink-50: #ffffff;
+  }
+  
+  .dark .glass-card,
+  .dark .premium-card {
+    border: 2px solid #ffffff !important;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .dark .btn-primary,
+  .dark .btn-secondary,
+  .dark .premium-card {
+    transition: none !important;
+  }
+}
+
+/* Print styles for dark mode */
+@media print {
+  .dark {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  .dark .glass-card,
+  .dark .premium-card {
+    background-color: white !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+  }
+  
+  .dark .btn-primary,
+  .dark .btn-secondary {
+    background-color: #f0f0f0 !important;
+    color: black !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+  }
+}

@@ -138,6 +138,43 @@ const validationRules = {
     validation: null // Handled by SMTP_HOST validation
   },
 
+  STRIPE_SECRET_KEY: {
+    required: false,
+    description: 'Stripe secret key for checkout sessions',
+    validation: (value) => {
+      if (value && !value.startsWith('sk_')) {
+        return 'STRIPE_SECRET_KEY should start with sk_';
+      }
+      return null;
+    }
+  },
+
+  STRIPE_WEBHOOK_SECRET: {
+    required: false,
+    description: 'Stripe webhook signing secret',
+    validation: (value) => {
+      if (process.env.STRIPE_SECRET_KEY && !value) {
+        return 'STRIPE_WEBHOOK_SECRET should be set when STRIPE_SECRET_KEY is configured';
+      }
+      if (value && !value.startsWith('whsec_')) {
+        return 'STRIPE_WEBHOOK_SECRET should start with whsec_';
+      }
+      return null;
+    }
+  },
+
+  STRIPE_PRICE_PRO: {
+    required: false,
+    description: 'Stripe recurring price id for the Pro plan',
+    validation: null
+  },
+
+  STRIPE_PRICE_ENTERPRISE: {
+    required: false,
+    description: 'Stripe recurring price id for the Enterprise plan',
+    validation: null
+  },
+
   // Development-specific
   ENABLE_DEV_MOCK_MODE: {
     required: false,
@@ -353,6 +390,7 @@ function validateEnvironment() {
     'Authentication': ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'AUTH_COOKIE_DOMAIN'],
     'URLs': ['CLIENT_URL', 'FRONTEND_URL', 'CORS_ALLOWED_ORIGINS'],
     'Email': ['SMTP_HOST', 'SMTP_USER', 'EMAIL_FROM'],
+    'Payments': ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_PRO', 'STRIPE_PRICE_ENTERPRISE'],
     'Security': ['ALLOW_TENANT_HEADER_OVERRIDE', 'RATE_LIMIT_WINDOW_MS', 'RATE_LIMIT_MAX_REQUESTS'],
     'Storage': ['STORAGE_PROVIDER', 'MAX_FILE_SIZE'],
     'Development': ['ENABLE_DEV_MOCK_MODE', 'DEBUG']

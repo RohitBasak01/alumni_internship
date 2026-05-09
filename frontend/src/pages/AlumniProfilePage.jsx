@@ -147,7 +147,7 @@ function AlumniProfilePage() {
   const isSchool = tenantDisplay.isSchool;
   const showCareerFields = tenant.featureFlags.enableCareerFields;
   const showSocialLinks = tenant.featureFlags.enableSocialLinks;
-  const showMentorship = tenant.featureFlags.enableMentorship !== false;
+  const showFriendship = tenant.featureFlags.enableFriendship !== false;
   const isEditMode = searchParams.get("mode") === "edit";
   const [form, setForm] = useState(emptyForm);
   const [skillInput, setSkillInput] = useState("");
@@ -217,7 +217,7 @@ function AlumniProfilePage() {
   const profileIndustry = profile?.industry || "Not added yet";
   const profileLocation = buildLocationValue(profile?.country, profile?.state, profile?.city) || profile?.location || "Location not added";
   const profileBio = profile?.bio || (isSchool ? "Add a short introduction so other members of your school community can reconnect with you." : "Share what you are building, where you work, and what kind of community conversations you enjoy.");
-  const displaySkills = skills.length ? skills : (showMentorship ? ["Profile", "Community", "Mentorship"] : ["Profile", "Community", "Network"]);
+  const displaySkills = skills.length ? skills : (showFriendship ? ["Profile", "Community", "Friendship"] : ["Profile", "Community", "Network"]);
 
   const connections = [
     { id: "1", name: "Sarah Chen", note: "Product leadership - Class of 2017" },
@@ -464,7 +464,7 @@ function AlumniProfilePage() {
                     <input type="checkbox" name="allowMentorRequests" checked={form.allowMentorRequests} onChange={handleChange} className="w-5 h-5 rounded-lg text-brand-600 focus:ring-brand-500" />
                     <div>
                       <p className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">Enable Networking Requests</p>
-                      <p className="text-xs text-slate-500">Allow other alumni to reach out for mentorship or professional connections.</p>
+                      <p className="text-xs text-slate-500">Allow other alumni to reach out for friendship or professional connections.</p>
                     </div>
                   </label>
                 </div>

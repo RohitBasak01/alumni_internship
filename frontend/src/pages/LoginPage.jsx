@@ -280,7 +280,7 @@ function LoginPage() {
             {[
               { title: "Secure Access", desc: "Enterprise-grade security and SOC2-compliant data handling.", icon: "verified_user" },
               { title: "Global Network", desc: "Connect with alumni across 150+ countries and industries.", icon: "public" },
-              { title: "Career Growth", desc: "Access exclusive mentorship and institutional job boards.", icon: "rocket_launch" }
+              { title: "Career Growth", desc: "Access exclusive friendship and institutional job boards.", icon: "rocket_launch" }
             ].map((item, i) => (
               <div key={i} className="flex gap-6 items-center group">
                 <div className="h-14 w-14 rounded-2xl bg-white border border-slate-100 grid place-items-center flex-shrink-0 text-brand-600 shadow-sm group-hover:shadow-md group-hover:border-brand-100 transition-all">

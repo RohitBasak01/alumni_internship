@@ -10,7 +10,7 @@ import {
   fetchAlumniApprovalTurnaroundKpi,
   fetchAlumniPosts,
   fetchMyAlumniProfile,
-  fetchMentorshipRequests,
+  fetchFriendshipRequests,
   createAlumniPost,
   toggleAlumniPostLike,
   addAlumniPostComment,
@@ -26,7 +26,7 @@ export function useDashboardLogic() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const isAlumni = auth.user?.role === "alumni";
-  const showMentorship = tenant.featureFlags.enableMentorship !== false;
+  const showFriendship = tenant.featureFlags.enableFriendship !== false;
   const showJobs = tenant.featureFlags.enableJobs !== false;
 
   const [composer, setComposer] = useState({ title: "", content: "", attachments: [] });
@@ -70,10 +70,10 @@ export function useDashboardLogic() {
     enabled: isAlumni
   });
 
-  const mentorshipQuery = useQuery({
-    queryKey: ["mentorship-requests"],
-    queryFn: fetchMentorshipRequests,
-    enabled: isAlumni && showMentorship
+  const friendshipQuery = useQuery({
+    queryKey: ["friendship-requests"],
+    queryFn: fetchFriendshipRequests,
+    enabled: isAlumni && showFriendship
   });
 
   // Mutations
@@ -196,7 +196,7 @@ export function useDashboardLogic() {
     tenantDisplay,
     auth,
     isAlumni,
-    showMentorship,
+    showFriendship,
     showJobs,
     composer,
     setComposer,
@@ -223,7 +223,7 @@ export function useDashboardLogic() {
       announcements: announcementsQuery,
       events: eventsQuery,
       jobs: jobsQuery,
-      mentorship: mentorshipQuery,
+      friendship: friendshipQuery,
     },
     mutations: {
       createPost: createPostMutation,

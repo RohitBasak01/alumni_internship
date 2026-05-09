@@ -9,6 +9,7 @@ import SuperAdminShell from "../components/admin/SuperAdminShell.jsx";
 import SuperAdminSubscriptions from "../components/admin/SuperAdminSubscriptions.jsx";
 import {
   approveInstitute,
+  createInstitutePaymentCheckout,
   fetchAdminAnalytics,
   fetchFilteredAuditLogs,
   fetchInstituteDetail,
@@ -136,6 +137,16 @@ function SuperAdminPage() {
     onSuccess: refreshAdminQueries
   });
 
+  const paymentCheckoutMutation = useMutation({
+    mutationFn: ({ id, payload }) => createInstitutePaymentCheckout(id, payload),
+    onSuccess: (data) => {
+      refreshAdminQueries();
+      if (data?.url && data.mode !== "mock" && typeof window !== "undefined") {
+        window.location.assign(data.url);
+      }
+    }
+  });
+
   function handleAuditFilterChange(event) {
     const { name, value } = event.target;
     setAuditFilters((current) => ({
@@ -199,7 +210,13 @@ function SuperAdminPage() {
     }
 
     if (activeSection === "subscriptions") {
-      return <SuperAdminSubscriptions institutes={institutesQuery.data || []} />;
+      return (
+        <SuperAdminSubscriptions
+          analytics={analyticsQuery.data}
+          institutes={institutesQuery.data || []}
+          paymentCheckoutMutation={paymentCheckoutMutation}
+        />
+      );
     }
 
     if (activeSection === "operations") {
@@ -216,6 +233,8 @@ function SuperAdminPage() {
         institutes={institutesQuery.data || []}
         support={supportOverviewQuery.data}
         totals={analyticsQuery.data?.totals}
+        billing={analyticsQuery.data?.billing}
+        trends={analyticsQuery.data?.trends}
       />
     );
   }

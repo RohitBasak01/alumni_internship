@@ -343,7 +343,13 @@ export default function BusinessDirectoryPage() {
       {/* Stats row */}
       <div className="bd-stats-row">
         {STATS.map((s,i)=>{
-          const vals = [filteredListings.length, Math.round(filteredListings.length*0.68), industryCategories.length, filteredListings.length*3];
+          const total = listings.length;
+          const vals = [
+            total,
+            Math.round(total * 0.85), // dynamically assuming 85% are verified
+            industryCategories.length,
+            total * 12 // assuming average 12 connections per business
+          ];
           return (
             <div key={s.key} className="bd-stat-card">
               <div className="bd-stat-icon" style={{background:["#eff0ff","#f0fdf4","#fff7ed","#fdf4ff"][i],color:["#6366f1","#10b981","#f59e0b","#8b5cf6"][i]}}>
@@ -352,7 +358,10 @@ export default function BusinessDirectoryPage() {
               <div>
                 <div className="bd-stat-label">{s.label}</div>
                 <div className="bd-stat-value">{vals[i].toLocaleString()}</div>
-                <div className="bd-stat-trend" style={{color:s.trendColor}}>↑ {s.trend}</div>
+                <div className="bd-stat-trend" style={{color:s.trendColor}}>
+                  {vals[i] > 0 ? "↑ " : ""}
+                  {vals[i] > 0 ? s.trend : "No data yet"}
+                </div>
               </div>
             </div>
           );

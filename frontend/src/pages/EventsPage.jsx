@@ -2,7 +2,7 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { cancelEventRegistration, deleteEvent, fetchEvents, registerForEvent, updateEvent } from "../lib/api.js";
+import { cancelEventRegistration, deleteEvent, fetchEvents, registerForEvent, updateEvent, createEventOrder, verifyEventPayment } from "../lib/api.js";
 import SectionCard from "../components/SectionCard.jsx";
 import "../styles/Events.css";
 
@@ -319,6 +319,8 @@ export default function EventsPage() {
   const [showComposer, setShowComposer] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedIdx, setSelectedIdx]     = useState(0);
+  const [pendingPaymentEvent, setPendingPaymentEvent] = useState(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { data = [], isLoading, isError, error } = useQuery({ queryKey: ["events"], queryFn: fetchEvents });
   const deferredQuery = useDeferredValue(filters.query);
@@ -356,8 +358,9 @@ export default function EventsPage() {
   }, [data, deferredQuery, filters.type, activeTab]);
 
   const now = new Date();
-  const upcomingEvents = filteredEvents.filter(e => new Date(e.eventDate) >= now);
-  const pastEvents     = filteredEvents.filter(e => new Date(e.eventDate) < now).sort((a,b)=>new Date(b.eventDate)-new Date(a.eventDate));
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const upcomingEvents = filteredEvents.filter(e => new Date(e.eventDate) >= startOfToday);
+  const pastEvents     = filteredEvents.filter(e => new Date(e.eventDate) < startOfToday).sort((a,b)=>new Date(b.eventDate)-new Date(a.eventDate));
 
   const tabBadges = TAB_ITEMS.reduce((acc,tab)=>{
     acc[tab] = tab==="All" ? data.length : data.filter(i=>deriveCategory(i)===tab).length;
@@ -369,6 +372,97 @@ export default function EventsPage() {
   function handleSubmit(e) { e.preventDefault(); saveMutation.mutate({ id: editingId, payload: { ...form, registrationCap: form.registrationCap===''?undefined:Number(form.registrationCap) } }); }
   function handleEdit(item) { setEditingId(item._id); setShowComposer(true); setForm({ title:item.title||"", description:item.description||"", eventDate:item.eventDate?new Date(item.eventDate).toISOString().slice(0,16):"", location:item.location||"", registrationCap:Number(item.registrationCap)>0?String(item.registrationCap):"" }); }
   function handleCancel() { setEditingId(null); setForm(initialForm); setShowComposer(false); }
+
+  function handleRegisterClick(event) {
+    if (event.isRegistered) {
+      registrationMutation.mutate({ id: event._id, isRegistered: true });
+    } else {
+      if (event.fees && event.fees.length > 0) {
+        setPendingPaymentEvent(event);
+      } else {
+        registrationMutation.mutate({ id: event._id, isRegistered: false });
+      }
+    }
+  }
+
+  function loadRazorpayScript() {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  }
+
+  async function handlePayNow() {
+    if (!pendingPaymentEvent) return;
+    
+    setIsProcessingPayment(true);
+    
+    try {
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        alert("Razorpay SDK failed to load. Are you online?");
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      // 1. Create order on backend
+      const order = await createEventOrder(pendingPaymentEvent._id);
+
+      // 2. Open Razorpay checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_dummy_key",
+        amount: order.amount,
+        currency: order.currency,
+        name: auth.user?.instituteId?.name || "Alumni Portal",
+        description: `Registration for ${pendingPaymentEvent.title}`,
+        order_id: order.id,
+        handler: async function (response) {
+          try {
+            // 3. Verify payment on backend
+            await verifyEventPayment(pendingPaymentEvent._id, response);
+            
+            // 4. Invalidate queries to update UI
+            queryClient.invalidateQueries({ queryKey: ["events"] });
+            queryClient.invalidateQueries({ queryKey: ["feed"] });
+            setPendingPaymentEvent(null);
+          } catch (err) {
+            alert("Payment verification failed. Please contact support.");
+          }
+        },
+        prefill: {
+          name: auth.user?.name || "",
+          email: auth.user?.email || "",
+        },
+        theme: {
+          color: "#6366f1",
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessingPayment(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response){
+        alert(response.error.description);
+      });
+      rzp.open();
+    } catch (error) {
+      console.error(error);
+      const errMsg = error.response?.data?.message || error.message || "Unknown error";
+      const stack = error.response?.data?.stack ? ("\n\nStack: " + error.response.data.stack.split("\n").slice(0, 3).join("\n")) : "";
+      alert("Failed to initiate payment. " + errMsg + stack);
+      setIsProcessingPayment(false);
+    }
+  }
 
   /* Show detail view */
   if (selectedEvent) {
@@ -382,7 +476,7 @@ export default function EventsPage() {
         canDelete={canDeleteEvent(selectedEvent)}
         onEdit={() => { handleEdit(selectedEvent); setSelectedEvent(null); }}
         onDelete={() => deleteMutation.mutate(selectedEvent._id)}
-        onRegister={() => registrationMutation.mutate({ id: selectedEvent._id, isRegistered: selectedEvent.isRegistered })}
+        onRegister={() => handleRegisterClick(selectedEvent)}
         registrationPending={registrationMutation.isPending}
       />
     );
@@ -465,8 +559,12 @@ export default function EventsPage() {
                 isAdmin={isAdmin} canDelete={canDeleteEvent(event)}
                 onSelect={() => { setSelectedEvent(event); setSelectedIdx(idx); }}
                 onEdit={() => handleEdit(event)}
-                onDelete={() => deleteMutation.mutate(event._id)}
-                onRegister={() => registrationMutation.mutate({ id: event._id, isRegistered: event.isRegistered })}
+                onDelete={() => {
+                  if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+                    deleteMutation.mutate(event._id);
+                  }
+                }}
+                onRegister={() => handleRegisterClick(event)}
                 registrationPending={registrationMutation.isPending}
               />
             ))}
@@ -491,7 +589,11 @@ export default function EventsPage() {
                 isAdmin={isAdmin} canDelete={canDeleteEvent(event)}
                 onSelect={() => { setSelectedEvent(event); setSelectedIdx(idx+upcomingEvents.length); }}
                 onEdit={() => handleEdit(event)}
-                onDelete={() => deleteMutation.mutate(event._id)}
+                onDelete={() => {
+                  if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+                    deleteMutation.mutate(event._id);
+                  }
+                }}
                 onRegister={() => {}}
                 registrationPending={false}
               />
@@ -502,6 +604,32 @@ export default function EventsPage() {
 
       {deleteMutation.isError      && <p style={{color:"#ef4444",fontSize:"0.8rem",marginTop:"0.5rem"}}>{deleteMutation.error.message}</p>}
       {registrationMutation.isError && <p style={{color:"#ef4444",fontSize:"0.8rem",marginTop:"0.5rem"}}>{registrationMutation.error.message}</p>}
+
+      {/* Payment Modal */}
+      {pendingPaymentEvent && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{maxWidth:400, padding:"2rem", borderRadius:"12px", background:"var(--surface-color)", boxShadow:"var(--shadow-xl)"}}>
+            <h2 style={{marginTop:0, marginBottom:"1rem", color:"var(--text-color)"}}>Complete Registration</h2>
+            <p style={{color:"var(--text-muted)", marginBottom:"1.5rem"}}>
+              <strong>{pendingPaymentEvent.title}</strong> is a paid event. Please complete your payment to reserve your spot.
+            </p>
+            <div style={{background:"var(--background-color)", padding:"1rem", borderRadius:"8px", marginBottom:"1.5rem"}}>
+              {pendingPaymentEvent.fees.map((f, i) => (
+                <div key={i} style={{display:"flex", justifyContent:"space-between", marginBottom: i===pendingPaymentEvent.fees.length-1?0:"0.5rem"}}>
+                  <span>{f.name}</span>
+                  <strong>INR {f.amount}</strong>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex", gap:"1rem", justifyContent:"flex-end"}}>
+              <button className="button secondary" onClick={() => setPendingPaymentEvent(null)}>Cancel</button>
+              <button className="button primary" onClick={handlePayNow} disabled={isProcessingPayment}>
+                {isProcessingPayment ? "Processing..." : "Pay Now & Register"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

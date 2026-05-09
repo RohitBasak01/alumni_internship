@@ -3,12 +3,12 @@ import { PortalMetricCard, PortalMetricGrid } from "./PortalPrimitives.jsx";
 export function DashboardMetrics({
   isAlumni,
   isSchool,
-  showMentorship,
+  showFriendship,
   showJobs,
   posts,
   alumni,
   sameBatchCount,
-  mentorshipRequests,
+  friendshipRequests,
   sameCompanyCount,
   notifications,
   approvalKpi,
@@ -25,9 +25,9 @@ export function DashboardMetrics({
         <PortalMetricCard icon="BT" title={isSchool ? "Same Leaving Year" : "Same Batch"} trend="Relevant" value={sameBatchCount} />
         <PortalMetricCard
           icon="RQ"
-          title={showMentorship ? "Accepted Mentorships" : "Shared Organizations"}
+          title={showFriendship ? "Accepted Friendships" : "Shared Organizations"}
           trend="Active"
-          value={showMentorship ? mentorshipRequests.filter(m => m.status === "accepted").length : sameCompanyCount}
+          value={showFriendship ? friendshipRequests.filter(m => m.status === "accepted").length : sameCompanyCount}
         />
       </PortalMetricGrid>
     );

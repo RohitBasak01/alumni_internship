@@ -42,6 +42,10 @@ const announcementSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    isEditorPick: {
+      type: Boolean,
+      default: false
+    },
     status: {
       type: String,
       enum: ["draft", "published"],

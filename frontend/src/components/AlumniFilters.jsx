@@ -1,6 +1,7 @@
 import { PortalSearchField } from "./PortalPrimitives.jsx";
 import SectionCard from "./SectionCard.jsx";
-import { useMemo } from "react";
+import { AdvancedAlumniFilters } from "./AdvancedAlumniFilters.jsx";
+import { useMemo, useState } from "react";
 
 const CATEGORIES = [
   { id: "location", icon: "location_on", label: "Location" },
@@ -46,8 +47,25 @@ export function AlumniFilters({
     setFilters((f) => ({ ...f, [key]: !f[key] }));
   };
 
+  const [savedSearches, setSavedSearches] = useState([]);
+
+  const handleAdvancedFilterChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleSaveSearch = (searchConfig) => {
+    setSavedSearches(prev => [...prev, searchConfig]);
+  };
+
   return (
     <div className="directory-filters-container">
+      {/* Advanced Filters */}
+      <AdvancedAlumniFilters
+        filters={filters}
+        onFilterChange={handleAdvancedFilterChange}
+        onSaveSearch={handleSaveSearch}
+        savedSearches={savedSearches}
+      />
       {filters.activeTab !== "name" && (
         <div className="directory-location-header">
           <h1 className="directory-title">

@@ -46,8 +46,8 @@ function buildMonthlyReport({ institutes, support, totals, mrrByMonth, institute
     `Total jobs: ${totals?.totalJobs || 0}`,
     `Published jobs: ${totals?.publishedJobs || 0}`,
     `Total RSVPs: ${totals?.totalRsvps || 0}`,
-    `Mentorship requests: ${totals?.totalMentorshipRequests || 0}`,
-    `Pending mentorship requests: ${totals?.pendingMentorshipRequests || 0}`,
+    `Friendship requests: ${totals?.totalFriendshipRequests || 0}`,
+    `Pending friendship requests: ${totals?.pendingFriendshipRequests || 0}`,
     "",
     "Support Summary",
     `Pending institute requests: ${support?.pendingInstituteRequests || 0}`,
@@ -79,7 +79,7 @@ function buildMonthlyReport({ institutes, support, totals, mrrByMonth, institute
   return lines.join("\n");
 }
 
-function SuperAdminOverview({ institutes, support, totals }) {
+function SuperAdminOverview({ billing, institutes, support, totals, trends }) {
   const now = new Date();
   const monthAnchors = Array.from({ length: 6 }, (_, index) => {
     const value = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
@@ -90,7 +90,7 @@ function SuperAdminOverview({ institutes, support, totals }) {
     };
   });
 
-  const mrrByMonth = monthAnchors.map((anchor) => {
+  const fallbackMrrByMonth = monthAnchors.map((anchor) => {
     const amount = (institutes || []).reduce((sum, institute) => {
       const history = institute.billingHistory || [];
       const monthAmount = history
@@ -109,9 +109,10 @@ function SuperAdminOverview({ institutes, support, totals }) {
     };
   });
 
+  const mrrByMonth = trends?.revenueByMonth?.length ? trends.revenueByMonth : fallbackMrrByMonth;
   const maxMrr = Math.max(...mrrByMonth.map((item) => item.value), 1);
 
-  const institutesByMonth = monthAnchors.map((anchor) => {
+  const fallbackInstitutesByMonth = monthAnchors.map((anchor) => {
     const count = (institutes || []).filter((institute) => {
       if (!institute.createdAt) return false;
       const created = new Date(institute.createdAt);
@@ -124,6 +125,7 @@ function SuperAdminOverview({ institutes, support, totals }) {
     };
   });
 
+  const institutesByMonth = trends?.newInstitutesByMonth?.length ? trends.newInstitutesByMonth : fallbackInstitutesByMonth;
   const maxNewInstitutes = Math.max(...institutesByMonth.map((item) => item.value), 1);
 
   const activeRate = totals?.totalInstitutes
@@ -132,7 +134,7 @@ function SuperAdminOverview({ institutes, support, totals }) {
   const alumniPerInstitute = totals?.totalInstitutes
     ? Math.round((totals.totalAlumniProfiles || 0) / totals.totalInstitutes)
     : 0;
-  const computedMrr = mrrByMonth[mrrByMonth.length - 1]?.value || 0;
+  const computedMrr = billing?.currentMrr ?? mrrByMonth[mrrByMonth.length - 1]?.value ?? 0;
 
   const topInstitutions = (institutes || []).slice(0, 4).map((institute, index) => {
     const billedAmount = institute.billingHistory?.[0]?.amount || 0;

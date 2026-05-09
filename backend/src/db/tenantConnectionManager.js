@@ -9,7 +9,7 @@ import Event from "../models/Event.js";
 import GalleryItem from "../models/GalleryItem.js";
 import Job from "../models/Job.js";
 import JobApplication from "../models/JobApplication.js";
-import MentorshipRequest from "../models/MentorshipRequest.js";
+import Friendship from "../models/Friendship.js";
 import Message from "../models/message.model.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
@@ -27,7 +27,7 @@ const TENANT_MODEL_BUILDERS = {
   GalleryItem,
   Job,
   JobApplication,
-  MentorshipRequest,
+  Friendship,
   Notification,
   Message
 };

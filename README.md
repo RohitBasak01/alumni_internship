@@ -12,6 +12,7 @@ Multi-tenant alumni management platform built with MongoDB, Express, React, and 
 - Multi-tenant architecture with shared/dedicated database support
 - JWT authentication with role-based access control (super_admin, institute_admin, alumni)
 - Alumni directory with profiles and search
+- Advanced alumni search with skills, experience, and availability filters
 - Mentorship system with real-time chat (Socket.IO)
 - Event management and registration
 - Job board with applications
@@ -22,6 +23,10 @@ Multi-tenant alumni management platform built with MongoDB, Express, React, and 
 - Notifications system
 - File uploads with Multer
 - OAuth integration (Google, LinkedIn)
+
+### 🆕 Recent Enhancements (May 2026)
+
+- **Advanced Alumni Filtering**: Added comprehensive search filters including skills (multi-select), experience range, company size, availability status, and saved searches functionality.
 
 ### 🚧 In Progress / Planned
 
@@ -244,15 +249,15 @@ Job.find({ instituteId: req.tenant._id, status: "published" });
 
 ### Key Endpoints
 
-| Method | Endpoint              | Description               | Authentication |
-| ------ | --------------------- | ------------------------- | -------------- |
-| GET    | `/health`             | Health check              | Public         |
-| POST   | `/auth/login`         | User login                | Public         |
-| POST   | `/auth/register`      | User registration         | Public         |
-| GET    | `/alumni`             | Get alumni directory      | Required       |
-| GET    | `/events`             | Get events                | Required       |
-| GET    | `/jobs`               | Get job listings          | Required       |
-| POST   | `/mentorship/request` | Create mentorship request | Required       |
+| Method | Endpoint              | Description                                                                           | Authentication |
+| ------ | --------------------- | ------------------------------------------------------------------------------------- | -------------- |
+| GET    | `/health`             | Health check                                                                          | Public         |
+| POST   | `/auth/login`         | User login                                                                            | Public         |
+| POST   | `/auth/register`      | User registration                                                                     | Public         |
+| GET    | `/alumni`             | Get alumni directory with advanced filtering (skills, experience, availability, etc.) | Required       |
+| GET    | `/events`             | Get events                                                                            | Required       |
+| GET    | `/jobs`               | Get job listings                                                                      | Required       |
+| POST   | `/mentorship/request` | Create mentorship request                                                             | Required       |
 
 ### Authentication
 

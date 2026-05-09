@@ -130,7 +130,7 @@ function ArticleModal({ article, onClose }) {
 }
 
 /* ── Main component ──────────────────────────────────────── */
-const initialForm = { title: "", category: "News", summary: "", imageUrl: "", content: "", status: "published" };
+const initialForm = { title: "", category: "News", summary: "", imageUrl: "", content: "", status: "published", isEditorPick: false };
 
 export default function NewsroomPage() {
   const auth = useAuth();
@@ -194,8 +194,12 @@ export default function NewsroomPage() {
     return Array.from(tags).slice(0, 10);
   }, [liveArticles]);
 
-  const allArticles = liveArticles.length > 0 ? liveArticles : SAMPLE_ARTICLES;
-  const featured    = liveArticles.length > 0 ? liveArticles[0] : SAMPLE_FEATURED;
+  const dynamicEditorPicks = useMemo(() => {
+    return liveArticles.filter(a => a.isEditorPick);
+  }, [liveArticles]);
+
+  const allArticles = liveArticles;
+  const featured    = liveArticles.length > 0 ? liveArticles[0] : null;
 
   const categoriesToDisplay = liveArticles.length > 0 ? dynamicCategories : CATEGORY_TABS;
 
@@ -211,7 +215,7 @@ export default function NewsroomPage() {
   function openEdit(item) {
     setEditingId(item._id);
     setForm({ title: item.title||"", category: item.category||"News", summary: item.summary||"",
-      imageUrl: item.imageUrl||"", content: item.content||"", status: item.status||"published" });
+      imageUrl: item.imageUrl||"", content: item.content||"", status: item.status||"published", isEditorPick: item.isEditorPick||false });
     setShowComposer(true);
   }
 
@@ -247,6 +251,10 @@ export default function NewsroomPage() {
             </div>
             <textarea className="nr-input" name="summary" value={form.summary} onChange={handleChange} placeholder="Short summary..." rows={2} />
             <RichTextEditor value={form.content} onChange={html => setForm(c => ({ ...c, content: html }))} placeholder="Article body..." />
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.9rem", color: "#334155", fontWeight: 500, margin: "0.5rem 0" }}>
+              <input type="checkbox" name="isEditorPick" checked={form.isEditorPick} onChange={e => setForm(c => ({ ...c, isEditorPick: e.target.checked }))} />
+              Mark as Editor's Pick
+            </label>
             <div className="nr-composer-actions">
               <button className="nr-submit-btn" type="submit" disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Publish"}
@@ -304,10 +312,17 @@ export default function NewsroomPage() {
           {/* Latest Articles */}
           <div className="nr-section-header">
             <h2 className="nr-section-title">Latest Articles</h2>
-            <button className="nr-view-all">View All</button>
+            {filteredArticles.length > 0 && <button className="nr-view-all">View All</button>}
           </div>
 
           {isLoading && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Loading articles...</p>}
+          {!isLoading && filteredArticles.length === 0 && (
+            <div className="nr-empty-state" style={{ padding: "3rem 1rem", textAlign: "center", background: "#f8fafc", borderRadius: "16px", marginBottom: "2rem" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 48, color: "#cbd5e1" }}>article</span>
+              <h3 style={{ margin: "1rem 0 0.5rem", color: "#334155" }}>No articles found</h3>
+              <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Check back later for news and updates.</p>
+            </div>
+          )}
 
           <div className="nr-articles-row">
             {filteredArticles.map(item => (
@@ -348,7 +363,7 @@ export default function NewsroomPage() {
                 <span className="nr-section-sub">Handpicked stories for you</span>
               </div>
               <div className="nr-editor-picks">
-                {SAMPLE_EDITOR_PICKS.map(ep => (
+                {dynamicEditorPicks.length > 0 ? dynamicEditorPicks.map(ep => (
                   <article key={ep._id} className="nr-pick-card" onClick={() => setSelectedArticle(ep)}>
                     <img src={ep.imageUrl} alt={ep.title} className="nr-pick-img" loading="lazy" />
                     <div className="nr-pick-body">
@@ -357,7 +372,9 @@ export default function NewsroomPage() {
                       <span className="nr-pick-date">{fmtDate(ep.publishValue)}</span>
                     </div>
                   </article>
-                ))}
+                )) : (
+                  <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>No editor's picks available.</p>
+                )}
               </div>
             </>
           )}
@@ -372,7 +389,7 @@ export default function NewsroomPage() {
               <button className="nr-sidebar-view-all">View All</button>
             </div>
             <div className="nr-trending-list">
-              {(liveArticles.length > 0 ? trendingArticles : TRENDING_ITEMS).map((t, idx) => (
+              {trendingArticles.length > 0 ? trendingArticles.map((t, idx) => (
                 <div key={t._id || t.num} className="nr-trending-item">
                   <span className="nr-trending-num">{String(idx + 1).padStart(2, '0')}</span>
                   {t.imageUrl || t.img ? (
@@ -387,7 +404,9 @@ export default function NewsroomPage() {
                     <div className="nr-trending-date">{fmtDate(t.publishValue || t.date)}</div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p style={{ color: "#94a3b8", fontSize: "0.85rem", padding: "0.5rem" }}>No trending articles.</p>
+              )}
             </div>
           </div>
 
@@ -418,19 +437,20 @@ export default function NewsroomPage() {
               <button className="nr-sidebar-view-all">View All</button>
             </div>
             <div className="nr-tags-grid">
-              {(liveArticles.length > 0 ? dynamicTags : POPULAR_TAGS).map(tag => (
+              {dynamicTags.length > 0 ? dynamicTags.map(tag => (
                 <button
                   key={tag}
                   className="nr-tag"
                   onClick={() => {
                     const cleanTag = tag.replace("#", "");
-                    // If the tag exists as a category, filter by it
                     if (categoriesToDisplay.includes(cleanTag)) {
                       setActiveCategory(cleanTag);
                     }
                   }}
                 >{tag}</button>
-              ))}
+              )) : (
+                <p style={{ color: "#94a3b8", fontSize: "0.85rem", padding: "0.5rem" }}>No popular tags.</p>
+              )}
             </div>
           </div>
 
@@ -442,7 +462,7 @@ export default function NewsroomPage() {
             </div>
             <p className="nr-poll-question">Which alumni initiative would you like to see more of?</p>
             <div className="nr-poll-options">
-              {["Mentorship Programs","Startup Funding Help","Networking Events","Job Referrals"].map((opt, i) => (
+              {["Friendship Programs","Startup Funding Help","Networking Events","Job Referrals"].map((opt, i) => (
                 <button
                   key={opt}
                   className={`nr-poll-option ${poll === i ? "nr-poll-option--selected" : ""}`}

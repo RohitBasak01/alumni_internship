@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 function formatDate(value) {
   if (!value) {
@@ -58,6 +58,7 @@ function SuperAdminInstituteWorkspace({
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const workspaceRef = useRef(null);
   const institutions = institutesQuery.data || [];
 
   const metrics = useMemo(() => {
@@ -129,6 +130,24 @@ function SuperAdminInstituteWorkspace({
     return "Approve";
   }
 
+  function actionIconForStatus(status) {
+    if (status === "active") return "block";
+    if (status === "suspended") return "replay";
+    return "check_circle";
+  }
+
+  function actionButtonClassForStatus(status) {
+    if (status === "active") {
+      return "rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50";
+    }
+
+    if (status === "suspended") {
+      return "rounded-lg p-1.5 text-emerald-600 transition-colors hover:bg-emerald-50";
+    }
+
+    return "rounded-lg p-1.5 text-emerald-600 transition-colors hover:bg-emerald-50";
+  }
+
   function handleStatusAction(institute) {
     if (institute.status === "active") {
       suspendMutation.mutate(institute._id);
@@ -139,6 +158,13 @@ function SuperAdminInstituteWorkspace({
       id: institute._id,
       subscriptionPlan: institute.subscriptionPlan || "basic"
     });
+  }
+
+  function handleOpenInstitute(instituteId) {
+    onSelectInstitute(instituteId);
+    window.setTimeout(() => {
+      workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   }
 
   function handleExportCsv() {
@@ -268,7 +294,12 @@ function SuperAdminInstituteWorkspace({
             </thead>
             <tbody className="divide-y divide-[#1152d4]/5">
               {paginatedInstitutions.map((institute) => (
-                <tr className="group transition-colors hover:bg-[#1152d4]/5" key={institute._id}>
+                <tr
+                  className={`group transition-colors hover:bg-[#1152d4]/5 ${
+                    selectedInstituteId === institute._id ? "bg-[#1152d4]/5" : ""
+                  }`}
+                  key={institute._id}
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1152d4]/20 font-bold text-[#1152d4]">
@@ -305,31 +336,33 @@ function SuperAdminInstituteWorkspace({
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="flex justify-end gap-2">
                       <button
-                        className="rounded-lg p-1.5 text-[#1152d4] transition-colors hover:bg-[#1152d4]/10"
-                        onClick={() => onSelectInstitute(institute._id)}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#1152d4] transition-colors hover:bg-[#1152d4]/10"
+                        onClick={() => handleOpenInstitute(institute._id)}
                         title="View"
                         type="button"
                       >
                         <span className="material-symbols-outlined text-lg">visibility</span>
+                        View
                       </button>
                       <button
-                        className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100"
-                        onClick={() => onSelectInstitute(institute._id)}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100"
+                        onClick={() => handleOpenInstitute(institute._id)}
                         title="Manage"
                         type="button"
                       >
                         <span className="material-symbols-outlined text-lg">settings</span>
+                        Manage
                       </button>
                       <button
-                        className="rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                        className={actionButtonClassForStatus(institute.status)}
                         onClick={() => handleStatusAction(institute)}
                         title={actionLabelForStatus(institute.status)}
                         type="button"
                       >
                         <span className="material-symbols-outlined text-lg">
-                          {institute.status === "suspended" ? "check_circle" : "block"}
+                          {actionIconForStatus(institute.status)}
                         </span>
                       </button>
                     </div>
@@ -375,7 +408,7 @@ function SuperAdminInstituteWorkspace({
         </div>
       </section>
 
-      <section className="rounded-xl border border-[#1152d4]/10 bg-white p-6 shadow-sm">
+      <section className="scroll-mt-6 rounded-xl border border-[#1152d4]/10 bg-white p-6 shadow-sm" ref={workspaceRef}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Institution Workspace</p>

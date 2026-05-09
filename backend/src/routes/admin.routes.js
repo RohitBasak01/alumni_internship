@@ -9,9 +9,10 @@ import AuditLog from "../models/AuditLog.js";
 import Event from "../models/Event.js";
 import Institute from "../models/Institute.js";
 import Job from "../models/Job.js";
-import MentorshipRequest from "../models/MentorshipRequest.js";
+import Friendship from "../models/Friendship.js";
 import User from "../models/User.js";
 import { logAuditEvent } from "../utils/audit.js";
+import { buildCheckoutRedirectUrl, createStripeCheckoutSession, getPlanMonthlyPrice } from "../utils/billing.js";
 import { sendInviteEmail } from "../utils/email.js";
 import { getInstituteTenantModels, getInstituteTenantSummary, getPlatformTenantSummaries } from "../utils/tenantAdminData.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
@@ -53,6 +54,24 @@ function validateSubscriptionBody(body) {
 
   if (body.renewalDate && Number.isNaN(Date.parse(body.renewalDate))) {
     issues.push("Renewal date must be a valid date");
+  }
+
+  return issues;
+}
+
+function validateCheckoutBody(body) {
+  const issues = [];
+
+  if (!["pro", "enterprise"].includes(body.subscriptionPlan)) {
+    issues.push("Checkout plan must be pro or enterprise");
+  }
+
+  if (body.successUrl && !String(body.successUrl).startsWith("http")) {
+    issues.push("Success URL must be an absolute URL");
+  }
+
+  if (body.cancelUrl && !String(body.cancelUrl).startsWith("http")) {
+    issues.push("Cancel URL must be an absolute URL");
   }
 
   return issues;
@@ -115,12 +134,12 @@ async function buildInstituteDetail(instituteId) {
       eventsCount: metrics.eventsCount,
       jobsCount: metrics.jobsCount,
       announcementsCount: metrics.announcementsCount,
-      pendingMentorshipRequests: metrics.pendingMentorshipRequests
+      pendingFriendships: metrics.pendingFriendships
     },
     support: {
       hasPendingAdminSetup: support.hasPendingAdminSetup,
       inactiveAdminCount: support.inactiveAdminCount,
-      pendingMentorshipRequests: metrics.pendingMentorshipRequests
+      pendingFriendships: metrics.pendingFriendships
     },
     recentActivity
   };
@@ -140,12 +159,22 @@ router.get("/analytics", protect, authorize("super_admin"), async (_req, res, ne
       }
     ]);
 
-    const [
-      totals,
-      institutesByPlan
-    ] = await Promise.all([
-      getPlatformTenantSummaries(institutes).then((items) =>
-        items.reduce(
+    const monthAnchors = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setDate(1);
+      date.setHours(0, 0, 0, 0);
+      date.setMonth(date.getMonth() - (5 - index));
+
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}`,
+        label: date.toLocaleDateString("en-US", { month: "short" }),
+        year: date.getFullYear(),
+        month: date.getMonth()
+      };
+    });
+
+    const summaries = await getPlatformTenantSummaries(institutes);
+    const totals = summaries.reduce(
           (accumulator, item) => ({
             totalInstitutes: accumulator.totalInstitutes + 1,
             activeInstitutes: accumulator.activeInstitutes + (item.institute.status === "active" ? 1 : 0),
@@ -157,8 +186,8 @@ router.get("/analytics", protect, authorize("super_admin"), async (_req, res, ne
             totalJobs: accumulator.totalJobs + item.summary.metrics.jobsCount,
             publishedJobs: accumulator.publishedJobs + item.summary.metrics.publishedJobsCount,
             totalRsvps: accumulator.totalRsvps + item.summary.metrics.totalRsvps,
-            totalMentorshipRequests: accumulator.totalMentorshipRequests + item.summary.metrics.mentorshipRequestsCount,
-            pendingMentorshipRequests: accumulator.pendingMentorshipRequests + item.summary.metrics.pendingMentorshipRequests
+            totalFriendships: accumulator.totalFriendships + item.summary.metrics.friendshipRequestsCount,
+            pendingFriendships: accumulator.pendingFriendships + item.summary.metrics.pendingFriendships
           }),
           {
             totalInstitutes: 0,
@@ -171,16 +200,62 @@ router.get("/analytics", protect, authorize("super_admin"), async (_req, res, ne
             totalJobs: 0,
             publishedJobs: 0,
             totalRsvps: 0,
-            totalMentorshipRequests: 0,
-            pendingMentorshipRequests: 0
+            totalFriendships: 0,
+            pendingFriendships: 0
           }
-        )
-      ),
-      institutesByPlanPromise
-    ]);
+        );
+
+    const [institutesByPlan] = await Promise.all([institutesByPlanPromise]);
+
+    const revenueByMonth = monthAnchors.map((anchor) => ({
+      label: anchor.label,
+      value: institutes.reduce((sum, institute) => {
+        return (
+          sum +
+          (institute.billingHistory || [])
+            .filter((item) => {
+              const paidAt = item.paidAt ? new Date(item.paidAt) : null;
+              return paidAt && paidAt.getFullYear() === anchor.year && paidAt.getMonth() === anchor.month;
+            })
+            .reduce((total, item) => total + Number(item.amount || 0), 0)
+        );
+      }, 0)
+    }));
+
+    const newInstitutesByMonth = monthAnchors.map((anchor) => ({
+      label: anchor.label,
+      value: institutes.filter((institute) => {
+        const createdAt = institute.createdAt ? new Date(institute.createdAt) : null;
+        return createdAt && createdAt.getFullYear() === anchor.year && createdAt.getMonth() === anchor.month;
+      }).length
+    }));
+
+    const currentMrr = institutes.reduce((sum, institute) => {
+      return institute.subscriptionStatus === "active" ? sum + getPlanMonthlyPrice(institute.subscriptionPlan) : sum;
+    }, 0);
+    const paidInstitutes = institutes.filter((institute) => institute.subscriptionStatus === "active" && institute.subscriptionPlan !== "basic").length;
+    const churnRiskInstitutes = institutes.filter((institute) => {
+      if (institute.subscriptionStatus !== "active" || !institute.subscriptionRenewsAt) {
+        return false;
+      }
+
+      const daysUntilRenewal = (new Date(institute.subscriptionRenewsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+      return daysUntilRenewal >= 0 && daysUntilRenewal <= 14;
+    }).length;
 
     res.json({
       totals,
+      billing: {
+        currentMrr,
+        paidInstitutes,
+        arpu: institutes.length ? currentMrr / institutes.length : 0,
+        churnRiskInstitutes,
+        overdueInstitutes: institutes.filter((institute) => institute.subscriptionStatus === "expired").length
+      },
+      trends: {
+        revenueByMonth,
+        newInstitutesByMonth
+      },
       institutesByPlan: institutesByPlan.map((item) => ({
         plan: item._id || "unknown",
         count: item.count
@@ -190,6 +265,69 @@ router.get("/analytics", protect, authorize("super_admin"), async (_req, res, ne
     next(error);
   }
 });
+
+router.post(
+  "/institutes/:id/payment-checkout",
+  protect,
+  authorize("super_admin"),
+  validateParams(validateInstituteId),
+  validateBody(validateCheckoutBody),
+  async (req, res, next) => {
+    try {
+      const institute = await Institute.findById(req.params.id);
+
+      if (!institute) {
+        const error = new Error("Institute not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const successUrl =
+        req.body.successUrl || buildCheckoutRedirectUrl("/admin/subscriptions/payment-success", institute._id);
+      const cancelUrl =
+        req.body.cancelUrl || buildCheckoutRedirectUrl("/admin/subscriptions/payment-cancelled", institute._id);
+
+      const checkout = await createStripeCheckoutSession({
+        institute,
+        subscriptionPlan: req.body.subscriptionPlan,
+        successUrl,
+        cancelUrl
+      });
+
+      institute.billingHistory = [
+        {
+          plan: req.body.subscriptionPlan,
+          status: "checkout_created",
+          amount: getPlanMonthlyPrice(req.body.subscriptionPlan),
+          currency: "USD",
+          paidAt: new Date(),
+          notes: checkout.mode === "mock" ? "Mock Stripe checkout created" : "Stripe checkout session created",
+          provider: "stripe",
+          externalId: checkout.id
+        },
+        ...(institute.billingHistory || [])
+      ].slice(0, 25);
+      await institute.save();
+
+      res.status(201).json(checkout);
+
+      await logAuditEvent(req, {
+        action: "billing.checkout_created",
+        targetType: "Institute",
+        targetId: institute._id.toString(),
+        instituteId: institute._id,
+        metadata: {
+          subscriptionPlan: req.body.subscriptionPlan,
+          provider: "stripe",
+          mode: checkout.mode,
+          checkoutSessionId: checkout.id
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 router.get("/support-overview", protect, authorize("super_admin"), async (_req, res, next) => {
   try {
@@ -334,6 +472,7 @@ router.patch(
       institute.subscriptionStatus = req.body.subscriptionStatus;
       institute.subscriptionRenewsAt = req.body.renewalDate ? new Date(req.body.renewalDate) : null;
       institute.lastPaymentAt = req.body.amount ? new Date() : institute.lastPaymentAt;
+      institute.billingProvider = "manual";
 
       if (req.body.subscriptionStatus === "active") {
         institute.status = "active";
@@ -348,7 +487,9 @@ router.patch(
           amount: Number(req.body.amount || 0),
           currency: req.body.currency || "INR",
           paidAt: req.body.amount ? new Date() : new Date(),
-          notes: req.body.notes?.trim?.() || ""
+          notes: req.body.notes?.trim?.() || "",
+          provider: "manual",
+          externalId: ""
         },
         ...(institute.billingHistory || [])
       ].slice(0, 25);

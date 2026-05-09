@@ -33,10 +33,11 @@ import eventRoutes from "./routes/event.routes.js";
 import feedRoutes from "./routes/feed.routes.js";
 import galleryRoutes from "./routes/gallery.routes.js";
 import jobRoutes from "./routes/job.routes.js";
-import mentorshipRoutes from "./routes/mentorship.routes.js";
+import friendshipRoutes from "./routes/friendship.routes.js";
 import mockRoutes from "./routes/mock.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import opsRoutes from "./routes/ops.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 
 const app = express();
 
@@ -94,6 +95,7 @@ app.use(helmet({
 }));
 app.use(cookieParser());
 app.use(csrfProtection);
+app.use("/api/payments", express.raw({ type: "application/json" }), paymentRoutes);
 app.use(express.json({ limit: "25mb" }));
 
 // HTTP request logging
@@ -208,7 +210,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/feed", feedRoutes);
 app.use("/api/gallery", galleryRoutes);
 app.use("/api/jobs", jobRoutes);
-app.use("/api/mentorship", mentorshipRoutes);
+app.use("/api/friendship", friendshipRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 app.use(notFoundHandler);

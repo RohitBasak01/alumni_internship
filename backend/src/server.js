@@ -94,7 +94,7 @@ function isObjectIdLike(value) {
 }
 
 function toConversationRoom(conversationId) {
-  return `mentorship:conversation:${conversationId}`;
+  return `social:conversation:${conversationId}`;
 }
 
 function normalizeConversationIds(value) {
@@ -105,7 +105,7 @@ function normalizeConversationIds(value) {
   return [...new Set(ids)].slice(0, 300);
 }
 
-app.locals.emitMentorshipEvent = (payload) => {
+app.locals.emitSocialEvent = (payload) => {
   const eventPayload = {
     timestamp: new Date().toISOString(),
     ...payload
@@ -117,17 +117,17 @@ app.locals.emitMentorshipEvent = (payload) => {
 
   if (scopedConversationIds.length) {
     for (const conversationId of scopedConversationIds) {
-      io.to(toConversationRoom(conversationId)).emit("mentorship:update", eventPayload);
+      io.to(toConversationRoom(conversationId)).emit("social:update", eventPayload);
       if (eventPayload.type === "message" && eventPayload.message) {
-        io.to(toConversationRoom(conversationId)).emit("mentorship:message", eventPayload);
+        io.to(toConversationRoom(conversationId)).emit("social:message", eventPayload);
       }
     }
     return;
   }
 
-  io.emit("mentorship:update", eventPayload);
+  io.emit("social:update", eventPayload);
   if (eventPayload.type === "message" && eventPayload.message) {
-    io.emit("mentorship:message", eventPayload);
+    io.emit("social:message", eventPayload);
   }
 };
 
@@ -190,22 +190,22 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("mentorship:subscribe", (payload = {}) => {
+  socket.on("social:subscribe", (payload = {}) => {
     const conversationIds = normalizeConversationIds(payload.conversationIds);
     for (const conversationId of conversationIds) {
       socket.join(toConversationRoom(conversationId));
     }
-    socket.emit("mentorship:subscribed", { conversationIds });
+    socket.emit("social:subscribed", { conversationIds });
   });
 
-  socket.on("mentorship:unsubscribe", (payload = {}) => {
+  socket.on("social:unsubscribe", (payload = {}) => {
     const conversationIds = normalizeConversationIds(payload.conversationIds);
     for (const conversationId of conversationIds) {
       socket.leave(toConversationRoom(conversationId));
     }
   });
 
-  socket.emit("mentorship:ready", { ok: true });
+  socket.emit("social:ready", { ok: true });
 });
 
 async function startServer() {

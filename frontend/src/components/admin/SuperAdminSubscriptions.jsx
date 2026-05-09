@@ -57,8 +57,12 @@ function planPrice(planName) {
   return 0;
 }
 
-function SuperAdminSubscriptions({ institutes }) {
+function SuperAdminSubscriptions({ analytics, institutes, paymentCheckoutMutation }) {
   const [search, setSearch] = useState("");
+  const [checkoutForm, setCheckoutForm] = useState({
+    instituteId: "",
+    subscriptionPlan: "pro"
+  });
 
   const filteredInstitutes = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -117,11 +121,43 @@ function SuperAdminSubscriptions({ institutes }) {
   }, [filteredInstitutes]);
 
   const arpu = filteredInstitutes.length ? mrr / filteredInstitutes.length : 0;
+  const liveMrr = analytics?.billing?.currentMrr ?? mrr;
+  const liveArpu = analytics?.billing?.arpu ?? arpu;
   const mostPopular = useMemo(() => {
     const entries = Object.entries(activeCounts);
     if (!entries.length) return "pro";
     return entries.sort((a, b) => b[1] - a[1])[0][0];
   }, [activeCounts]);
+
+  const paidInstitutes = analytics?.billing?.paidInstitutes ?? filteredInstitutes.filter(
+    (institute) => institute.subscriptionStatus === "active" && institute.subscriptionPlan !== "basic"
+  ).length;
+
+  function handleCheckoutChange(event) {
+    const { name, value } = event.target;
+    setCheckoutForm((current) => ({
+      ...current,
+      [name]: value
+    }));
+  }
+
+  function handleCreateCheckout(event) {
+    event.preventDefault();
+
+    if (!checkoutForm.instituteId) {
+      return;
+    }
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    paymentCheckoutMutation.mutate({
+      id: checkoutForm.instituteId,
+      payload: {
+        subscriptionPlan: checkoutForm.subscriptionPlan,
+        successUrl: `${origin}/admin/subscriptions/payment-success`,
+        cancelUrl: `${origin}/admin/subscriptions/payment-cancelled`
+      }
+    });
+  }
 
   return (
     <div className="space-y-8">
@@ -162,7 +198,7 @@ function SuperAdminSubscriptions({ institutes }) {
         <article className="rounded-xl border border-slate-200 bg-white p-6">
           <p className="mb-1 text-sm font-medium text-slate-500">Total MRR</p>
           <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold">${mrr.toLocaleString()}</span>
+            <span className="text-2xl font-bold">${liveMrr.toLocaleString()}</span>
             <span className="mb-1 flex items-center gap-0.5 text-xs font-bold text-emerald-500">
               <span className="material-symbols-outlined text-xs">trending_up</span> 12%
             </span>
@@ -172,7 +208,7 @@ function SuperAdminSubscriptions({ institutes }) {
         <article className="rounded-xl border border-slate-200 bg-white p-6">
           <p className="mb-1 text-sm font-medium text-slate-500">Avg. Revenue Per User</p>
           <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold">${arpu.toFixed(2)}</span>
+            <span className="text-2xl font-bold">${liveArpu.toFixed(2)}</span>
             <span className="mb-1 flex items-center gap-0.5 text-xs font-bold text-emerald-500">
               <span className="material-symbols-outlined text-xs">trending_up</span> 3%
             </span>
@@ -180,11 +216,11 @@ function SuperAdminSubscriptions({ institutes }) {
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-6">
-          <p className="mb-1 text-sm font-medium text-slate-500">Churn Rate</p>
+          <p className="mb-1 text-sm font-medium text-slate-500">Paid Institutions</p>
           <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold">2.4%</span>
-            <span className="mb-1 flex items-center gap-0.5 text-xs font-bold text-rose-500">
-              <span className="material-symbols-outlined text-xs">trending_down</span> 0.5%
+            <span className="text-2xl font-bold">{paidInstitutes}</span>
+            <span className="mb-1 flex items-center gap-0.5 text-xs font-bold text-slate-500">
+              <span className="material-symbols-outlined text-xs">credit_card</span> Stripe-ready
             </span>
           </div>
         </article>
@@ -199,6 +235,58 @@ function SuperAdminSubscriptions({ institutes }) {
           </div>
         </article>
       </div>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold">Payment Checkout</h3>
+            <p className="mt-1 text-sm text-slate-500">Create a hosted Stripe checkout session for an institution upgrade or renewal.</p>
+          </div>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+            Provider: Stripe
+          </span>
+        </div>
+
+        <form className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto]" onSubmit={handleCreateCheckout}>
+          <select
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            name="instituteId"
+            onChange={handleCheckoutChange}
+            value={checkoutForm.instituteId}
+          >
+            <option value="">Select institution</option>
+            {filteredInstitutes.map((institute) => (
+              <option key={institute._id} value={institute._id}>
+                {institute.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            name="subscriptionPlan"
+            onChange={handleCheckoutChange}
+            value={checkoutForm.subscriptionPlan}
+          >
+            <option value="pro">Pro</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+          <button
+            className="rounded-lg bg-[#1152d4] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0f48ba] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!checkoutForm.instituteId || paymentCheckoutMutation.isPending}
+            type="submit"
+          >
+            {paymentCheckoutMutation.isPending ? "Creating..." : "Create Checkout"}
+          </button>
+        </form>
+        {paymentCheckoutMutation.isError ? (
+          <p className="mt-3 text-sm font-semibold text-rose-600">{paymentCheckoutMutation.error.message}</p>
+        ) : null}
+        {paymentCheckoutMutation.isSuccess && paymentCheckoutMutation.data?.mode === "mock" ? (
+          <p className="mt-3 text-sm font-semibold text-emerald-700">
+            {paymentCheckoutMutation.data.message || "Mock checkout created. Add Stripe keys to enable hosted payment redirects."}
+          </p>
+        ) : null}
+      </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {planCatalog.map((plan) => {

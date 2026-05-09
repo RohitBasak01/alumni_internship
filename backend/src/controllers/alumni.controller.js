@@ -57,6 +57,12 @@ export const getAlumni = asyncHandler(async (req, res) => {
     alphaIndex,
     isFaculty,
     registeredOnly,
+    // Advanced filters
+    skills, // comma-separated list
+    experienceMin,
+    experienceMax,
+    companySize,
+    availability, // comma-separated list
     sort: sortParam,
     page: pageParam,
     limit: limitParam,
@@ -94,6 +100,40 @@ export const getAlumni = asyncHandler(async (req, res) => {
   // Skill filter - use regex for partial match
   if (skill) {
     profileFilter.skills = { $regex: buildRegex(String(skill)), $options: 'i' };
+  }
+
+  // Advanced filters
+  // Multiple skills filter (comma-separated)
+  if (skills) {
+    const skillsArray = String(skills).split(',').map(s => s.trim()).filter(s => s);
+    if (skillsArray.length > 0) {
+      profileFilter.skills = { $all: skillsArray.map(skill => new RegExp(skill, 'i')) };
+    }
+  }
+
+  // Experience range filter
+  if (experienceMin || experienceMax) {
+    profileFilter.experienceYears = {};
+    if (experienceMin) {
+      profileFilter.experienceYears.$gte = Number(experienceMin);
+    }
+    if (experienceMax) {
+      profileFilter.experienceYears.$lte = Number(experienceMax);
+    }
+  }
+
+  // Company size filter
+  if (companySize) {
+    profileFilter.companySize = buildRegex(String(companySize));
+  }
+
+  // Availability filter (comma-separated)
+  if (availability) {
+    const availabilityArray = String(availability).split(',').map(a => a.trim()).filter(a => a);
+    if (availabilityArray.length > 0) {
+      // Assuming availability is stored as an array field
+      profileFilter.availability = { $in: availabilityArray };
+    }
   }
 
   // Text search across profile fields at database level

@@ -26,7 +26,7 @@ const featureFlagsSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
-    enableMentorship: {
+    enableConnections: {
       type: Boolean,
       default: true
     },
@@ -142,7 +142,7 @@ const instituteSchema = new mongoose.Schema(
       type: featureFlagsSchema,
       default: () => ({
         enableJobs: true,
-        enableMentorship: true,
+        enableConnections: true,
         enableDirectory: true,
         enableEvents: true,
         enableAnnouncements: true,
@@ -207,6 +207,21 @@ const instituteSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
+    billingProvider: {
+      type: String,
+      enum: ["manual", "stripe"],
+      default: "manual"
+    },
+    stripeCustomerId: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    stripeSubscriptionId: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     billingHistory: [
       {
         plan: {
@@ -230,6 +245,14 @@ const instituteSchema = new mongoose.Schema(
           default: Date.now
         },
         notes: {
+          type: String,
+          default: ""
+        },
+        provider: {
+          type: String,
+          default: "manual"
+        },
+        externalId: {
           type: String,
           default: ""
         }

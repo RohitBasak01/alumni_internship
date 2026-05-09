@@ -17,11 +17,11 @@ const ALL_FEATURES = [
       "Browse graduates and former students with institution-aware filters — batch, department, location, and more."
   },
   {
-    key: "enableMentorship",
+    key: "enableFriendship",
     icon: "school",
-    label: "Mentorship",
+    label: "Friendship",
     description:
-      "Connect with experienced alumni for career guidance, skill development, and long-term mentorship."
+      "Connect with experienced alumni for career guidance, skill development, and long-term friendship."
   },
   {
     key: "enableJobs",

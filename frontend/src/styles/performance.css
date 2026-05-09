@@ -1,0 +1,323 @@
+/**
+ * Performance Optimizations and Loading States
+ * Improves perceived performance and provides smooth loading experiences
+ */
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Optimize image loading */
+img {
+  content-visibility: auto;
+}
+
+.lazy-image {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.lazy-image.loaded {
+  opacity: 1;
+}
+
+/* Skeleton loading animations */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--al-color-surface-200) 25%,
+    var(--al-color-surface-300) 50%,
+    var(--al-color-surface-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 0.375rem;
+}
+
+.skeleton-dark {
+  background: linear-gradient(
+    90deg,
+    var(--al-color-surface-dark-700) 25%,
+    var(--al-color-surface-dark-600) 50%,
+    var(--al-color-surface-dark-700) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 0.375rem;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Content visibility optimizations */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* Optimize scrolling performance */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+.scroll-auto {
+  scroll-behavior: auto;
+}
+
+/* Will-change hints for animations */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Optimize font loading */
+.font-loading-optimized {
+  font-display: swap;
+}
+
+/* Loading spinner animations */
+.loading-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid var(--al-color-surface-300);
+  border-top-color: var(--al-color-brand-500);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+.loading-spinner-dark {
+  border-color: var(--al-color-surface-dark-600);
+  border-top-color: var(--al-color-brand-400);
+}
+
+.loading-spinner-sm {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-width: 2px;
+}
+
+.loading-spinner-lg {
+  width: 4rem;
+  height: 4rem;
+  border-width: 4px;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Progressive loading states */
+.progressive-load {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.progressive-load.loaded {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered animation delays */
+.stagger-delay-1 { animation-delay: 0.1s; }
+.stagger-delay-2 { animation-delay: 0.2s; }
+.stagger-delay-3 { animation-delay: 0.3s; }
+.stagger-delay-4 { animation-delay: 0.4s; }
+.stagger-delay-5 { animation-delay: 0.5s; }
+
+/* Optimize transition performance */
+.perf-transform {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduce layout thrashing */
+.stable-layout {
+  contain: layout style paint;
+}
+
+/* Loading placeholder styles */
+.loading-placeholder {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-placeholder::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  animation: placeholder-shimmer 1.5s infinite;
+}
+
+.dark .loading-placeholder::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+}
+
+@keyframes placeholder-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Optimize button loading states */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: -0.625rem 0 0 -0.625rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+.btn-secondary.btn-loading::after {
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--al-color-brand-500);
+}
+
+/* Optimize modal/dialog performance */
+.modal-optimized {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Virtualized list optimizations */
+.virtualized-item {
+  position: absolute;
+  width: 100%;
+  will-change: transform;
+}
+
+/* Optimize hover states for mobile */
+@media (hover: none) {
+  .hover-optimized:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Optimize focus rings for performance */
+.focus-ring-optimized:focus {
+  outline: 2px solid var(--al-color-brand-500);
+  outline-offset: 2px;
+}
+
+.focus-ring-optimized:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Optimize CSS containment */
+.contain-content {
+  contain: content;
+}
+
+.contain-strict {
+  contain: strict;
+}
+
+/* Loading progress bar */
+.loading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    var(--al-color-brand-500),
+    var(--al-color-brand-400),
+    var(--al-color-brand-300)
+  );
+  transform-origin: 0 50%;
+  animation: loading-progress 2s ease-in-out infinite;
+  z-index: 9999;
+}
+
+@keyframes loading-progress {
+  0% {
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+  }
+  50% {
+    transform: scaleX(0.7);
+    transform-origin: 0 50%;
+  }
+  100% {
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
+  }
+}
+
+/* Optimize print performance */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-optimized {
+    break-inside: avoid;
+  }
+}
+
+/* Optimize touch feedback */
+.touch-optimized {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Optimize image decoding */
+img[decoding="async"] {
+  content-visibility: auto;
+}
+
+/* Optimize font rendering */
+.font-rendering-optimized {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}

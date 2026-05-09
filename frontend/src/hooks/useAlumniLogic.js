@@ -7,7 +7,7 @@ import {
   copyAlumniInviteLink,
   revokeAlumniInvite,
   approveAlumniRegistration,
-  createMentorshipRequest,
+  createFriendshipRequest,
 } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
@@ -53,7 +53,7 @@ export function useAlumniLogic() {
   const [filters, setFilters] = useState(initialFilters);
   const [activeAdminTab, setActiveAdminTab] = useState("manage");
   const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
-  const [mentorshipMessages, setMentorshipMessages] = useState({});
+  const [friendshipMessages, setFriendshipMessages] = useState({});
   const deferredSearch = useDeferredValue(filters.q);
 
   const appliedFilters = useMemo(
@@ -90,10 +90,10 @@ export function useAlumniLogic() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] }),
   });
 
-  const mentorshipMutation = useMutation({
-    mutationFn: createMentorshipRequest,
+  const friendshipMutation = useMutation({
+    mutationFn: createFriendshipRequest,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["mentorship-requests"] }),
+      queryClient.invalidateQueries({ queryKey: ["friendship-requests"] }),
   });
 
   const isAdmin = auth.user?.role === "institute_admin";
@@ -130,13 +130,13 @@ export function useAlumniLogic() {
     setActiveAdminTab,
     isInvitePanelOpen,
     setIsInvitePanelOpen,
-    mentorshipMessages,
-    setMentorshipMessages,
+    friendshipMessages,
+    setFriendshipMessages,
     queries: { alumni: alumniQuery },
     mutations: {
       invite: inviteMutation,
       approve: approveMutation,
-      mentorship: mentorshipMutation,
+      friendship: friendshipMutation,
       resend: useMutation({
         mutationFn: resendAlumniInvite,
         onSuccess: () =>
@@ -156,10 +156,10 @@ export function useAlumniLogic() {
       ),
       activeMembers,
       filterStats: (() => {
-        const stats = { industry: {}, availability: { mentorship: 0, open: 0, looking: 0 } };
+        const stats = { industry: {}, availability: { friendship: 0, open: 0, looking: 0 } };
         data.forEach(m => {
           if (m.industry) stats.industry[m.industry] = (stats.industry[m.industry] || 0) + 1;
-          if (m.isAvailableForMentorship) stats.availability.mentorship++;
+          if (m.isAvailableForFriendship) stats.availability.friendship++;
           if (m.isLookingForOpportunity) stats.availability.open++;
           if (m.isActivelyJobHunting) stats.availability.looking++;
         });

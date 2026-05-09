@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTenantContext } from "../hooks/useTenantContext.js";
+import { fetchPublicInstitutes } from "../lib/api.js";
 
 const PRESET_TENANTS = [
   { slug: "spit", name: "S.P.I.T. Mumbai" },
@@ -9,11 +11,42 @@ const PRESET_TENANTS = [
 ];
 
 export default function DevTenantSwitcher() {
+  const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   const { isTenant, slug } = useTenantContext();
   const [isOpen, setIsOpen] = useState(false);
   const [inputSlug, setInputSlug] = useState("");
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const institutesQuery = useQuery({
+    queryKey: ["dev-tenant-switcher-public-institutes"],
+    queryFn: fetchPublicInstitutes,
+    staleTime: 60_000,
+    retry: 1,
+    enabled: isLocalDev
+  });
+
+  const tenantOptions = useMemo(() => {
+    const options = new Map();
+
+    PRESET_TENANTS.forEach((tenant) => {
+      options.set(tenant.slug, tenant);
+    });
+
+    const publicInstitutes = Array.isArray(institutesQuery.data) ? institutesQuery.data : [];
+    publicInstitutes.forEach((institute) => {
+      const normalizedSlug = String(institute?.subdomain || "").trim().toLowerCase();
+      if (!normalizedSlug) {
+        return;
+      }
+
+      options.set(normalizedSlug, {
+        slug: normalizedSlug,
+        name: String(institute?.name || normalizedSlug.toUpperCase())
+      });
+    });
+
+    return Array.from(options.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [institutesQuery.data]);
   
   const dropdownRef = useRef(null);
   const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
@@ -61,16 +94,28 @@ export default function DevTenantSwitcher() {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+  if (!isLocalDev) {
     return null;
   }
 
   const handleSwitch = (newSlug) => {
     const url = new URL(window.location.href);
     if (newSlug) {
+      window.localStorage.removeItem("tenantSubdomain");
+      window.localStorage.removeItem("tenantDomain");
+      window.sessionStorage.removeItem("tenantSubdomain");
+      window.sessionStorage.removeItem("tenantDomain");
       url.searchParams.set("tenant", newSlug.toLowerCase());
+      url.searchParams.delete("tenantSubdomain");
+      url.searchParams.delete("tenantDomain");
     } else {
       url.searchParams.delete("tenant");
+      url.searchParams.delete("tenantSubdomain");
+      url.searchParams.delete("tenantDomain");
+      window.localStorage.removeItem("tenantSubdomain");
+      window.localStorage.removeItem("tenantDomain");
+      window.sessionStorage.removeItem("tenantSubdomain");
+      window.sessionStorage.removeItem("tenantDomain");
     }
     window.location.href = url.toString();
   };
@@ -115,7 +160,7 @@ export default function DevTenantSwitcher() {
           <div className="p-5 bg-slate-50/50 border-b border-slate-100">
             <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Quick Switch</h4>
             <div className="grid grid-cols-1 gap-1.5">
-              {PRESET_TENANTS.map((t) => (
+              {tenantOptions.map((t) => (
                 <button
                   key={t.slug}
                   onClick={() => handleSwitch(t.slug)}
@@ -129,6 +174,9 @@ export default function DevTenantSwitcher() {
                   {slug === t.slug && <span className="material-symbols-outlined text-sm">check_circle</span>}
                 </button>
               ))}
+              {institutesQuery.isFetching ? (
+                <p className="px-4 py-2 text-xs font-semibold text-slate-400">Refreshing active institutes...</p>
+              ) : null}
             </div>
           </div>
 

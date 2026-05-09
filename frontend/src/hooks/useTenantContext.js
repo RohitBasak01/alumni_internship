@@ -78,7 +78,7 @@ export function useTenantContext() {
   const institute = auth.user?.institute;
   const defaultFeatureFlags = {
     enableJobs: true,
-    enableMentorship: true,
+    enableFriendship: true,
     enableDirectory: true,
     enableEvents: true,
     enableAnnouncements: true,

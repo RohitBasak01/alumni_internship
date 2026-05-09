@@ -1,6 +1,6 @@
 /**
  * Shared utility functions for the alumni chat portal.
- * Centralizes helpers previously duplicated across MentorshipChat, MessageBubble, and MentorshipPage.
+ * Centralizes helpers previously duplicated across ConnectionsChat, MessageBubble, and ConnectionsPage.
  */
 
 /**
