@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchAlumniPosts,
@@ -7,6 +7,8 @@ import {
   fetchAlumni,
   createAlumniPost,
   toggleAlumniPostLike,
+  addAlumniPostComment,
+  reportAlumniPost,
 } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { formatRelativeTime } from "../utils/formatters.js";
@@ -26,8 +28,35 @@ function avatarColor(seed) {
   return AVATAR_COLORS[n];
 }
 
+function readStoredPostIds(key) {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
 /* ── Post card ───────────────────────────────────────────── */
-function PostCard({ post, onLike }) {
+function PostCard({
+  post,
+  onLike,
+  commentsOpen,
+  commentDraft,
+  onToggleComments,
+  onCommentDraftChange,
+  onCommentSubmit,
+  onShare,
+  onSave,
+  onHide,
+  onReport,
+  pendingComment,
+  pendingReport,
+  shareStatus,
+  isSaved,
+}) {
   const [liked, setLiked] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -69,13 +98,31 @@ function PostCard({ post, onLike }) {
           </button>
           {menuOpen && (
             <div className="feed-post-menu-dropdown">
-              <button onClick={() => setMenuOpen(false)}>Save post</button>
-              <button onClick={() => setMenuOpen(false)}>Hide post</button>
               <button
-                onClick={() => setMenuOpen(false)}
+                onClick={() => {
+                  onSave(post._id);
+                  setMenuOpen(false);
+                }}
+              >
+                {isSaved ? "Unsave post" : "Save post"}
+              </button>
+              <button
+                onClick={() => {
+                  onHide(post._id);
+                  setMenuOpen(false);
+                }}
+              >
+                Hide post
+              </button>
+              <button
+                onClick={() => {
+                  onReport(post);
+                  setMenuOpen(false);
+                }}
+                disabled={pendingReport || post.reportedByCurrentUser}
                 style={{ color: "#ef4444" }}
               >
-                Report
+                {post.reportedByCurrentUser ? "Reported" : pendingReport ? "Reporting..." : "Report"}
               </button>
             </div>
           )}
@@ -95,6 +142,18 @@ function PostCard({ post, onLike }) {
         >
           {post.images.slice(0, 3).map((src, i) => (
             <img key={i} src={src} alt="" className="feed-post-img" loading="lazy" />
+          ))}
+        </div>
+      )}
+
+      {post.videos?.length > 0 && (
+        <div className="feed-post-videos">
+          {post.videos.map((video, i) => (
+            <a key={`${video.url}-${i}`} href={video.url} target="_blank" rel="noreferrer" className="feed-post-video-link">
+              <span className="material-symbols-outlined">play_circle</span>
+              <span>{video.name || "Watch video"}</span>
+              <span className="material-symbols-outlined">open_in_new</span>
+            </a>
           ))}
         </div>
       )}
@@ -122,39 +181,186 @@ function PostCard({ post, onLike }) {
           </span>
           {(post.likeCount || 0) + (liked ? 1 : 0)}
         </button>
-        <button className="feed-action-btn" aria-label="Comment">
+        <button
+          className={`feed-action-btn ${commentsOpen ? "feed-action-btn--active" : ""}`}
+          onClick={() => onToggleComments(post._id)}
+          aria-label="Comment"
+        >
           <span className="material-symbols-outlined">chat_bubble_outline</span>
           {post.commentCount || 0}
         </button>
-        <button className="feed-action-btn" aria-label="Share">
+        <button className="feed-action-btn" onClick={() => onShare(post)} aria-label="Share">
           <span className="material-symbols-outlined">reply</span>
-          {post.shareCount || 0}
+          {shareStatus === "copied" ? "Copied" : post.shareCount || 0}
         </button>
         <button
-          className="feed-action-btn feed-action-btn--bookmark"
+          className={`feed-action-btn feed-action-btn--bookmark ${isSaved ? "feed-action-btn--active" : ""}`}
+          onClick={() => onSave(post._id)}
           aria-label="Bookmark"
         >
-          <span className="material-symbols-outlined">bookmark_border</span>
+          <span className="material-symbols-outlined">{isSaved ? "bookmark" : "bookmark_border"}</span>
         </button>
       </div>
+
+      {commentsOpen && (
+        <div className="feed-post-comments">
+          <div className="feed-comment-list">
+            {post.comments?.length ? (
+              post.comments.map((comment) => (
+                <article className="feed-comment-item" key={comment._id}>
+                  <div
+                    className="feed-comment-avatar"
+                    style={{ background: avatarColor(comment.author?.id || comment._id) }}
+                  >
+                    {comment.author?.initials || (comment.author?.name || "A")[0]}
+                  </div>
+                  <div className="feed-comment-body">
+                    <div className="feed-comment-meta">
+                      <strong>{comment.author?.name || "Alumni"}</strong>
+                      <span>{formatRelativeTime(comment.createdAt)}</span>
+                    </div>
+                    <p>{comment.content}</p>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="feed-comment-empty">No comments yet. Start the conversation.</p>
+            )}
+          </div>
+
+          <form
+            className="feed-comment-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onCommentSubmit(post._id);
+            }}
+          >
+            <textarea
+              className="feed-comment-input"
+              rows={2}
+              value={commentDraft}
+              onChange={(event) => onCommentDraftChange(post._id, event.target.value)}
+              placeholder="Write a comment..."
+            />
+            <button
+              className="feed-comment-submit"
+              type="submit"
+              disabled={pendingComment || commentDraft.trim().length < 2}
+            >
+              {pendingComment ? "Posting..." : "Post"}
+            </button>
+          </form>
+        </div>
+      )}
     </article>
   );
 }
 
 /* ── Post composer ───────────────────────────────────────── */
-function PostComposerCard({ userInitial, onPost }) {
+function PostComposerCard({ userInitial, onPost, onCreateEvent }) {
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const photoInputRef = useRef(null);
+
+  const trimmedPollOptions = pollOptions.map((option) => option.trim()).filter(Boolean);
+
+  function buildPostPayload() {
+    const fallbackContent = attachments.some((attachment) => attachment.mimeType.startsWith("image/"))
+      ? "Shared a photo"
+      : attachments.some((attachment) => attachment.mimeType.startsWith("video"))
+        ? "Shared a video"
+        : "";
+    const pollText =
+      pollOpen && pollQuestion.trim() && trimmedPollOptions.length >= 2
+        ? [
+            "",
+            `Poll: ${pollQuestion.trim()}`,
+            ...trimmedPollOptions.map((option, index) => `${index + 1}. ${option}`),
+          ].join("\n")
+        : "";
+
+    return {
+      content: `${text.trim() || fallbackContent}${pollText}`.trim(),
+      attachments,
+    };
+  }
 
   function handleSubmit() {
-    if (!text.trim()) return;
-    onPost?.(text.trim());
+    const payload = buildPostPayload();
+    if (!payload.content || payload.content.length < 10) return;
+    onPost?.(payload);
     setText("");
+    setAttachments([]);
+    setPollOpen(false);
+    setPollQuestion("");
+    setPollOptions(["", ""]);
     setFocused(false);
+  }
+
+  function handlePhotoSelect(event) {
+    const files = Array.from(event.target.files || []);
+    files.forEach((file) => {
+      if (!file.type.startsWith("image/")) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachments((current) => [
+          ...current,
+          {
+            name: file.name,
+            url: String(reader.result || ""),
+            mimeType: file.type,
+            size: file.size,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+    event.target.value = "";
+  }
+
+  function handleVideoAdd() {
+    const url = window.prompt("Paste a video URL");
+    const trimmedUrl = String(url || "").trim();
+    if (!trimmedUrl) return;
+
+    setAttachments((current) => [
+      ...current,
+      {
+        name: "Video link",
+        url: trimmedUrl,
+        mimeType: "video/link",
+        size: 0,
+      },
+    ]);
+  }
+
+  function updatePollOption(index, value) {
+    setPollOptions((current) => current.map((option, i) => (i === index ? value : option)));
+  }
+
+  function addPollOption() {
+    setPollOptions((current) => (current.length >= 4 ? current : [...current, ""]));
+  }
+
+  function removeAttachment(url) {
+    setAttachments((current) => current.filter((attachment) => attachment.url !== url));
   }
 
   return (
     <div className="feed-composer-card">
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={handlePhotoSelect}
+      />
       <div className="feed-composer-top">
         <div className="feed-composer-avatar">{userInitial}</div>
         <div
@@ -178,7 +384,7 @@ function PostComposerCard({ userInitial, onPost }) {
 
       <div className="feed-composer-actions">
         <div className="feed-composer-types">
-          <button className="feed-composer-type-btn">
+          <button className="feed-composer-type-btn" type="button" onClick={() => photoInputRef.current?.click()}>
             <span
               className="material-symbols-outlined"
               style={{ color: "#22c55e" }}
@@ -187,7 +393,7 @@ function PostComposerCard({ userInitial, onPost }) {
             </span>
             Photo
           </button>
-          <button className="feed-composer-type-btn">
+          <button className="feed-composer-type-btn" type="button" onClick={handleVideoAdd}>
             <span
               className="material-symbols-outlined"
               style={{ color: "#6366f1" }}
@@ -196,7 +402,7 @@ function PostComposerCard({ userInitial, onPost }) {
             </span>
             Video
           </button>
-          <button className="feed-composer-type-btn">
+          <button className="feed-composer-type-btn" type="button" onClick={onCreateEvent}>
             <span
               className="material-symbols-outlined"
               style={{ color: "#f59e0b" }}
@@ -205,7 +411,11 @@ function PostComposerCard({ userInitial, onPost }) {
             </span>
             Event
           </button>
-          <button className="feed-composer-type-btn">
+          <button
+            className={`feed-composer-type-btn ${pollOpen ? "feed-composer-type-btn--active" : ""}`}
+            type="button"
+            onClick={() => setPollOpen((open) => !open)}
+          >
             <span
               className="material-symbols-outlined"
               style={{ color: "#ef4444" }}
@@ -218,7 +428,7 @@ function PostComposerCard({ userInitial, onPost }) {
         <button
           className="feed-composer-post-btn"
           onClick={handleSubmit}
-          disabled={!text.trim()}
+          disabled={buildPostPayload().content.length < 10}
         >
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
             send
@@ -226,6 +436,54 @@ function PostComposerCard({ userInitial, onPost }) {
           Post
         </button>
       </div>
+
+      {(attachments.length > 0 || pollOpen) && (
+        <div className="feed-composer-extras">
+          {attachments.length > 0 && (
+            <div className="feed-composer-attachments">
+              {attachments.map((attachment) => (
+                <div className="feed-composer-attachment" key={attachment.url}>
+                  <span className="material-symbols-outlined">
+                    {attachment.mimeType.startsWith("image/") ? "image" : "videocam"}
+                  </span>
+                  <span>{attachment.name}</span>
+                  <button type="button" onClick={() => removeAttachment(attachment.url)} aria-label={`Remove ${attachment.name}`}>
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {pollOpen && (
+            <div className="feed-composer-poll">
+              <input
+                className="feed-poll-input"
+                value={pollQuestion}
+                onChange={(event) => setPollQuestion(event.target.value)}
+                placeholder="Poll question"
+              />
+              <div className="feed-poll-options">
+                {pollOptions.map((option, index) => (
+                  <input
+                    key={index}
+                    className="feed-poll-input"
+                    value={option}
+                    onChange={(event) => updatePollOption(index, event.target.value)}
+                    placeholder={`Option ${index + 1}`}
+                  />
+                ))}
+              </div>
+              {pollOptions.length < 4 && (
+                <button type="button" className="feed-poll-add" onClick={addPollOption}>
+                  <span className="material-symbols-outlined">add</span>
+                  Add option
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -233,9 +491,17 @@ function PostComposerCard({ userInitial, onPost }) {
 /* ── Main FeedPage ───────────────────────────────────────── */
 export default function FeedPage() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userName = auth.user?.name || "User";
   const userInitial = (auth.user?.name || "U")[0]?.toUpperCase();
+  const [openComments, setOpenComments] = useState({});
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [shareStatus, setShareStatus] = useState({});
+  const savedStorageKey = `feed-saved-posts:${auth.user?.id || "guest"}`;
+  const hiddenStorageKey = `feed-hidden-posts:${auth.user?.id || "guest"}`;
+  const [savedPosts, setSavedPosts] = useState(() => readStoredPostIds(savedStorageKey));
+  const [hiddenPosts, setHiddenPosts] = useState(() => readStoredPostIds(hiddenStorageKey));
 
   const postsQuery = useQuery({ queryKey: ["alumni-posts"], queryFn: fetchAlumniPosts });
   const eventsQuery = useQuery({ queryKey: ["events"], queryFn: fetchEvents });
@@ -251,8 +517,94 @@ export default function FeedPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni-posts"] }),
   });
 
+  const commentMutation = useMutation({
+    mutationFn: ({ id, content }) => addAlumniPostComment(id, { content }),
+    onSuccess: (_, vars) => {
+      setCommentDrafts((drafts) => ({ ...drafts, [vars.id]: "" }));
+      queryClient.invalidateQueries({ queryKey: ["alumni-posts"] });
+    },
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: ({ id, reason }) => reportAlumniPost(id, { reason }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni-posts"] }),
+  });
+
+  function toggleComments(postId) {
+    setOpenComments((current) => ({ ...current, [postId]: !current[postId] }));
+  }
+
+  function updateCommentDraft(postId, value) {
+    setCommentDrafts((current) => ({ ...current, [postId]: value }));
+  }
+
+  function submitComment(postId) {
+    const content = String(commentDrafts[postId] || "").trim();
+    if (content.length < 2) return;
+    commentMutation.mutate({ id: postId, content });
+  }
+
+  function persistPostIds(key, updater, setter) {
+    setter((current) => {
+      const next = updater(current);
+      localStorage.setItem(key, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function toggleSavePost(postId) {
+    persistPostIds(
+      savedStorageKey,
+      (current) => current.includes(postId) ? current.filter((id) => id !== postId) : [...current, postId],
+      setSavedPosts
+    );
+  }
+
+  function hidePost(postId) {
+    persistPostIds(
+      hiddenStorageKey,
+      (current) => current.includes(postId) ? current : [...current, postId],
+      setHiddenPosts
+    );
+  }
+
+  function reportPost(post) {
+    if (post.reportedByCurrentUser || reportMutation.isPending) return;
+
+    const reason = window.prompt("Why are you reporting this post?");
+    const trimmedReason = String(reason || "").trim();
+    if (trimmedReason.length < 5) return;
+
+    reportMutation.mutate({ id: post._id, reason: trimmedReason });
+  }
+
+  async function sharePost(post) {
+    const url = `${window.location.origin}/portal/feed?post=${post._id}`;
+    const title = `Post by ${post.author?.name || "Alumni"}`;
+    const text = post.content || title;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        window.prompt("Copy this post link", url);
+      }
+
+      setShareStatus((current) => ({ ...current, [post._id]: "copied" }));
+      window.setTimeout(() => {
+        setShareStatus((current) => ({ ...current, [post._id]: "" }));
+      }, 1600);
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        window.prompt("Copy this post link", url);
+      }
+    }
+  }
+
   /* Build display posts */
-  const displayPosts = (postsQuery.data || []).map((p) => {
+  const displayPosts = (postsQuery.data || []).filter((p) => !hiddenPosts.includes(p._id)).map((p) => {
     const tags = p.content?.match(/#(\w+)/g) || [];
     return {
       ...p,
@@ -269,6 +621,10 @@ export default function FeedPage() {
         p.attachments
           ?.filter((a) => a.mimeType?.startsWith("image"))
           ?.map((a) => a.url) || [],
+      videos:
+        p.attachments
+          ?.filter((a) => a.mimeType?.startsWith("video"))
+          ?.map((a) => ({ name: a.name, url: a.url })) || [],
       tags,
     };
   });
@@ -372,7 +728,8 @@ export default function FeedPage() {
           <PostComposerCard
             userName={userName}
             userInitial={userInitial}
-            onPost={(text) => createPostMutation.mutate({ content: text })}
+            onPost={(payload) => createPostMutation.mutate(payload)}
+            onCreateEvent={() => navigate("/portal/events/create")}
           />
 
           <div className="feed-posts-list">
@@ -382,6 +739,19 @@ export default function FeedPage() {
                   key={post._id}
                   post={post}
                   onLike={(id) => likeMutation.mutate(id)}
+                  commentsOpen={Boolean(openComments[post._id])}
+                  commentDraft={commentDrafts[post._id] || ""}
+                  onToggleComments={toggleComments}
+                  onCommentDraftChange={updateCommentDraft}
+                  onCommentSubmit={submitComment}
+                  onShare={sharePost}
+                  onSave={toggleSavePost}
+                  onHide={hidePost}
+                  onReport={reportPost}
+                  pendingComment={commentMutation.isPending && commentMutation.variables?.id === post._id}
+                  pendingReport={reportMutation.isPending && reportMutation.variables?.id === post._id}
+                  shareStatus={shareStatus[post._id]}
+                  isSaved={savedPosts.includes(post._id)}
                 />
               ))
             ) : (

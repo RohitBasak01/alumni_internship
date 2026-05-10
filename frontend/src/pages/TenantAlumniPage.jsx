@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAlumniLogic } from "../hooks/useAlumniLogic.js";
 import { AlumniMap } from "../components/AlumniMap.jsx";
-import { BrowseByEntity } from "../components/BrowseByEntity.jsx";
+import { fetchBusinessListings } from "../lib/api.js";
 import "../styles/AlumniDirectory.css";
 
 /* ── Helpers ──────────────────────────────────────────────── */
@@ -33,6 +34,10 @@ function avatarColor(name = "") {
 
 function initials(name = "") {
   return name.split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase() || "?";
+}
+
+function companyInitials(name = "") {
+  return name.split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase() || "CO";
 }
 
 const SKILLS_MOCK = {
@@ -154,6 +159,111 @@ function ConnectDialog({ person, chatMessage, setChatMessage, onSend, onClose, i
   );
 }
 
+function CompanyList({ listings, selectedCompany, onSelectCompany, onViewDetails, isLoading, isError, error }) {
+  if (isLoading) {
+    return <p className="ad-company-muted">Loading registered companies...</p>;
+  }
+
+  if (isError) {
+    return <p className="ad-company-error">{error?.message || "Unable to load companies."}</p>;
+  }
+
+  if (!listings.length) {
+    return <p className="ad-company-muted">No registered businesses yet.</p>;
+  }
+
+  return (
+    <div className="ad-company-list">
+      {listings.map(item => {
+        const isActive = selectedCompany === item.businessName;
+        return (
+          <article key={item._id} className={`ad-company-item ${isActive ? "ad-company-item--active" : ""}`}>
+            <button
+              className="ad-company-main"
+              onClick={() => onSelectCompany(isActive ? "" : item.businessName)}
+              title={isActive ? "Clear company filter" : `Show alumni at ${item.businessName}`}
+            >
+              <div className="ad-company-logo">
+                {item.logoUrl ? <img src={item.logoUrl} alt="" /> : companyInitials(item.businessName)}
+              </div>
+              <div className="ad-company-copy">
+                <span className="ad-company-name">{item.businessName}</span>
+                <span className="ad-company-meta">{[item.industry || "Business", item.location].filter(Boolean).join(" | ")}</span>
+              </div>
+            </button>
+            <button className="ad-company-detail-btn" onClick={() => onViewDetails(item)}>
+              Details
+            </button>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function CompanyDetailsDialog({ company, onClose }) {
+  if (!company) return null;
+
+  const tags = [company.industry, company.product, company.service].filter(Boolean);
+  const ownerName = company.owner?.name || "Alumni";
+
+  return (
+    <div className="ad-modal-backdrop" onClick={onClose}>
+      <div className="ad-modal ad-company-modal" onClick={e => e.stopPropagation()}>
+        <div className="ad-modal-header">
+          <div className="ad-company-modal-heading">
+            <div className="ad-company-logo ad-company-logo--lg">
+              {company.logoUrl ? <img src={company.logoUrl} alt="" /> : companyInitials(company.businessName)}
+            </div>
+            <div>
+              <p className="ad-modal-kicker">Registered business</p>
+              <h3 className="ad-modal-title">{company.businessName}</h3>
+            </div>
+          </div>
+          <button className="ad-modal-close" onClick={onClose}>
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div className="ad-modal-body">
+          {company.description && <p className="ad-company-description">{company.description}</p>}
+          {tags.length > 0 && (
+            <div className="ad-company-tags">
+              {tags.map(tag => <span key={tag} className="ad-card-v2-tag">{tag}</span>)}
+            </div>
+          )}
+          <div className="ad-company-details-grid">
+            <div>
+              <span className="ad-company-detail-label">Founder</span>
+              <strong>{ownerName}</strong>
+            </div>
+            <div>
+              <span className="ad-company-detail-label">Location</span>
+              <strong>{company.location || "Not added"}</strong>
+            </div>
+            <div>
+              <span className="ad-company-detail-label">Email</span>
+              <strong>{company.contactEmail || "Not added"}</strong>
+            </div>
+            <div>
+              <span className="ad-company-detail-label">Phone</span>
+              <strong>{[company.contactCountry, company.contactNumber].filter(Boolean).join(" ") || "Not added"}</strong>
+            </div>
+          </div>
+        </div>
+        <div className="ad-modal-footer">
+          {company.website && (
+            <a href={company.website} target="_blank" rel="noreferrer" className="ad-btn-solid ad-company-link">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>open_in_new</span>
+              Website
+            </a>
+          )}
+          <button className="ad-btn-ghost" style={{ height: 44 }} onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════
    Main Page
    ══════════════════════════════════════════════════════════ */
@@ -172,10 +282,16 @@ export default function TenantAlumniPage() {
   const [skillSearch, setSkillSearch]           = useState("");
   const [page, setPage]                         = useState(1);
   const [showMap, setShowMap]                   = useState(false);
+  const [selectedCompanyDetails, setSelectedCompanyDetails] = useState(null);
   const PAGE_SIZE = 9;
 
   const directoryConfig = useMemo(() => getDirectoryConfig(tenant), [tenant]);
   const selfUserId = String(auth.user?._id || auth.user?.id || "");
+  const businessListingsQuery = useQuery({
+    queryKey: ["business-listings"],
+    queryFn: fetchBusinessListings,
+  });
+  const registeredCompanies = businessListingsQuery.data || [];
 
   const resetFilters = () => setFilters({
     q: "", batch: "", department: "", leavingYear: "", lastClassAttended: "",
@@ -252,14 +368,6 @@ export default function TenantAlumniPage() {
               {Array.from(new Set([...COMMON_INDUSTRIES, ...uniqueValues.industries])).sort().map(i => (
                 <option key={i} value={i}>{i}</option>
               ))}
-            </select>
-          </div>
-
-          <div className="ad-dropdown-filter">
-            <span className="material-symbols-outlined">business</span>
-            <select value={filters.company || ""} onChange={e => { setFilters(f => ({ ...f, company: e.target.value })); setPage(1); }}>
-              <option value="">Company</option>
-              {uniqueValues.companies.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -353,6 +461,26 @@ export default function TenantAlumniPage() {
         <aside className="ad-sidebar">
           <div className="ad-sidebar-card-v2">
             <div className="ad-sidebar-header-v2">
+              <span className="ad-sidebar-title-v2">Registered Companies</span>
+              {filters.company && (
+                <button className="ad-sidebar-reset-v2" onClick={() => { setFilters(f => ({ ...f, company: "" })); setPage(1); }}>
+                  Clear
+                </button>
+              )}
+            </div>
+            <CompanyList
+              listings={registeredCompanies}
+              selectedCompany={filters.company}
+              onSelectCompany={company => { setFilters(f => ({ ...f, company })); setPage(1); }}
+              onViewDetails={setSelectedCompanyDetails}
+              isLoading={businessListingsQuery.isLoading}
+              isError={businessListingsQuery.isError}
+              error={businessListingsQuery.error}
+            />
+          </div>
+
+          <div className="ad-sidebar-card-v2">
+            <div className="ad-sidebar-header-v2">
               <span className="ad-sidebar-title-v2">Quick Filters</span>
               <button className="ad-sidebar-reset-v2" onClick={() => { resetFilters(); setPage(1); setAvailFilter([]); }}>Reset</button>
             </div>
@@ -409,6 +537,8 @@ export default function TenantAlumniPage() {
           error={mutations.friendship.error}
         />
       )}
+
+      <CompanyDetailsDialog company={selectedCompanyDetails} onClose={() => setSelectedCompanyDetails(null)} />
     </div>
   );
 }

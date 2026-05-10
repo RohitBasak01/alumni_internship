@@ -160,8 +160,12 @@
 
 /* Highlights */
 .gl-highlights-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.35rem; }
+.gl-highlight-tile  { position:relative; border:0; padding:0; background:transparent; cursor:pointer; border-radius:8px; overflow:hidden; }
 .gl-highlight-img   { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; display:block; }
+.gl-highlight-metric { position:absolute; left:4px; right:4px; bottom:4px; padding:.12rem .2rem; border-radius:6px; background:rgba(15,23,42,.72); color:#fff; font-size:.56rem; font-weight:800; text-align:center; }
 .gl-highlight-caption { font-size:.72rem; color:#94a3b8; text-align:center; margin:.5rem 0 0; }
+.gl-highlight-empty { margin:0; padding:.75rem; border-radius:10px; background:#f8fafc; color:#94a3b8; font-size:.78rem; text-align:center; }
+.gl-highlight-score { margin-left:auto; font-size:.66rem; font-weight:800; color:#fff; opacity:.85; }
 
 /* ─ Lightbox ─────────────────────────────────────────────── */
 .gl-lightbox-backdrop { position:fixed; inset:0; background:rgba(10,10,20,.88); display:grid; place-items:center; z-index:300; padding:1.5rem; backdrop-filter:blur(6px); }
@@ -170,6 +174,21 @@
 .gl-lightbox-close .material-symbols-outlined { font-size:18px; }
 .gl-lightbox-media { max-width:100%; max-height:80vh; object-fit:contain; border-radius:12px; display:block; }
 .gl-lightbox-caption { color:rgba(255,255,255,.75); font-size:.82rem; text-align:center; padding:.6rem 1rem 0; }
+.gl-lightbox-engagement { display:flex; align-items:center; gap:.65rem; padding:.75rem 1rem 0; }
+.gl-engagement-btn,
+.gl-engagement-count { display:inline-flex; align-items:center; gap:.35rem; border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:.35rem .7rem; background:rgba(255,255,255,.1); color:#fff; font-size:.8rem; font-weight:800; }
+.gl-engagement-btn { cursor:pointer; }
+.gl-engagement-btn--active { color:#fecaca; background:rgba(239,68,68,.22); border-color:rgba(252,165,165,.35); }
+.gl-engagement-btn .material-symbols-outlined,
+.gl-engagement-count .material-symbols-outlined { font-size:16px; }
+.gl-lightbox-comments { display:flex; flex-direction:column; gap:.5rem; width:min(100%,640px); padding:.75rem 1rem 1rem; }
+.gl-lightbox-comment { display:flex; gap:.45rem; align-items:baseline; padding:.5rem .65rem; border-radius:10px; background:rgba(255,255,255,.1); font-size:.78rem; color:rgba(255,255,255,.82); }
+.gl-lightbox-comment strong { color:#fff; }
+.gl-lightbox-comment-form { display:grid; grid-template-columns:1fr auto; gap:.5rem; }
+.gl-lightbox-comment-form input { min-width:0; border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:.6rem .7rem; font-size:.82rem; outline:none; background:rgba(255,255,255,.1); color:#fff; }
+.gl-lightbox-comment-form input::placeholder { color:rgba(255,255,255,.58); }
+.gl-lightbox-comment-form button { border:0; border-radius:10px; padding:0 .85rem; background:#6366f1; color:#fff; font-size:.78rem; font-weight:800; cursor:pointer; }
+.gl-lightbox-comment-form button:disabled { opacity:.5; cursor:not-allowed; }
 
 /* ─ Responsive ──────────────────────────────────────────── */
 @media (max-width:1024px) { .gl-layout { grid-template-columns:1fr 260px; } }

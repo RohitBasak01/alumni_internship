@@ -7,7 +7,7 @@ import {
   copyAlumniInviteLink,
   revokeAlumniInvite,
   approveAlumniRegistration,
-  createFriendshipRequest,
+  createFriendshipRequest
 } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
@@ -25,7 +25,7 @@ const initialInviteForm = {
   occupation: "",
   company: "",
   designation: "",
-  location: "",
+  location: ""
 };
 
 const initialFilters = {
@@ -42,7 +42,7 @@ const initialFilters = {
   alphaIndex: "",
   isFaculty: false,
   registeredOnly: false,
-  activeTab: "name",
+  activeTab: "name"
 };
 
 export function useAlumniLogic() {
@@ -59,9 +59,9 @@ export function useAlumniLogic() {
   const appliedFilters = useMemo(
     () => ({
       ...filters,
-      q: deferredSearch,
+      q: deferredSearch
     }),
-    [filters, deferredSearch],
+    [filters, deferredSearch]
   );
 
   const alumniQuery = useQuery({
@@ -69,11 +69,9 @@ export function useAlumniLogic() {
     queryFn: () =>
       fetchAlumni(
         Object.fromEntries(
-          Object.entries(appliedFilters).filter(
-            ([, v]) => String(v || "").trim() !== "",
-          ),
-        ),
-      ),
+          Object.entries(appliedFilters).filter(([, v]) => String(v || "").trim() !== "")
+        )
+      )
   });
 
   const inviteMutation = useMutation({
@@ -82,18 +80,17 @@ export function useAlumniLogic() {
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
       setInviteForm(initialInviteForm);
       setIsInvitePanelOpen(false);
-    },
+    }
   });
 
   const approveMutation = useMutation({
     mutationFn: approveAlumniRegistration,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] })
   });
 
   const friendshipMutation = useMutation({
     mutationFn: createFriendshipRequest,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["friendship-requests"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["friendship-requests"] })
   });
 
   const isAdmin = auth.user?.role === "institute_admin";
@@ -102,12 +99,8 @@ export function useAlumniLogic() {
 
   const directoryEntries = useMemo(
     () =>
-      isAdmin
-        ? data
-        : data.filter(
-            (item) => (item.userId?._id || item.userId) !== selfUserId,
-          ),
-    [data, isAdmin, selfUserId],
+      isAdmin ? data : data.filter((item) => (item.userId?._id || item.userId) !== selfUserId),
+    [data, isAdmin, selfUserId]
   );
 
   const activeMembers = directoryEntries.filter((item) => {
@@ -139,25 +132,23 @@ export function useAlumniLogic() {
       friendship: friendshipMutation,
       resend: useMutation({
         mutationFn: resendAlumniInvite,
-        onSuccess: () =>
-          queryClient.invalidateQueries({ queryKey: ["alumni"] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] })
       }),
       revoke: useMutation({
         mutationFn: ({ profileId, rejectionReason }) =>
           revokeAlumniInvite(profileId, { rejectionReason }),
-        onSuccess: () =>
-          queryClient.invalidateQueries({ queryKey: ["alumni"] }),
-      }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alumni"] })
+      })
     },
     derived: {
       directoryEntries,
       pendingApprovals: data.filter(
-        (item) => (item.registrationReviewStatus || "pending") === "pending",
+        (item) => (item.registrationReviewStatus || "pending") === "pending"
       ),
       activeMembers,
       filterStats: (() => {
         const stats = { industry: {}, availability: { friendship: 0, open: 0, looking: 0 } };
-        data.forEach(m => {
+        data.forEach((m) => {
           if (m.industry) stats.industry[m.industry] = (stats.industry[m.industry] || 0) + 1;
           if (m.isAvailableForFriendship) stats.availability.friendship++;
           if (m.isLookingForOpportunity) stats.availability.open++;
@@ -167,25 +158,40 @@ export function useAlumniLogic() {
       })(),
       uniqueValues: (() => {
         const values = { years: new Set(), industries: new Set(), companies: new Set() };
-        data.forEach(m => {
+        const currentYear = new Date().getFullYear();
+
+        for (let year = currentYear; year >= 2005; year -= 1) {
+          values.years.add(String(year));
+        }
+
+        data.forEach((m) => {
           if (m.batch || m.leavingYear) values.years.add(String(m.batch || m.leavingYear));
           if (m.industry) values.industries.add(m.industry);
           if (m.company) values.companies.add(m.company);
         });
         return {
-          years: Array.from(values.years).sort((a,b) => b-a),
+          years: Array.from(values.years).sort((a, b) => b - a),
           industries: Array.from(values.industries).sort(),
-          companies: Array.from(values.companies).sort(),
+          companies: Array.from(values.companies).sort()
         };
       })(),
       insights: {
         total: data.length,
-        countries: new Set(data.filter(m => m.location).map(m => m.location.split(",").pop().trim())).size || 1,
-        topIndustry: Object.entries(
-          data.reduce((acc, m) => { if(m.industry) acc[m.industry] = (acc[m.industry] || 0) + 1; return acc; }, {})
-        ).sort((a,b) => b[1] - a[1])[0]?.[0] || "None",
-        activeThisMonth: data.filter(m => m.updatedAt && new Date(m.updatedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+        countries:
+          new Set(data.filter((m) => m.location).map((m) => m.location.split(",").pop().trim()))
+            .size || 1,
+        topIndustry:
+          Object.entries(
+            data.reduce((acc, m) => {
+              if (m.industry) acc[m.industry] = (acc[m.industry] || 0) + 1;
+              return acc;
+            }, {})
+          ).sort((a, b) => b[1] - a[1])[0]?.[0] || "None",
+        activeThisMonth: data.filter(
+          (m) =>
+            m.updatedAt && new Date(m.updatedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        ).length
       }
-    },
+    }
   };
 }

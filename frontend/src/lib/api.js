@@ -22,7 +22,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
-  withCredentials: true,
+  withCredentials: true
 });
 
 let csrfWarmupPromise = null;
@@ -60,24 +60,20 @@ async function ensureCsrfTokenCookie() {
 }
 
 function getConfiguredTenantContext() {
-  const browserHost =
-    typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+  const browserHost = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
   const storage = typeof window !== "undefined" ? window.localStorage : null;
-  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const searchParams =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const queryTenant = searchParams?.get("tenant")?.trim()?.toLowerCase();
 
-  const tenantSubdomainOverride = String(
-    storage?.getItem("tenantSubdomain") || "",
-  )
+  const tenantSubdomainOverride = String(storage?.getItem("tenantSubdomain") || "")
     .trim()
     .toLowerCase();
   const tenantDomainOverride = String(storage?.getItem("tenantDomain") || "")
     .trim()
     .toLowerCase();
 
-  const configuredSubdomain = String(
-    import.meta.env.VITE_TENANT_SUBDOMAIN || "",
-  )
+  const configuredSubdomain = String(import.meta.env.VITE_TENANT_SUBDOMAIN || "")
     .trim()
     .toLowerCase();
   const configuredDomain = String(import.meta.env.VITE_TENANT_DOMAIN || "")
@@ -89,7 +85,7 @@ function getConfiguredTenantContext() {
   if (queryTenant) {
     return {
       tenantSubdomain: queryTenant,
-      tenantDomain: "",
+      tenantDomain: ""
     };
   }
 
@@ -97,7 +93,7 @@ function getConfiguredTenantContext() {
   if (tenantSubdomainOverride || tenantDomainOverride) {
     return {
       tenantSubdomain: tenantSubdomainOverride,
-      tenantDomain: tenantDomainOverride,
+      tenantDomain: tenantDomainOverride
     };
   }
 
@@ -105,7 +101,7 @@ function getConfiguredTenantContext() {
   if (configuredSubdomain || configuredDomain) {
     return {
       tenantSubdomain: configuredSubdomain,
-      tenantDomain: configuredDomain,
+      tenantDomain: configuredDomain
     };
   }
 
@@ -114,13 +110,13 @@ function getConfiguredTenantContext() {
     const parts = browserHost.split(".");
     return {
       tenantSubdomain: parts.length >= 3 ? parts[0] : "",
-      tenantDomain: parts.length >= 2 ? browserHost : "",
+      tenantDomain: parts.length >= 2 ? browserHost : ""
     };
   }
 
   return {
     tenantSubdomain: "",
-    tenantDomain: "",
+    tenantDomain: ""
   };
 }
 
@@ -159,8 +155,7 @@ api.interceptors.request.use(async (config) => {
   const baseUrl = String(config.baseURL || api.defaults.baseURL || "");
   const isLocalApi = /localhost|127\.0\.0\.1/i.test(baseUrl);
   const method = String(config.method || "get").toUpperCase();
-  const isSafeMethod =
-    method === "GET" || method === "HEAD" || method === "OPTIONS";
+  const isSafeMethod = method === "GET" || method === "HEAD" || method === "OPTIONS";
 
   if (!config.headers) {
     config.headers = {};
@@ -202,7 +197,7 @@ api.interceptors.response.use(
     normalizedError.data = error?.response?.data || null;
 
     return Promise.reject(normalizedError);
-  },
+  }
 );
 
 export function buildTenantPortalUrl(institute, path = "/login") {
@@ -275,7 +270,7 @@ export function redirectToTenantPortal(institute, path = "/login") {
 export function getOAuthStartUrl(provider, options = {}) {
   const { tenantSubdomain, tenantDomain } = {
     ...getConfiguredTenantContext(),
-    ...options,
+    ...options
   };
   const url = new URL(`/api/auth/oauth/${provider}/start`, getApiOrigin());
 
@@ -343,9 +338,7 @@ async function readLocationApiResponse(response) {
 }
 
 export async function fetchCountries() {
-  const response = await fetch(
-    "https://countriesnow.space/api/v0.1/countries/positions",
-  );
+  const response = await fetch("https://countriesnow.space/api/v0.1/countries/positions");
   const data = await readLocationApiResponse(response);
   const list = Array.isArray(data) ? data : [];
 
@@ -360,14 +353,11 @@ export async function fetchStatesByCountry(country) {
     return [];
   }
 
-  const response = await fetch(
-    "https://countriesnow.space/api/v0.1/countries/states",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ country }),
-    },
-  );
+  const response = await fetch("https://countriesnow.space/api/v0.1/countries/states", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ country })
+  });
 
   const data = await readLocationApiResponse(response);
   const states = Array.isArray(data?.states) ? data.states : [];
@@ -383,14 +373,11 @@ export async function fetchCitiesByState(country, state) {
     return [];
   }
 
-  const response = await fetch(
-    "https://countriesnow.space/api/v0.1/countries/state/cities",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ country, state }),
-    },
-  );
+  const response = await fetch("https://countriesnow.space/api/v0.1/countries/state/cities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ country, state })
+  });
 
   const data = await readLocationApiResponse(response);
   const list = Array.isArray(data) ? data : [];
@@ -409,7 +396,7 @@ export async function login(payload) {
 
   return {
     ...data,
-    user: data,
+    user: data
   };
 }
 
@@ -474,17 +461,17 @@ export async function fetchInstituteDetail(id) {
 }
 
 export async function updateInstituteSubscription(id, payload) {
-  const { data } = await api.patch(
-    `/admin/institutes/${id}/subscription`,
-    payload,
-  );
+  const { data } = await api.patch(`/admin/institutes/${id}/subscription`, payload);
+  return data;
+}
+
+export async function createInstitutePaymentCheckout(id, payload) {
+  const { data } = await api.post(`/admin/institutes/${id}/payment-checkout`, payload);
   return data;
 }
 
 export async function resendInstituteAdminInvite(id) {
-  const { data } = await api.post(
-    `/admin/institutes/${id}/resend-admin-invite`,
-  );
+  const { data } = await api.post(`/admin/institutes/${id}/resend-admin-invite`);
   return data;
 }
 
@@ -529,10 +516,7 @@ export async function copyAlumniInviteLink(profileId) {
 }
 
 export async function revokeAlumniInvite(profileId, payload = {}) {
-  const { data } = await api.post(
-    `/alumni/${profileId}/revoke-invite`,
-    payload,
-  );
+  const { data } = await api.post(`/alumni/${profileId}/revoke-invite`, payload);
   return data;
 }
 
@@ -562,7 +546,7 @@ export async function exportAlumniCsv(params = {}) {
 export async function importAlumniCsv(file) {
   const formData = new FormData();
   formData.append("file", file);
-  
+
   const { data } = await api.post("/alumni/import/csv", formData, {
     headers: {
       "Content-Type": "multipart/form-data"
@@ -758,6 +742,16 @@ export async function deleteGalleryItem(id) {
   return data;
 }
 
+export async function toggleGalleryItemLike(id) {
+  const { data } = await api.post(`/gallery/${id}/like`);
+  return data;
+}
+
+export async function addGalleryItemComment(id, payload) {
+  const { data } = await api.post(`/gallery/${id}/comments`, payload);
+  return data;
+}
+
 export async function fetchBusinessListings() {
   const { data } = await api.get("/business-directory");
   return data;
@@ -835,17 +829,13 @@ export async function updateFriendshipRequest(id, payload) {
 export const updateAlumniConversationRequest = updateFriendshipRequest;
 
 export function sendFriendshipMessage(id, payload) {
-  return api
-    .post(`/friendships/${id}/messages`, payload)
-    .then((res) => res.data);
+  return api.post(`/friendships/${id}/messages`, payload).then((res) => res.data);
 }
 
 export const sendAlumniConversationMessage = sendFriendshipMessage;
 
 export function fetchFriendshipMessages(id, params = {}) {
-  return api
-    .get(`/friendships/${id}/messages`, { params })
-    .then((res) => res.data);
+  return api.get(`/friendships/${id}/messages`, { params }).then((res) => res.data);
 }
 
 export const fetchAlumniConversationMessages = fetchFriendshipMessages;
@@ -865,12 +855,12 @@ export async function uploadFriendshipAttachment(file, options = {}) {
   formData.append("file", file);
   const { data } = await api.post("/friendships/uploads", formData, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": "multipart/form-data"
     },
     onUploadProgress: (event) => {
       if (!options.onUploadProgress || !event.total) return;
       options.onUploadProgress(Math.round((event.loaded / event.total) * 100));
-    },
+    }
   });
   return data;
 }
@@ -890,19 +880,14 @@ export async function setFriendshipTyping(id, payload) {
 export const setAlumniConversationTyping = setFriendshipTyping;
 
 export async function editFriendshipMessage(requestId, messageId, payload) {
-  const { data } = await api.patch(
-    `/friendships/${requestId}/messages/${messageId}`,
-    payload,
-  );
+  const { data } = await api.patch(`/friendships/${requestId}/messages/${messageId}`, payload);
   return data;
 }
 
 export const editAlumniConversationMessage = editFriendshipMessage;
 
 export async function deleteFriendshipMessage(requestId, messageId) {
-  const { data } = await api.delete(
-    `/friendships/${requestId}/messages/${messageId}`,
-  );
+  const { data } = await api.delete(`/friendships/${requestId}/messages/${messageId}`);
   return data;
 }
 
@@ -915,14 +900,10 @@ export async function clearFriendshipMessages(requestId) {
 
 export const clearAlumniConversationMessages = clearFriendshipMessages;
 
-export async function toggleFriendshipMessageReaction(
-  requestId,
-  messageId,
-  payload,
-) {
+export async function toggleFriendshipMessageReaction(requestId, messageId, payload) {
   const { data } = await api.post(
     `/friendships/${requestId}/messages/${messageId}/reactions`,
-    payload,
+    payload
   );
   return data;
 }
@@ -930,32 +911,22 @@ export async function toggleFriendshipMessageReaction(
 export const toggleAlumniConversationReaction = toggleFriendshipMessageReaction;
 
 export async function updateGroupMemberRole(requestId, userId, payload) {
-  const { data } = await api.patch(
-    `/friendships/${requestId}/members/${userId}/role`,
-    payload,
-  );
+  const { data } = await api.patch(`/friendships/${requestId}/members/${userId}/role`, payload);
   return data;
 }
 
 export async function muteGroupMember(requestId, userId, payload) {
-  const { data } = await api.patch(
-    `/friendships/${requestId}/members/${userId}/mute`,
-    payload,
-  );
+  const { data } = await api.patch(`/friendships/${requestId}/members/${userId}/mute`, payload);
   return data;
 }
 
 export async function unmuteGroupMember(requestId, userId) {
-  const { data } = await api.delete(
-    `/friendships/${requestId}/members/${userId}/mute`,
-  );
+  const { data } = await api.delete(`/friendships/${requestId}/members/${userId}/mute`);
   return data;
 }
 
 export async function removeGroupMember(requestId, userId) {
-  const { data } = await api.delete(
-    `/friendships/${requestId}/members/${userId}`,
-  );
+  const { data } = await api.delete(`/friendships/${requestId}/members/${userId}`);
   return data;
 }
 

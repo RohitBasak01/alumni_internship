@@ -34,6 +34,32 @@ const galleryItemSchema = new mongoose.Schema(
       trim: true,
       maxlength: 240,
       default: ""
+    },
+    likes: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: []
+    },
+    comments: {
+      type: [
+        new mongoose.Schema(
+          {
+            userId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+              required: true
+            },
+            content: {
+              type: String,
+              required: true,
+              trim: true,
+              maxlength: 500
+            }
+          },
+          { timestamps: true }
+        )
+      ],
+      default: []
     }
   },
   {

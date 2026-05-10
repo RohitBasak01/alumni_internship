@@ -42,6 +42,46 @@ function validateGalleryItemParams(params) {
   return isObjectIdLike(params.id) ? [] : ["Invalid gallery item id"];
 }
 
+function validateGalleryCommentBody(body) {
+  return isNonEmptyString(body.content) && String(body.content).trim().length >= 2
+    ? []
+    : ["Comment must be at least 2 characters long"];
+}
+
+function formatGalleryItem(item, req) {
+  const currentUserId = req.user?._id?.toString?.() || "";
+
+  return {
+    _id: item._id,
+    section: item.section,
+    mediaType: item.mediaType,
+    url: item.url,
+    caption: item.caption,
+    uploader: {
+      id: item.userId?._id || null,
+      name: item.userId?.name || "Unknown User",
+      role: item.userId?.role || "unknown"
+    },
+    likeCount: item.likes?.length || 0,
+    commentCount: item.comments?.length || 0,
+    likedByCurrentUser: (item.likes || []).some((id) => id.toString() === currentUserId),
+    comments: (item.comments || [])
+      .slice()
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .map((comment) => ({
+        _id: comment._id,
+        content: comment.content,
+        createdAt: comment.createdAt,
+        author: {
+          id: comment.userId?._id || null,
+          name: comment.userId?.name || "Unknown User",
+          role: comment.userId?.role || "unknown"
+        }
+      })),
+    createdAt: item.createdAt
+  };
+}
+
 function assertCreatePolicy(userRole, section, mediaType) {
   if (userRole === "institute_admin") {
     if (section === "personal_photos") {
@@ -85,23 +125,10 @@ router.get("/", protect, requireTenantAccess, async (req, res, next) => {
     const { GalleryItem } = getTenantModels(req);
     const items = await GalleryItem.find({ instituteId: req.tenant._id })
       .populate("userId", "name role")
+      .populate("comments.userId", "name role")
       .sort({ createdAt: -1 });
 
-    res.json(
-      items.map((item) => ({
-        _id: item._id,
-        section: item.section,
-        mediaType: item.mediaType,
-        url: item.url,
-        caption: item.caption,
-        uploader: {
-          id: item.userId?._id || null,
-          name: item.userId?.name || "Unknown User",
-          role: item.userId?.role || "unknown"
-        },
-        createdAt: item.createdAt
-      }))
-    );
+    res.json(items.map((item) => formatGalleryItem(item, req)));
   } catch (error) {
     next(error);
   }
@@ -125,23 +152,80 @@ router.post("/", protect, requireTenantAccess, validateBody(validateCreateGaller
 
     await created.populate("userId", "name role");
 
-    res.status(201).json({
-      _id: created._id,
-      section: created.section,
-      mediaType: created.mediaType,
-      url: created.url,
-      caption: created.caption,
-      uploader: {
-        id: created.userId?._id || null,
-        name: created.userId?.name || "Unknown User",
-        role: created.userId?.role || "unknown"
-      },
-      createdAt: created.createdAt
-    });
+    res.status(201).json(formatGalleryItem(created, req));
   } catch (error) {
     next(error);
   }
 });
+
+router.post("/:id/like", protect, requireTenantAccess, validateParams(validateGalleryItemParams), async (req, res, next) => {
+  try {
+    const { GalleryItem } = getTenantModels(req);
+    const item = await GalleryItem.findOne({
+      _id: req.params.id,
+      instituteId: req.tenant._id
+    });
+
+    if (!item) {
+      const error = new Error("Gallery item not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const currentUserId = req.user._id.toString();
+    const likeIndex = item.likes.findIndex((id) => id.toString() === currentUserId);
+
+    if (likeIndex >= 0) {
+      item.likes.splice(likeIndex, 1);
+    } else {
+      item.likes.push(req.user._id);
+    }
+
+    await item.save();
+    await item.populate("userId", "name role");
+    await item.populate("comments.userId", "name role");
+
+    res.json(formatGalleryItem(item, req));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  "/:id/comments",
+  protect,
+  requireTenantAccess,
+  validateParams(validateGalleryItemParams),
+  validateBody(validateGalleryCommentBody),
+  async (req, res, next) => {
+    try {
+      const { GalleryItem } = getTenantModels(req);
+      const item = await GalleryItem.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!item) {
+        const error = new Error("Gallery item not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      item.comments.push({
+        userId: req.user._id,
+        content: req.body.content.trim()
+      });
+
+      await item.save();
+      await item.populate("userId", "name role");
+      await item.populate("comments.userId", "name role");
+
+      res.status(201).json(formatGalleryItem(item, req));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 router.delete("/:id", protect, requireTenantAccess, validateParams(validateGalleryItemParams), async (req, res, next) => {
   try {

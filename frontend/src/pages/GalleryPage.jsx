@@ -1,7 +1,13 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext.jsx";
-import { createGalleryItem, deleteGalleryItem, fetchGalleryItems } from "../lib/api.js";
+import {
+  addGalleryItemComment,
+  createGalleryItem,
+  deleteGalleryItem,
+  fetchGalleryItems,
+  toggleGalleryItemLike,
+} from "../lib/api.js";
 import "../styles/Gallery.css";
 
 /* ── Static data ─────────────────────────────────────────── */
@@ -30,12 +36,6 @@ const MOCK_ALBUMS = [
   { title:"Tech Talk Series",       date:"2025",      count:76,  img:"https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=80&q=60" },
   { title:"Campus Life",            date:"2025",      count:112, img:"https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=80&q=60" },
 ];
-const HIGHLIGHT_IMGS = [
-  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=120&q=60",
-  "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=120&q=60",
-  "https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=120&q=60",
-  "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=120&q=60",
-];
 
 const SORT_OPTIONS = ["Newest First","Oldest First","Most Viewed","A–Z"];
 
@@ -55,8 +55,23 @@ function formatDate(v) {
   return new Date(v).toLocaleDateString("en-US",{ month:"short", year:"numeric" });
 }
 
+function isCurrentMonth(value) {
+  if (!value) return false;
+  const date = new Date(value);
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
+function getHighlightScore(item) {
+  const likes = Number(item.likeCount || 0);
+  const comments = Number(item.commentCount || 0);
+  const ageDays = Math.max(0, (Date.now() - new Date(item.createdAt).getTime()) / 86400000);
+  const recencyBoost = Math.max(0, 7 - ageDays) * 0.15;
+  return likes * 2 + comments * 3 + recencyBoost;
+}
+
 /* ── Lightbox ────────────────────────────────────────────── */
-function Lightbox({ item, onClose }) {
+function Lightbox({ item, onClose, commentDraft, onCommentDraftChange, onCommentSubmit, onLike, likePending, commentPending }) {
   const isVideo = item.mediaType === "video";
   return (
     <div className="gl-lightbox-backdrop" onClick={onClose}>
@@ -69,17 +84,40 @@ function Lightbox({ item, onClose }) {
           : <img src={item.url} alt={item.caption||"Gallery"} className="gl-lightbox-media"/>
         }
         {item.caption && <div className="gl-lightbox-caption">{item.caption}</div>}
+        <div className="gl-lightbox-engagement">
+          <button className={`gl-engagement-btn ${item.likedByCurrentUser ? "gl-engagement-btn--active" : ""}`} onClick={() => onLike(item._id)} disabled={likePending}>
+            <span className="material-symbols-outlined">{item.likedByCurrentUser ? "favorite" : "favorite_border"}</span>
+            {item.likeCount || 0}
+          </button>
+          <span className="gl-engagement-count">
+            <span className="material-symbols-outlined">chat_bubble_outline</span>
+            {item.commentCount || 0}
+          </span>
+        </div>
+        <div className="gl-lightbox-comments">
+          {(item.comments || []).slice(-3).map(comment => (
+            <div key={comment._id} className="gl-lightbox-comment">
+              <strong>{comment.author?.name || "Member"}</strong>
+              <span>{comment.content}</span>
+            </div>
+          ))}
+          <form className="gl-lightbox-comment-form" onSubmit={e=>{e.preventDefault();onCommentSubmit(item._id);}}>
+            <input value={commentDraft} onChange={e=>onCommentDraftChange(item._id, e.target.value)} placeholder="Add a comment..." />
+            <button type="submit" disabled={commentPending || commentDraft.trim().length < 2}>
+              {commentPending ? "Posting..." : "Post"}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
 }
 
 /* ── Gallery tile ────────────────────────────────────────── */
-function GalleryTile({ item, canDelete, onDelete, onOpen, wide, tall }) {
+function GalleryTile({ item, canDelete, onDelete, onOpen, wide, tall, highlightScore }) {
   const isVideo = item.mediaType === "video";
   const label   = sectionLabel(item.section);
   const ts      = tagStyle(item.section);
-  const count   = Math.floor(10 + (item.caption||"x").charCodeAt(0) % 25);
 
   return (
     <div
@@ -99,9 +137,14 @@ function GalleryTile({ item, canDelete, onDelete, onOpen, wide, tall }) {
       )}
       <div className="gl-tile-footer">
         <span className="gl-tile-count">
-          <span className="material-symbols-outlined" style={{fontSize:13}}>{isVideo?"videocam":"photo_library"}</span>
-          {isVideo ? "1:24" : `${count} Photos`}
+          <span className="material-symbols-outlined" style={{fontSize:13}}>favorite</span>
+          {item.likeCount || 0}
         </span>
+        <span className="gl-tile-count">
+          <span className="material-symbols-outlined" style={{fontSize:13}}>chat_bubble_outline</span>
+          {item.commentCount || 0}
+        </span>
+        {highlightScore !== undefined && <span className="gl-highlight-score">Score {highlightScore.toFixed(1)}</span>}
         {canDelete && (
           <button className="gl-tile-del" onClick={e=>{e.stopPropagation();onDelete(item._id);}}>
             <span className="material-symbols-outlined" style={{fontSize:14}}>delete</span>
@@ -135,6 +178,7 @@ export default function GalleryPage() {
   const [uploadSection, setUploadSection]   = useState("personal_photos");
   const [uploadType, setUploadType]         = useState("image");
   const [page, setPage]                     = useState(1);
+  const [commentDrafts, setCommentDrafts]   = useState({});
   const PAGE_SIZE = 9;
 
   const galleryQuery = useQuery({ queryKey:["gallery-items"], queryFn:fetchGalleryItems });
@@ -146,6 +190,21 @@ export default function GalleryPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteGalleryItem,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey:["gallery-items"] }); },
+  });
+  const likeMutation = useMutation({
+    mutationFn: toggleGalleryItemLike,
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey:["gallery-items"] });
+      setLightbox(curr => curr?._id === updated?._id ? updated : curr);
+    },
+  });
+  const commentMutation = useMutation({
+    mutationFn: ({ id, content }) => addGalleryItemComment(id, { content }),
+    onSuccess: (updated, vars) => {
+      setCommentDrafts(curr => ({ ...curr, [vars.id]: "" }));
+      queryClient.invalidateQueries({ queryKey:["gallery-items"] });
+      setLightbox(curr => curr?._id === updated?._id ? updated : curr);
+    },
   });
 
   const allItems = galleryQuery.data || [];
@@ -163,7 +222,16 @@ export default function GalleryPage() {
   }, [allItems]);
 
   const dynamicHighlights = useMemo(() => {
-    return allItems.slice(0, 8).map(i => i.url);
+    const adminItems = allItems.filter(item =>
+      item.uploader?.role === "institute_admin" && ["images", "videos"].includes(item.section)
+    );
+    const monthlyItems = adminItems.filter(item => isCurrentMonth(item.createdAt));
+    const rankingPool = monthlyItems.length ? monthlyItems : adminItems;
+
+    return rankingPool
+      .map(item => ({ ...item, highlightScore: getHighlightScore(item) }))
+      .sort((a, b) => b.highlightScore - a.highlightScore || new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 4);
   }, [allItems]);
 
   const grouped = useMemo(() => ({
@@ -186,6 +254,7 @@ export default function GalleryPage() {
     const arr = [...filtered];
     if (sortBy==="Newest First") return arr.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     if (sortBy==="Oldest First") return arr.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+    if (sortBy==="Most Viewed") return arr.sort((a,b)=>getHighlightScore(b)-getHighlightScore(a));
     if (sortBy==="A–Z") return arr.sort((a,b)=>(a.caption||"").localeCompare(b.caption||""));
     return arr;
   }, [filtered, sortBy]);
@@ -210,6 +279,16 @@ export default function GalleryPage() {
     createMutation.mutate({ section: uploadSection, mediaType: uploadType, url: uploadUrl, caption: uploadCaption }, {
       onSuccess: () => { setUploadUrl(""); setUploadCaption(""); setShowUpload(false); },
     });
+  }
+
+  function handleCommentDraftChange(itemId, value) {
+    setCommentDrafts(curr => ({ ...curr, [itemId]: value }));
+  }
+
+  function handleCommentSubmit(itemId) {
+    const content = String(commentDrafts[itemId] || "").trim();
+    if (content.length < 2) return;
+    commentMutation.mutate({ id: itemId, content });
   }
 
   return (
@@ -341,7 +420,7 @@ export default function GalleryPage() {
           <div className="gl-sidebar-card">
             <div className="gl-sidebar-header">
               <span className="gl-sidebar-title">My Albums</span>
-              <button className="gl-sidebar-link">View All</button>
+              <button className="gl-sidebar-link" onClick={()=>{setActiveTab("All Media");setPage(1);}}>View All</button>
             </div>
             <div className="gl-albums-list">
               {dynamicAlbums.length > 0 ? (
@@ -405,18 +484,39 @@ export default function GalleryPage() {
               <span className="gl-sidebar-title">Highlights</span>
               <button className="gl-sidebar-link">View All</button>
             </div>
-            <div className="gl-highlights-grid">
-              {(dynamicHighlights.length > 0 ? dynamicHighlights : HIGHLIGHT_IMGS).map((src, i) => (
-                <img key={i} src={src} alt="" className="gl-highlight-img" loading="lazy" />
-              ))}
-            </div>
-            <p className="gl-highlight-caption">Relive your best moments ✨</p>
+            {dynamicHighlights.length > 0 ? (
+              <div className="gl-highlights-grid">
+                {dynamicHighlights.map(item => (
+                  <button key={item._id} className="gl-highlight-tile" onClick={()=>setLightbox(item)} title={`${item.likeCount || 0} likes, ${item.commentCount || 0} comments`}>
+                    {item.mediaType === "video"
+                      ? <video src={item.url} className="gl-highlight-img" muted preload="metadata" />
+                      : <img src={item.url} alt={item.caption || "Highlight"} className="gl-highlight-img" loading="lazy" />
+                    }
+                    <span className="gl-highlight-metric">{item.likeCount || 0}L {item.commentCount || 0}C</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="gl-highlight-empty">No institute highlights yet.</p>
+            )}
+            <p className="gl-highlight-caption">Top institute media this month, ranked by likes, comments, and recency.</p>
           </div>
         </aside>
       </div>
 
       {/* Lightbox */}
-      {lightbox && <Lightbox item={lightbox} onClose={()=>setLightbox(null)}/>}
+      {lightbox && (
+        <Lightbox
+          item={lightbox}
+          onClose={()=>setLightbox(null)}
+          commentDraft={commentDrafts[lightbox._id] || ""}
+          onCommentDraftChange={handleCommentDraftChange}
+          onCommentSubmit={handleCommentSubmit}
+          onLike={id=>likeMutation.mutate(id)}
+          likePending={likeMutation.isPending}
+          commentPending={commentMutation.isPending && commentMutation.variables?.id === lightbox._id}
+        />
+      )}
 
       {createMutation.isError && <p style={{color:"#ef4444",fontSize:"0.8rem"}}>{createMutation.error.message}</p>}
       {deleteMutation.isError && <p style={{color:"#ef4444",fontSize:"0.8rem"}}>{deleteMutation.error.message}</p>}
