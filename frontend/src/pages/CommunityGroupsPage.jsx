@@ -19,6 +19,7 @@ import {
 } from "../lib/api.js";
 
 import { GroupPortal } from "../components/groups/GroupPortal.jsx";
+import "../styles/Groups.css";
 
 
 const initialForm = {
@@ -301,7 +302,8 @@ function CommunityGroupsPage() {
     () =>
       alumni.filter((profile) => {
         const userId = profile.userId?._id || profile.userId;
-        return Boolean(userId) && profile.isActive;
+        const isApproved = profile.registrationReviewStatus === "approved";
+        return Boolean(userId) && (profile.isActive || isApproved);
       }),
     [alumni]
   );
@@ -718,11 +720,13 @@ function CommunityGroupsPage() {
               </div>
 
               <div className="form-group">
-                <label>Members</label>
+                <label>Members ({form.memberUserIds.length} selected)</label>
                 <div className="member-picker-grid">
-                  {alumni.map((person) => {
-                    const userId = person.userId?._id || person.userId;
-                    const isSelected = form.memberUserIds.includes(String(userId));
+                  {availableMembers.map((person) => {
+                    const userId = String(person.userId?._id || person.userId || person._id);
+                    const isSelected = form.memberUserIds.includes(userId);
+                    const name = person.name || person.userId?.name || "Alumni Member";
+                    
                     return (
                       <button
                         className={`member-picker-item ${isSelected ? "selected" : ""}`}
@@ -731,9 +735,9 @@ function CommunityGroupsPage() {
                         type="button"
                       >
                         <div className="member-picker-avatar">
-                          {person.name?.[0]}
+                          {name[0].toUpperCase()}
                         </div>
-                        <span>{person.name}</span>
+                        <span>{name}</span>
                         {isSelected && <span className="material-symbols-outlined check">check_circle</span>}
                       </button>
                     );
@@ -742,11 +746,15 @@ function CommunityGroupsPage() {
               </div>
 
               <div className="form-actions">
-                <button className="button outline" onClick={() => setIsComposerOpen(false)} type="button">
+                <button className="button secondary" onClick={() => setIsComposerOpen(false)} type="button" style={{ border: '1px solid #e2e8f0' }}>
                   Cancel
                 </button>
-                <button className="button primary" disabled={saveMutation.isLoading} type="submit">
-                  {saveMutation.isLoading ? "Saving..." : "Save Group"}
+                <button 
+                  className="button primary" 
+                  disabled={saveMutation.isPending || !form.name.trim() || form.memberUserIds.length === 0} 
+                  type="submit"
+                >
+                  {saveMutation.isPending ? "Saving..." : editingGroupId ? "Update Group" : "Create Group"}
                 </button>
               </div>
             </form>
@@ -771,15 +779,16 @@ function CommunityGroupsPage() {
                </div>
 
                <div className="alumni-invite-list">
-                  {alumni.map((person) => {
+                  {availableMembers.map((person) => {
                     const fullName = person.name || 
-                                     (person.firstName ? `${person.firstName} ${person.lastName || ""}` : "") ||
                                      person.userId?.name ||
+                                     (person.firstName ? `${person.firstName} ${person.lastName || ""}` : "") ||
                                      (person.userId?.firstName ? `${person.userId.firstName} ${person.userId.lastName || ""}` : "") ||
                                      "Alumni Member";
                     
                     const initials = fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
                     const profilePic = person.profilePicture || person.userId?.profilePicture;
+                    const recipientId = String((person.userId?._id || person.userId) || person._id || "");
 
                     return (
                       <div className="alumni-invite-item" key={person._id}>
@@ -798,12 +807,10 @@ function CommunityGroupsPage() {
                         </div>
                         <button 
                           className="invite-action-btn"
-                          disabled={sendInviteMutation.isLoading}
-                          onClick={() => {
-                            sendInviteMutation.mutate({ person, group: selectedGroup });
-                          }}
+                          disabled={sendInviteMutation.isPending || recipientId === currentUserId}
+                          onClick={() => sendInviteMutation.mutate({ person, group: selectedGroup })}
                         >
-                          {sendInviteMutation.isLoading ? "Sending..." : "Invite"}
+                          {sendInviteMutation.isPending ? "Sending..." : "Invite"}
                         </button>
                       </div>
                     );

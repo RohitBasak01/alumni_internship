@@ -77,10 +77,12 @@ function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf }) {
   const skills = Array.isArray(alumni.skills) ? alumni.skills.slice(0, 3) : ["React", "Node.js", "Leadership"].slice(0, 3);
   const avatar = alumni.profilePicture || alumni.userId?.profilePicture;
 
+  const isActive = alumni.userId?.isActive ?? alumni.isActive;
+
   return (
     <div className="ad-card-v2">
       <div className="ad-card-v2-status">
-        <span className="ad-status-dot-v2" />
+        <span className={`ad-status-dot-v2 ${isActive ? "ad-status-dot-v2--active" : "ad-status-dot-v2--pending"}`} />
         <span className="material-symbols-outlined ad-more-menu-v2" style={{ fontSize: 20 }}>more_horiz</span>
       </div>
 
@@ -299,7 +301,7 @@ export default function TenantAlumniPage() {
     alphaIndex: "", isFaculty: false, registeredOnly: false, activeTab: "name",
   });
 
-  const allMembers = derived.activeMembers;
+  const allMembers = derived.directoryEntries;
   const totalFound = allMembers.length;
   const totalPages = Math.max(1, Math.ceil(totalFound / PAGE_SIZE));
   const pageMembers = allMembers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -313,6 +315,29 @@ export default function TenantAlumniPage() {
       count: filterStats.industry[ind] || 0
     }))
   ];
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push("...");
+      
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
+      
+      if (page < totalPages - 2) pages.push("...");
+      if (!pages.includes(totalPages)) pages.push(totalPages);
+    }
+    return pages;
+  };
 
   const AVAIL_OPTIONS = [
     { key: "friendship", label: "Available for Friendship", count: filterStats.availability.friendship, color: "#6366f1" },
@@ -388,7 +413,7 @@ export default function TenantAlumniPage() {
 
       {showMap && (
         <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8edf3", height: 350 }}>
-          <AlumniMap members={derived.activeMembers} />
+          <AlumniMap members={derived.directoryEntries} />
         </div>
       )}
 
@@ -439,17 +464,23 @@ export default function TenantAlumniPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="ad-pagination" style={{ marginTop: "1.5rem" }}>
+            <div className="ad-pagination">
               <button className="ad-page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                 <span className="material-symbols-outlined">chevron_left</span>
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <button
-                  key={n}
-                  className={`ad-page-btn ${page === n ? "ad-page-btn--active" : ""}`}
-                  onClick={() => setPage(n)}
-                >{n}</button>
+              
+              {getPageNumbers().map((n, i) => (
+                n === "..." ? (
+                  <span key={`ellipsis-${i}`} className="ad-pagination-ellipsis">...</span>
+                ) : (
+                  <button
+                    key={n}
+                    className={`ad-page-btn ${page === n ? "ad-page-btn--active" : ""}`}
+                    onClick={() => setPage(n)}
+                  >{n}</button>
+                )
               ))}
+              
               <button className="ad-page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
                 <span className="material-symbols-outlined">chevron_right</span>
               </button>

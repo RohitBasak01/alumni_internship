@@ -210,7 +210,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/feed", feedRoutes);
 app.use("/api/gallery", galleryRoutes);
 app.use("/api/jobs", jobRoutes);
-app.use("/api/friendship", friendshipRoutes);
+app.use("/api/friendships", friendshipRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 app.use(notFoundHandler);

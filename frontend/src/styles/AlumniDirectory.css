@@ -261,16 +261,16 @@
 /* ─── Member grid ─────────────────────────────────────────── */
 .ad-member-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
 }
 
 /* ─── Alumni card V2 ──────────────────────────────────────── */
 .ad-card-v2 {
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 16px;
   border: 1px solid #e8edf3;
-  padding: 1.5rem;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -294,12 +294,18 @@
   align-items: center;
 }
 .ad-status-dot-v2 {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: #10b981;
   border: 2px solid #fff;
+}
+.ad-status-dot-v2--active {
+  background: #10b981;
   box-shadow: 0 0 0 2px rgba(16,185,129,0.15);
+}
+.ad-status-dot-v2--pending {
+  background: #94a3b8;
+  box-shadow: 0 0 0 2px rgba(148,163,184,0.15);
 }
 .ad-more-menu-v2 {
   color: #cbd5e1;
@@ -313,20 +319,20 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .ad-card-v2-avatar {
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  margin-bottom: 1rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin-bottom: 0.75rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
   overflow: hidden;
 }
 .ad-card-v2-avatar img {
@@ -336,15 +342,15 @@
 }
 
 .ad-card-v2-name {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 800;
   color: #0f172a;
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.15rem;
   letter-spacing: -0.01em;
 }
 
 .ad-card-v2-title {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #334155;
   margin: 0;
@@ -704,6 +710,55 @@ input:checked + .ad-custom-check {
   .ad-dropdown-filter { width: 100%; min-width: 0; }
   .ad-member-grid { grid-template-columns: 1fr; }
   .ad-company-details-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── Pagination ──────────────────────────────────────────── */
+.ad-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.ad-page-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 200ms ease;
+  font-family: inherit;
+}
+
+.ad-page-btn:hover:not(:disabled) {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: #f5f3ff;
+}
+
+.ad-page-btn--active {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.ad-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ad-pagination-ellipsis {
+  color: #94a3b8;
+  font-weight: 700;
+  padding: 0 0.25rem;
 }
 
 /* ─── Modal (Connect Dialog) ──────────────────────────────── */

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { NavLink, Outlet, Link } from "react-router-dom";
+import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../context/AuthContext.jsx";
@@ -80,16 +80,25 @@ const SIDEBAR_KEY = "alumnet-sidebar-collapsed";
 function DashboardLayout() {
   const tenant = useTenantContext();
   const auth = useAuth();
+  const location = useLocation();
   const isAlumni = auth.user?.role === "alumni";
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try { return localStorage.getItem(SIDEBAR_KEY) === "1"; } catch { return false; }
   });
+  const [acknowledgedRoutes, setAcknowledgedRoutes] = useState(new Set());
   const sidebarRef = useRef(null);
 
   useEffect(() => {
     try { localStorage.setItem(SIDEBAR_KEY, isCollapsed ? "1" : "0"); } catch { /* noop */ }
   }, [isCollapsed]);
+
+  // Track visited routes to "clear" badges persistently in this session
+  useEffect(() => {
+    if (["/portal/messages", "/portal/connections", "/portal/alumni"].includes(location.pathname)) {
+      setAcknowledgedRoutes(prev => new Set(prev).add(location.pathname));
+    }
+  }, [location.pathname]);
 
   const notificationsQuery = useQuery({
     queryKey: ["notification-summary"],
@@ -103,6 +112,7 @@ function DashboardLayout() {
   const pendingAlumniInvites = notificationsQuery.data?.pendingAlumniInvites || 0;
 
   function getBadgeCount(linkTo) {
+    if (acknowledgedRoutes.has(linkTo)) return 0; // Persistent hide for this session
     if (linkTo === "/portal/messages" && isAlumni) return pendingFriendshipRequests;
     if (linkTo === "/portal/alumni" && !isAlumni) return pendingAlumniInvites;
     return 0;
