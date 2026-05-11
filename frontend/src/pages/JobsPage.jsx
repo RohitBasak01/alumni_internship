@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext.jsx";
-import { applyToJob, createJob, deleteJob, fetchJobs, updateJob } from "../lib/api.js";
+import { applyToJob, createJob, deleteJob, fetchJobs, updateJob, fetchUserApplications } from "../lib/api.js";
 import "../styles/Jobs.css";
 
 const initialForm = { title:"",company:"",description:"",location:"",industry:"",requestedDeadline:"",applicationDeadline:"",status:"pending_approval" };
@@ -139,6 +139,7 @@ export default function JobsPage(){
   const PAGE_SIZE=10;
 
   const {data=[],isLoading,isError,error}=useQuery({queryKey:["jobs"],queryFn:fetchJobs});
+  const {data: userApplications=[]}=useQuery({queryKey:["user-applications"],queryFn:fetchUserApplications});
   const deferredQuery=useDeferredValue(filters.query);
 
   const saveMutation=useMutation({
@@ -158,7 +159,7 @@ export default function JobsPage(){
       }
       return applyToJob(selectedJobId,payload);
     },
-    onSuccess:()=>{setApplicationSuccess(true);setCoverLetter("");setResumeFile(null);setTimeout(()=>{setApplicationSuccess(null);setSelectedJobId(null);},2000);}
+    onSuccess:()=>{queryClient.invalidateQueries({queryKey:["user-applications"]});setApplicationSuccess(true);setCoverLetter("");setResumeFile(null);setTimeout(()=>{setApplicationSuccess(null);setSelectedJobId(null);},2000);}
   });
 
   function handleChange(e){setForm(c=>({...c,[e.target.name]:e.target.value}));}
@@ -200,11 +201,19 @@ export default function JobsPage(){
   const pagedJobs=filteredJobs.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
   const selectedJob=filteredJobs.find(j=>j._id===selectedJobId);
 
+  // Calculate application tracker stats
+  const appTrackerStats=[
+    {v:userApplications.length,l:"Applied",c:"#6366f1"},
+    {v:userApplications.filter(app=>app.status==="pending").length,l:"Pending",c:"#f59e0b"},
+    {v:userApplications.filter(app=>app.status==="reviewed").length,l:"Reviewed",c:"#10b981"},
+    {v:userApplications.filter(app=>app.status==="accepted").length,l:"Accepted",c:"#8b5cf6"}
+  ];
+
   const STATS=[
     {icon:"work",label:"Active Jobs",value:activeJobs.length||filteredJobs.length,trend:"18% this week",color:"#6366f1",bg:"#eff0ff"},
     {icon:"new_releases",label:"New This Week",value:Math.round(filteredJobs.length*0.26)||324,trend:"24% this week",color:"#10b981",bg:"#f0fdf4"},
-    {icon:"send",label:"Applications Sent",value:89,trend:"12% this week",color:"#f59e0b",bg:"#fff7ed"},
-    {icon:"groups",label:"Interviews",value:23,trend:"9% this week",color:"#8b5cf6",bg:"#fdf4ff"},
+    {icon:"send",label:"Applications Sent",value:userApplications.length||0,trend:userApplications.length>0?"12% this week":"0% this week",color:"#f59e0b",bg:"#fff7ed"},
+    {icon:"groups",label:"Interviews",value:userApplications.filter(app=>app.status==="reviewed").length||0,trend:"9% this week",color:"#8b5cf6",bg:"#fdf4ff"},
   ];
 
   return(
@@ -380,7 +389,7 @@ export default function JobsPage(){
           <div className="jb-sidebar-card">
             <div className="jb-sidebar-header"><span className="jb-sidebar-title">Application Tracker</span><button className="jb-sidebar-link">View All</button></div>
             <div className="jb-tracker-row">
-              {[{v:89,l:"Applied",c:"#6366f1"},{v:23,l:"In Review",c:"#f59e0b"},{v:12,l:"Interview",c:"#10b981"},{v:5,l:"Offer",c:"#8b5cf6"}].map(t=>(
+              {appTrackerStats.map(t=>(
                 <div key={t.l} className="jb-tracker-item">
                   <div className="jb-tracker-val" style={{color:t.c}}>{t.v}</div>
                   <div className="jb-tracker-label">{t.l}</div>

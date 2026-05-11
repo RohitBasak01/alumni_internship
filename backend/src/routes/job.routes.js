@@ -285,6 +285,24 @@ router.delete(
   }
 );
 
+router.get(
+  "/applications/user",
+  protect,
+  requireTenantAccess,
+  async (req, res, next) => {
+    try {
+      const { JobApplication } = getTenantModels(req);
+      const applications = await JobApplication.find({
+        userId: req.user._id
+      }).populate("jobId", "title company status").sort({ createdAt: -1 });
+
+      res.json(applications);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.post(
   "/:id/apply",
   protect,

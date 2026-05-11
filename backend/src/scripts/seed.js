@@ -74,7 +74,7 @@ async function createInstitute({
 async function seedCollegeTenant(institute, passwords) {
   const tenantContext = {};
   await attachTenantDatabaseContext(tenantContext, institute);
-  const { AlumniProfile, AlumniPost, Announcement, Event, Job, Notification, User: TenantUser } = getTenantModels(tenantContext);
+  const { AlumniProfile, AlumniPost, Announcement, Event, Job, JobApplication, Notification, User: TenantUser } = getTenantModels(tenantContext);
 
   await Promise.all([
     TenantUser.deleteMany({ instituteId: institute._id }),
@@ -83,6 +83,7 @@ async function seedCollegeTenant(institute, passwords) {
     Announcement.deleteMany({ instituteId: institute._id }),
     Event.deleteMany({ instituteId: institute._id }),
     Job.deleteMany({ instituteId: institute._id }),
+    JobApplication.deleteMany({ instituteId: institute._id }),
     Notification.deleteMany({ instituteId: institute._id })
   ]);
 
@@ -256,6 +257,40 @@ async function seedCollegeTenant(institute, passwords) {
     createdAt: daysAgo(1, 3),
     updatedAt: daysAgo(1, 3)
   });
+
+  // Create sample job applications
+  await JobApplication.create([
+    {
+      jobId: job._id,
+      userId: aaravUser._id,
+      coverLetter: "I'm very interested in this Frontend role. I have 3+ years of React experience.",
+      resumeUrl: "https://example.com/resume-aarav.pdf",
+      resumeFileName: "resume-aarav.pdf",
+      status: "pending",
+      createdAt: daysAgo(1, 2),
+      updatedAt: daysAgo(1, 2)
+    },
+    {
+      jobId: job._id,
+      userId: riyaUser._id,
+      coverLetter: "Excited about this opportunity. I have built several React applications.",
+      resumeUrl: "https://example.com/resume-riya.pdf",
+      resumeFileName: "resume-riya.pdf",
+      status: "reviewed",
+      createdAt: daysAgo(1, 1),
+      updatedAt: daysAgo(0, 20)
+    },
+    {
+      jobId: job._id,
+      userId: devUser._id,
+      coverLetter: "I'd like to apply for the Frontend Developer position.",
+      resumeUrl: "https://example.com/resume-dev.pdf",
+      resumeFileName: "resume-dev.pdf",
+      status: "accepted",
+      createdAt: daysAgo(0, 12),
+      updatedAt: daysAgo(0, 12)
+    }
+  ]);
 
   await Notification.create([
     {

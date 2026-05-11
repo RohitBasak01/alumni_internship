@@ -645,6 +645,11 @@ export async function applyToJob(jobId, payload) {
   return data;
 }
 
+export async function fetchUserApplications() {
+  const { data } = await api.get("/jobs/applications/user");
+  return data;
+}
+
 export async function fetchAnnouncements(params = {}) {
   const { data } = await api.get("/announcements", { params });
   return data;
