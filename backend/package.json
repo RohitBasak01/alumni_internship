@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "seed": "node src/scripts/seed.js",
     "migrate:tenants": "node src/scripts/migrateDedicatedTenants.js",
+    "migrate:alumni-entries": "node src/scripts/migrations/rewriteAlumniEntries.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

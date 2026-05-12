@@ -9,13 +9,32 @@ const initialFormState = {
   name:"",website:"",email:"",bio:"",slug:"",tagline:"",
   primaryColor:"#4F46E5",secondaryColor:"#10B981",accentColor:"#F59E0B",
   logoUrl:"",enableJobs:true,enableEvents:true,allowStudentRegistrations:false,
-  autoApproveAlumni:false,autoApproveEmailDomainsText:"",departmentsText:""
+  autoApproveAlumni:false,autoApproveEmailDomainsText:"",departmentsText:"",departmentStreamsText:""
 };
 function normalizeAutoApproveDomainsInput(value){
   return [...new Set(String(value||"").split(/[,\n]/).map(i=>i.trim().toLowerCase().replace(/^@/,"")).filter(Boolean))];
 }
 function normalizeDepartmentsInput(value){
   return [...new Set(String(value||"").split(/[,\n]/).map(i=>i.trim()).filter(Boolean))];
+}
+function normalizeStreamsInput(value){
+  return [...new Set(String(value||"").split(/[\,\n]/).map(i=>i.trim()).filter(Boolean))];
+}
+function formatDepartmentStreamsInput(value){
+  if(!value||typeof value!=="object"||Array.isArray(value)) return "";
+  return Object.entries(value).map(([department,streams])=>`${department}: ${(Array.isArray(streams)?streams:[]).join(", ")}`).join("\n");
+}
+function normalizeDepartmentStreamsInput(value){
+  const normalized = {};
+  String(value||"").split(/\n/).forEach((line)=>{
+    const [departmentPart,...streamParts] = line.split(":");
+    const department = String(departmentPart||"").trim();
+    if(!department) return;
+    const streams = streamParts.join(":");
+    const parsed = [...new Set(String(streams||"").split(/[\,\n]/).map((item)=>item.trim()).filter(Boolean))];
+    if(parsed.length>0) normalized[department] = parsed;
+  });
+  return normalized;
 }
 function mapSettingsToForm(s){
   return {
@@ -30,15 +49,19 @@ function mapSettingsToForm(s){
     allowStudentRegistrations:Boolean(s?.featureFlags?.allowStudentRegistrations),
     autoApproveAlumni:Boolean(s?.featureFlags?.autoApproveAlumni),
     autoApproveEmailDomainsText:Array.isArray(s?.featureFlags?.autoApproveEmailDomains)?s.featureFlags.autoApproveEmailDomains.join("\n"):"",
-    departmentsText:Array.isArray(s?.departments)?s.departments.join("\n"):""
+    departmentsText:Array.isArray(s?.departments)?s.departments.join("\n"):"",
+    departmentStreamsText:formatDepartmentStreamsInput(s?.departmentStreams||{})
   };
 }
 function buildUpdatePayload(form){
+  const departmentStreams = normalizeDepartmentStreamsInput(form.departmentStreamsText);
   return {
     name:form.name,website:form.website,primaryContactEmail:form.email,bio:form.bio,
     branding:{tagline:form.tagline,primaryColor:form.primaryColor,secondaryColor:form.secondaryColor,accentColor:form.accentColor,logoUrl:form.logoUrl},
     featureFlags:{enableJobs:form.enableJobs,enableEvents:form.enableEvents,allowStudentRegistrations:form.allowStudentRegistrations,autoApproveAlumni:form.autoApproveAlumni,autoApproveEmailDomains:normalizeAutoApproveDomainsInput(form.autoApproveEmailDomainsText)},
-    departments:normalizeDepartmentsInput(form.departmentsText)
+    departments:normalizeDepartmentsInput(form.departmentsText),
+    departmentStreams,
+    streams:[...new Set(Object.values(departmentStreams).flat())]
   };
 }
 
@@ -67,16 +90,16 @@ function Field({label,hint,children,full}){
   );
 }
 
-/* ── Department tags ───────────────────────────────────── */
-function DeptTags({value,onChange}){
-  const depts=normalizeDepartmentsInput(value);
+/* ── List tags ───────────────────────────────────── */
+function ListTags({value,onChange,placeholder,addLabel}){
+  const items=normalizeDepartmentsInput(value);
   const [adding,setAdding]=useState(false);
   const [draft,setDraft]=useState("");
-  function remove(d){onChange(depts.filter(x=>x!==d).join("\n"));}
-  function add(){const t=draft.trim();if(t&&!depts.includes(t))onChange([...depts,t].join("\n"));setDraft("");setAdding(false);}
+  function remove(d){onChange(items.filter(x=>x!==d).join("\n"));}
+  function add(){const t=draft.trim();if(t&&!items.includes(t))onChange([...items,t].join("\n"));setDraft("");setAdding(false);}
   return(
     <div className="st-dept-wrap">
-      {depts.map(d=>(
+      {items.map(d=>(
         <span key={d} className="st-dept-tag">
           {d}
           <button type="button" className="st-dept-x" onClick={()=>remove(d)}>×</button>
@@ -85,9 +108,9 @@ function DeptTags({value,onChange}){
       {adding?(
         <input className="st-dept-input" autoFocus value={draft} onChange={e=>setDraft(e.target.value)}
           onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}if(e.key==="Escape")setAdding(false);}}
-          onBlur={add} placeholder="Department name..."/>
+          onBlur={add} placeholder={placeholder}/>
       ):(
-        <button type="button" className="st-dept-add" onClick={()=>setAdding(true)}>+ Add Department</button>
+        <button type="button" className="st-dept-add" onClick={()=>setAdding(true)}>{addLabel}</button>
       )}
     </div>
   );
@@ -144,7 +167,6 @@ export default function InstitutionSettingsPage(){
     return JSON.stringify(form)!==JSON.stringify(mapSettingsToForm(settingsQuery.data));
   },[form,settingsQuery.data]);
 
-  const depts=normalizeDepartmentsInput(form.departmentsText);
   const domains=normalizeAutoApproveDomainsInput(form.autoApproveEmailDomainsText);
 
   if(settingsQuery.isLoading) return <p style={{color:"#94a3b8",fontSize:"0.85rem"}}>Loading settings...</p>;
@@ -271,11 +293,31 @@ export default function InstitutionSettingsPage(){
                 Manage Departments
               </button>
             </div>
-            <DeptTags
+            <ListTags
               value={form.departmentsText}
               onChange={v=>setForm(c=>({...c,departmentsText:v}))}
+              placeholder="Department name..."
+              addLabel="+ Add Department"
             />
           </div>
+
+            <div className="st-panel">
+              <div className="st-panel-header">
+                <div>
+                  <h2 className="st-panel-title">Department Streams</h2>
+                  <p className="st-panel-sub">Map each department to the streams alumni can select during registration.</p>
+                </div>
+              </div>
+              <textarea
+                className="st-input"
+                name="departmentStreamsText"
+                value={form.departmentStreamsText}
+                onChange={handleChange}
+                rows={8}
+                placeholder={"B.Tech: CSE, IT, AIDS\nM.Tech: VLSI, CDS"}
+                style={{width:"100%", boxSizing:"border-box", lineHeight:1.5}}
+              />
+            </div>
 
           {/* ── Branding + Portal side-by-side ── */}
           <div className="st-two-col">

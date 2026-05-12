@@ -69,6 +69,31 @@ function normalizeAutoApproveDomains(value) {
   return [...uniqueDomains];
 }
 
+function normalizeDepartmentStreams(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const normalized = {};
+
+  Object.entries(value).forEach(([department, streams]) => {
+    const deptName = String(department || "").trim();
+    if (!deptName) return;
+
+    const items = Array.isArray(streams) ? streams : String(streams || "").split(/[\,\n]/);
+    const cleaned = [...new Set(items.map((item) => String(item || "").trim()).filter(Boolean))];
+    if (cleaned.length > 0) {
+      normalized[deptName] = cleaned;
+    }
+  });
+
+  return normalized;
+}
+
+function flattenDepartmentStreams(value) {
+  return [...new Set(Object.values(normalizeDepartmentStreams(value)).flat())];
+}
+
 function validateInstituteSettingsBody(body) {
   const issues = [];
 
@@ -109,6 +134,14 @@ function validateInstituteSettingsBody(body) {
 
   if (body.departments !== undefined && !Array.isArray(body.departments)) {
     issues.push("Departments must be an array of strings");
+  }
+  
+  if (body.departmentStreams !== undefined && (typeof body.departmentStreams !== "object" || Array.isArray(body.departmentStreams))) {
+    issues.push("Department streams must be an object keyed by department");
+  }
+
+  if (body.streams !== undefined && !Array.isArray(body.streams)) {
+    issues.push("Streams must be an array of strings");
   }
 
   return issues;
@@ -165,7 +198,9 @@ function buildInstituteSettingsPayload(institute) {
       ...brandingDefaults,
       ...(institute.branding || {})
     },
-    departments: institute.departments || []
+    departments: institute.departments || [],
+    departmentStreams: institute.departmentStreams || {},
+    streams: institute.streams || []
   };
 }
 
@@ -360,7 +395,7 @@ router.get("/onboarding/draft/:draftId", validateParams(validateDraftId), async 
 router.get("/public", async (_req, res, next) => {
   try {
     const institutes = await Institute.find({ status: "active" })
-      .select("name subdomain domain institutionType educationLevel communityLabels departments")
+      .select("name subdomain domain institutionType educationLevel communityLabels departments departmentStreams streams")
       .sort({ name: 1 });
 
     res.json(institutes);
@@ -420,7 +455,9 @@ router.get("/public/current", async (req, res, next) => {
         ...getDefaultBranding(req.tenant.institutionType || "college"),
         ...(req.tenant.branding || {})
       },
-      departments: req.tenant.departments || []
+      departments: req.tenant.departments || [],
+      departmentStreams: req.tenant.departmentStreams || {},
+      streams: req.tenant.streams || []
     });
   } catch (error) {
     next(error);
@@ -540,6 +577,15 @@ router.patch(
 
       if (req.body.departments !== undefined) {
         institute.departments = Array.isArray(req.body.departments) ? req.body.departments.map(d => String(d).trim()).filter(Boolean) : [];
+      }
+
+      if (req.body.departmentStreams !== undefined) {
+        institute.departmentStreams = normalizeDepartmentStreams(req.body.departmentStreams);
+        institute.streams = flattenDepartmentStreams(institute.departmentStreams);
+      }
+      
+      if (req.body.streams !== undefined) {
+        institute.streams = Array.isArray(req.body.streams) ? req.body.streams.map(s => String(s).trim()).filter(Boolean) : [];
       }
 
       const incomingBranding = req.body.branding && typeof req.body.branding === "object" ? req.body.branding : {};

@@ -264,6 +264,14 @@ const instituteSchema = new mongoose.Schema(
     departments: {
       type: [String],
       default: []
+    },
+    departmentStreams: {
+      type: Object,
+      default: {}
+    },
+    streams: {
+      type: [String],
+      default: []
     }
   },
   {

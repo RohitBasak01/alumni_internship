@@ -46,6 +46,7 @@ export const getAlumni = asyncHandler(async (req, res) => {
     q,
     batch,
     department,
+    educationLevel,
     company,
     skill,
     leavingYear,
@@ -85,6 +86,7 @@ export const getAlumni = asyncHandler(async (req, res) => {
 
   // Regex filters for text fields
   if (department) profileFilter.department = buildRegex(String(department));
+  if (educationLevel) profileFilter.educationLevel = buildRegex(String(educationLevel));
   if (company) profileFilter.company = buildRegex(String(company));
   if (industry) profileFilter.industry = buildRegex(String(industry));
   if (lastClassAttended) profileFilter.lastClassAttended = buildRegex(String(lastClassAttended));
@@ -383,34 +385,101 @@ export const inviteAlumni = asyncHandler(async (req, res) => {
  */
 export const exportAlumniCsv = asyncHandler(async (req, res) => {
   const { AlumniProfile } = getTenantModels(req);
-  const { format = "csv" } = req.query;
+  const {
+    q,
+    batch,
+    department,
+    educationLevel,
+    company,
+    skill,
+    leavingYear,
+    lastClassAttended,
+    section,
+    location,
+    rollNo,
+    industry,
+    alphaIndex,
+    isFaculty,
+    registeredOnly,
+    sort: sortParam
+  } = req.query;
+  const searchText = String(q || "").trim();
 
-  // Build query based on filters
-  const query = { instituteId: req.tenant._id };
-  
-  // Apply optional filters from query params
-  if (req.query.batch) query.batch = req.query.batch;
-  if (req.query.department) query.department = req.query.department;
-  if (req.query.status) query.registrationReviewStatus = req.query.status;
-  if (req.query.q) {
-    const searchRegex = new RegExp(req.query.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-    query.$or = [
-      { name: searchRegex },
-      { email: searchRegex },
+  const profileFilter = { instituteId: req.tenant?._id };
+
+  if (batch) profileFilter.batch = Number(batch);
+  if (leavingYear) profileFilter.leavingYear = Number(leavingYear);
+  if (isFaculty === "true") profileFilter.isFaculty = true;
+
+  if (department) profileFilter.department = buildRegex(String(department));
+  if (educationLevel) profileFilter.educationLevel = buildRegex(String(educationLevel));
+  if (company) profileFilter.company = buildRegex(String(company));
+  if (industry) profileFilter.industry = buildRegex(String(industry));
+  if (lastClassAttended) profileFilter.lastClassAttended = buildRegex(String(lastClassAttended));
+  if (section) profileFilter.section = buildRegex(String(section));
+  if (location) profileFilter.location = buildRegex(String(location));
+  if (rollNo) profileFilter.rollNo = buildRegex(String(rollNo));
+
+  if (skill) {
+    profileFilter.skills = { $regex: buildRegex(String(skill)), $options: "i" };
+  }
+
+  if (searchText) {
+    const searchRegex = buildRegex(searchText);
+    profileFilter.$or = [
       { company: searchRegex },
       { designation: searchRegex },
-      { location: searchRegex }
+      { location: searchRegex },
+      { currentInstitution: searchRegex },
+      { currentEducation: searchRegex },
+      { occupation: searchRegex },
+      { department: searchRegex },
+      { lastClassAttended: searchRegex },
+      { section: searchRegex },
+      { bio: searchRegex }
     ];
   }
 
-  const alumni = await AlumniProfile.find(query)
-    .populate("userId", "email name")
-    .sort({ createdAt: -1 })
-    .lean();
+  let sortSpec = { createdAt: -1 };
+  if (sortParam === "name") sortSpec = { "userId.name": 1 };
+  if (sortParam === "batch") sortSpec = { batch: -1, leavingYear: -1 };
+
+  let alumni = await AlumniProfile.find(profileFilter)
+    .populate("userId", "email name isActive passwordSetupCompleted")
+    .sort(sortSpec);
+
+  if (registeredOnly === "true") {
+    alumni = alumni.filter((entry) => entry.userId?.passwordSetupCompleted);
+  }
+
+  if (alphaIndex) {
+    const letter = String(alphaIndex).toUpperCase();
+    alumni = alumni.filter((entry) =>
+      String(entry.userId?.name || "").toUpperCase().startsWith(letter)
+    );
+  }
+
+  if (searchText) {
+    const queryRegex = buildRegex(searchText);
+    alumni = alumni.filter((entry) => {
+      const userName = String(entry?.userId?.name || "");
+      const userEmail = String(entry?.userId?.email || "");
+      return queryRegex.test(userName) || queryRegex.test(userEmail);
+    });
+  }
+
+  if (sortParam === "name") {
+    alumni.sort((a, b) => {
+      const nameA = String(a.userId?.name || "").toLowerCase();
+      const nameB = String(b.userId?.name || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }
 
   const isSchool = getInstitutionType(req.tenant) === "school";
   const yearFieldLabel = isSchool ? "Leaving Year" : "Batch Year";
   const educationFieldLabel = isSchool ? "Last Class Attended" : "Course";
+  const streamFieldLabel = isSchool ? "Section" : "Stream";
 
   // Build CSV rows
   const rows = [
@@ -419,8 +488,8 @@ export const exportAlumniCsv = asyncHandler(async (req, res) => {
       "Email",
       "Status",
       yearFieldLabel,
-      "Department",
       educationFieldLabel,
+      streamFieldLabel,
       "Occupation",
       "Company",
       "Designation",
@@ -430,12 +499,12 @@ export const exportAlumniCsv = asyncHandler(async (req, res) => {
       "Last Updated"
     ],
     ...alumni.map((profile) => [
-      profile.name || "",
+      profile.userId?.name || "",
       profile.userId?.email || "",
       profile.registrationReviewStatus || "pending",
       profile.batch || profile.leavingYear || "",
-      profile.department || "",
-      profile.lastClassAttended || profile.currentEducation || "",
+      isSchool ? profile.lastClassAttended || profile.currentEducation || "" : profile.department || "",
+      profile.section || "",
       profile.occupation || "",
       profile.company || "",
       profile.designation || "",

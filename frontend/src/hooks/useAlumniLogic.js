@@ -35,6 +35,7 @@ const initialFilters = {
   leavingYear: "",
   lastClassAttended: "",
   section: "",
+  educationLevel: "",
   company: "",
   skill: "",
   rollNo: "",
@@ -157,10 +158,17 @@ export function useAlumniLogic() {
         return stats;
       })(),
       uniqueValues: (() => {
-        const values = { years: new Set(), industries: new Set(), companies: new Set() };
+        const values = {
+          years: new Set(),
+          industries: new Set(),
+          companies: new Set(),
+          departments: new Set(),
+          sections: new Set(),
+          educationLevels: new Set(),
+        };
         const currentYear = new Date().getFullYear();
 
-        for (let year = currentYear; year >= 2005; year -= 1) {
+        for (let year = currentYear; year >= 1947; year -= 1) {
           values.years.add(String(year));
         }
 
@@ -168,11 +176,17 @@ export function useAlumniLogic() {
           if (m.batch || m.leavingYear) values.years.add(String(m.batch || m.leavingYear));
           if (m.industry) values.industries.add(m.industry);
           if (m.company) values.companies.add(m.company);
+          if (m.department) values.departments.add(m.department);
+          if (m.section) values.sections.add(m.section);
+          if (m.educationLevel) values.educationLevels.add(m.educationLevel);
         });
         return {
           years: Array.from(values.years).sort((a, b) => b - a),
           industries: Array.from(values.industries).sort(),
-          companies: Array.from(values.companies).sort()
+          companies: Array.from(values.companies).sort(),
+          departments: Array.from(values.departments).sort(),
+          sections: Array.from(values.sections).sort(),
+          educationLevels: Array.from(values.educationLevels).sort()
         };
       })(),
       insights: {

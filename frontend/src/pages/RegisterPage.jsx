@@ -174,6 +174,14 @@ function RegisterPage() {
     [selectedInstitute]
   );
   const isSchool = tenantDisplay.isSchool;
+  const selectedDepartmentStreams = useMemo(() => {
+    const departmentStreams = selectedInstitute?.departmentStreams;
+    if (!departmentStreams || typeof departmentStreams !== "object") {
+      return [];
+    }
+
+    return Array.isArray(departmentStreams[form.department]) ? departmentStreams[form.department] : [];
+  }, [selectedInstitute, form.department]);
   useTenantBranding(selectedInstitute?.branding, tenant.isTenant);
   const oauthSession = oauthSessionQuery.data?.oauthSession || null;
   const hasConnectedSocialProvider = Boolean(
@@ -542,6 +550,20 @@ function RegisterPage() {
                       <input name="department" onChange={handleChange} placeholder="e.g. Engineering" required value={form.department} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
                     )}
                   </div>
+
+                  {!isSchool && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 ml-1">Stream</label>
+                      {selectedDepartmentStreams.length > 0 ? (
+                        <select name="section" onChange={handleChange} required value={form.section} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all">
+                          <option value="">Select Stream</option>
+                          {selectedDepartmentStreams.map((stream) => <option key={stream} value={stream}>{stream}</option>)}
+                        </select>
+                      ) : (
+                        <input name="section" onChange={handleChange} placeholder="Stream / Section" required value={form.section} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
+                      )}
+                    </div>
+                  )}
 
                   {isSchool ? (
                     <>

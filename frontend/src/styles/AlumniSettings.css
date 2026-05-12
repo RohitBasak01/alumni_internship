@@ -1,0 +1,187 @@
+.as-page {
+  display: grid;
+  gap: 16px;
+  color: #0f172a;
+}
+
+.as-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.as-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.as-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.as-edit-profile-btn {
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.as-account-card,
+.as-settings-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.as-account-card h2,
+.as-settings-card h2 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+
+.as-account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.as-account-grid div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.as-account-grid span {
+  display: block;
+  font-size: 0.76rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.as-account-grid strong {
+  font-size: 0.95rem;
+}
+
+.as-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.as-field span {
+  font-size: 0.85rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+.as-field select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+.as-toggle-row {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  margin-bottom: 10px;
+}
+
+.as-toggle-row input {
+  margin-top: 4px;
+}
+
+.as-toggle-row strong {
+  display: block;
+  font-size: 0.92rem;
+  margin-bottom: 3px;
+}
+
+.as-toggle-row p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.as-footer {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.as-btn-ghost,
+.as-btn-solid {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border: none;
+  cursor: pointer;
+}
+
+.as-btn-ghost {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+}
+
+.as-btn-solid {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.as-btn-ghost:disabled,
+.as-btn-solid:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.as-success {
+  margin-top: 12px;
+  color: #15803d;
+  font-size: 0.88rem;
+}
+
+.as-loading,
+.as-error {
+  font-size: 0.9rem;
+}
+
+.as-error {
+  color: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .as-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .as-edit-profile-btn {
+    text-align: center;
+  }
+
+  .as-footer {
+    justify-content: stretch;
+  }
+
+  .as-btn-ghost,
+  .as-btn-solid {
+    width: 100%;
+  }
+}

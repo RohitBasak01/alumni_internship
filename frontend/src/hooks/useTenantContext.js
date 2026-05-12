@@ -75,7 +75,7 @@ function detectTenant() {
 export function useTenantContext() {
   const auth = useAuth();
   const detectedTenant = detectTenant();
-  const institute = auth.user?.institute;
+  const institute = auth.user?.institute || auth.user?.instituteId;
   const defaultFeatureFlags = {
     enableJobs: true,
     enableFriendship: true,
@@ -123,6 +123,9 @@ export function useTenantContext() {
       memberSingular: "Alumnus/Alumna",
       adminLabel: "Institute Admin"
     },
+    departments: Array.isArray(institute.departments) ? institute.departments : [],
+    departmentStreams: institute.departmentStreams && typeof institute.departmentStreams === "object" ? institute.departmentStreams : {},
+    streams: Array.isArray(institute.streams) ? institute.streams : [],
     featureFlags: {
       ...defaultFeatureFlags,
       ...(institute.featureFlags || {})

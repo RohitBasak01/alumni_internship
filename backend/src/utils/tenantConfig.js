@@ -90,6 +90,9 @@ export function buildTenantConfigSnapshot(institute) {
     branding: {
       ...brandingDefaults,
       ...(institute.branding || {})
-    }
+    },
+    departments: Array.isArray(institute.departments) ? institute.departments : [],
+    departmentStreams: institute.departmentStreams && typeof institute.departmentStreams === "object" ? institute.departmentStreams : {},
+    streams: Array.isArray(institute.streams) ? institute.streams : []
   };
 }

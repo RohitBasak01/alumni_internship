@@ -130,7 +130,7 @@ function AlumniDashboard({ logic }) {
       <div className="adb-header-section">
         <div className="adb-greeting-box">
           <h1 className="adb-hero-greeting">{greeting}, {firstName}! 👋</h1>
-          <p className="adb-hero-sub">Welcome back to the {tenant.name} community.</p>
+          <p className="adb-hero-sub">Welcome back to the {tenant.displayName} community.</p>
         </div>
 
         <div className="adb-quick-metrics">
@@ -346,7 +346,7 @@ function LineChart() {
 
 /* ── Admin Dashboard ────────────────────────────────────── */
 function AdminDashboard({ logic }) {
-  const { auth, queries } = logic;
+  const { auth, tenant, queries } = logic;
   const alumni    = queries.alumni.data    || [];
   const events    = queries.events.data    || [];
   const jobs      = queries.jobs.data      || [];
@@ -427,7 +427,7 @@ function AdminDashboard({ logic }) {
       <div className="adm-header-section">
         <div className="adm-title-box">
           <h1 className="adm-welcome-title">Institution Overview</h1>
-          <p className="adm-welcome-sub">Managing {tenant.name} Central Hub</p>
+          <p className="adm-welcome-sub">Managing {tenant.displayName} Central Hub</p>
         </div>
         <div className="adm-header-actions">
            <button className="adm-action-btn primary">

@@ -488,3 +488,114 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Alumni list card visual updates to match design */
+.member-person-avatar-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+}
+
+.member-person-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background: #f6b84b; /* warm yellow */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.25rem;
+}
+
+.avatar-online-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #16a34a; /* green */
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.member-directory-card-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.member-directory-card-head-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.member-name {
+  font-size: 1.35rem;
+  color: var(--ui-ink);
+}
+
+.role-badge {
+  display: inline-block;
+  background: #ede7ff; /* light purple */
+  color: #5b21b6; /* purple text */
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.member-degree {
+  margin: 0.25rem 0 0;
+  color: rgba(20,33,61,0.6);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+}
+
+.location-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(243,245,249,0.9);
+  color: rgba(20,33,61,0.7);
+  font-weight: 600;
+}
+
+.profile-actions .button.outline.view-profile {
+  background: transparent;
+  border: 1px solid rgba(20,33,61,0.08);
+  color: #14213d;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.profile-actions .button.primary.connect {
+  background: linear-gradient(90deg,#6d28d9,#7c3aed);
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  box-shadow: 0 8px 18px rgba(124,58,237,0.15);
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-actions .material-symbols-outlined {
+  font-size: 1rem;
+}

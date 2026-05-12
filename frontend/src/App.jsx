@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { useAuth } from "./context/AuthContext.jsx";
 import { useTenantContext } from "./hooks/useTenantContext.js";
 
 import AppShell from "./components/AppShell.jsx";
@@ -10,6 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import DevTenantSwitcher from "./components/DevTenantSwitcher.jsx";
 
 const AlumniProfilePage = lazy(() => import("./pages/AlumniProfilePage.jsx"));
+const AlumniSettingsPage = lazy(() => import("./pages/AlumniSettingsPage.jsx"));
 const BusinessDirectoryPage = lazy(
   () => import("./pages/BusinessDirectoryPage.jsx"),
 );
@@ -52,6 +54,11 @@ const ContentModerationPage = lazy(() => import("./pages/ContentModerationPage.j
 function RootPage() {
   const { isTenant } = useTenantContext();
   return isTenant ? <TenantHomePage /> : <HomePage />;
+}
+
+function PortalSettingsRoute() {
+  const auth = useAuth();
+  return auth.user?.role === "institute_admin" ? <InstitutionSettingsPage /> : <AlumniSettingsPage />;
 }
 
 function App() {
@@ -98,7 +105,7 @@ function App() {
               element={<Navigate replace to="/portal/newsroom" />}
             />
             <Route path="newsroom" element={<NewsroomPage />} />
-            <Route path="settings" element={<InstitutionSettingsPage />} />
+            <Route path="settings" element={<PortalSettingsRoute />} />
             <Route path="alumni" element={<TenantAlumniPage />} />
             <Route
               path="approvals"

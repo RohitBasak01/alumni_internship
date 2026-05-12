@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAlumniLogic } from "../hooks/useAlumniLogic.js";
 import { AlumniMap } from "../components/AlumniMap.jsx";
-import { fetchBusinessListings } from "../lib/api.js";
+import { exportAlumniCsv, fetchBusinessListings } from "../lib/api.js";
 import "../styles/AlumniDirectory.css";
 
 /* ── Helpers ──────────────────────────────────────────────── */
@@ -72,7 +72,9 @@ function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf }) {
   const role = alumni.designation || alumni.occupation || "Alumni Member";
   const company = alumni.company || "";
   const batch = alumni.batch || alumni.leavingYear || "";
-  const dept = alumni.department || alumni.lastClassAttended || "";
+  const course = alumni.department || alumni.lastClassAttended || "";
+  const stream = alumni.section || "";
+  const academicLabel = [course, stream].filter(Boolean).join(" · ");
   const location = alumni.location || alumni.city || "";
   const skills = Array.isArray(alumni.skills) ? alumni.skills.slice(0, 3) : ["React", "Node.js", "Leadership"].slice(0, 3);
   const avatar = alumni.profilePicture || alumni.userId?.profilePicture;
@@ -90,18 +92,20 @@ function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf }) {
         <div className="ad-card-v2-avatar" style={{ background: avatarColor(name) }}>
           {avatar ? <img src={avatar} alt={name} /> : initials(name)}
         </div>
-        <h3 className="ad-card-v2-name">
-          {name}
-          {isSelf && <span className="ad-you-badge" style={{ marginLeft: 6 }}>You</span>}
-        </h3>
-        <p className="ad-card-v2-title">{[role, company].filter(Boolean).join(" at ")}</p>
-        <p className="ad-card-v2-batch">Batch of {batch} · {dept}</p>
-        {location && (
-          <div className="ad-card-v2-loc">
-            <span className="material-symbols-outlined">location_on</span>
-            {location}
-          </div>
-        )}
+        <div className="ad-card-v2-body">
+          <h3 className="ad-card-v2-name">
+            {name}
+            {isSelf && <span className="ad-you-badge" style={{ marginLeft: 6 }}>You</span>}
+          </h3>
+          <p className="ad-card-v2-title">{[role, company].filter(Boolean).join(" at ")}</p>
+          <p className="ad-card-v2-batch">Batch of {batch}{academicLabel ? ` · ${academicLabel}` : ""}</p>
+          {location && (
+            <div className="ad-card-v2-loc">
+              <span className="material-symbols-outlined">location_on</span>
+              {location}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="ad-card-v2-tags">
@@ -283,8 +287,10 @@ export default function TenantAlumniPage() {
   const [availFilter, setAvailFilter]           = useState([]);
   const [skillSearch, setSkillSearch]           = useState("");
   const [page, setPage]                         = useState(1);
-  const [showMap, setShowMap]                   = useState(false);
+  const [viewMode, setViewMode]                 = useState("grid");
+  const [previousViewMode, setPreviousViewMode] = useState("grid");
   const [selectedCompanyDetails, setSelectedCompanyDetails] = useState(null);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
   const PAGE_SIZE = 9;
 
   const directoryConfig = useMemo(() => getDirectoryConfig(tenant), [tenant]);
@@ -301,12 +307,70 @@ export default function TenantAlumniPage() {
     alphaIndex: "", isFaculty: false, registeredOnly: false, activeTab: "name",
   });
 
+  const openLocationMap = () => {
+    setPreviousViewMode(current => (viewMode === "map" ? current : viewMode));
+    setViewMode(current => (current === "map" ? previousViewMode : "map"));
+  };
+
+  const clearAllFilters = () => {
+    resetFilters();
+    setPage(1);
+    setIndustryFilter("All Industries");
+    setViewMode(previousViewMode);
+  };
+
+  const clearStatusFilters = () => {
+    setFilters((current) => ({
+      ...current,
+      isFaculty: false,
+      registeredOnly: false,
+    }));
+  };
+
   const allMembers = derived.directoryEntries;
   const totalFound = allMembers.length;
   const totalPages = Math.max(1, Math.ceil(totalFound / PAGE_SIZE));
   const pageMembers = allMembers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const { uniqueValues, filterStats } = derived;
+
+  const levelOptions = [
+    { value: "", label: "Select Level" },
+    { value: "high_school", label: "High School" },
+    { value: "diploma", label: "Diploma" },
+    { value: "certification", label: "Certification" },
+    { value: "bachelors", label: "Bachelor's" },
+    { value: "masters", label: "Master's" },
+    { value: "phd", label: "PhD" },
+    { value: "postdoc", label: "Postdoc" },
+  ];
+
+  const instituteDepartments = Array.isArray(tenant?.departments) ? tenant.departments : [];
+  const instituteDepartmentStreams = tenant?.departmentStreams && typeof tenant.departmentStreams === "object" ? tenant.departmentStreams : {};
+  const instituteStreams = Array.isArray(tenant?.streams) ? tenant.streams : [];
+
+  const courseOptions = [
+    { value: "", label: "-- Select Course --" },
+    ...((instituteDepartments.length > 0
+      ? instituteDepartments
+      : uniqueValues.departments
+    ).map((item) => ({ value: item, label: item }))),
+  ];
+
+  const streamOptions = [
+    { value: "", label: filters.department ? "-- Select Stream --" : "-- Select Course First --" },
+    ...((filters.department && Array.isArray(instituteDepartmentStreams[filters.department]) && instituteDepartmentStreams[filters.department].length > 0
+      ? instituteDepartmentStreams[filters.department]
+      : instituteStreams.length > 0
+        ? instituteStreams
+        : uniqueValues.sections
+    ).map((item) => ({ value: item, label: item }))),
+  ];
+
+  const yearOptions = [
+    { value: "", label: "End Year" },
+    ...uniqueValues.years.map((year) => ({ value: year, label: year })),
+  ];
   
   const INDUSTRY_FILTERS = [
     { label: "All Industries", count: null },
@@ -345,7 +409,248 @@ export default function TenantAlumniPage() {
     { key: "looking",    label: "Actively Looking",         count: filterStats.availability.looking, color: "#f59e0b" },
   ];
 
-  const activeFiltersCount = [filters.batch, filters.industry, filters.company, filters.skill].filter(Boolean).length;
+  const activeFiltersCount = [
+    filters.batch,
+    filters.leavingYear,
+    filters.department,
+    filters.section,
+    filters.educationLevel,
+    filters.industry,
+    filters.company,
+    filters.skill,
+  ].filter(Boolean).length;
+  const activeTab = filters.activeTab || "name";
+  const browseCategories = [
+    { id: "location", icon: "location_on", label: "Location" },
+    { id: "course", icon: "school", label: "Institute" },
+    { id: "company", icon: "apartment", label: "Company" },
+    { id: "work", icon: "person_search", label: "Roles" },
+    { id: "work", icon: "psychology", label: "Professional Skills" },
+    { id: "company", icon: "factory", label: "Industry" },
+  ];
+
+  const tabs = [
+    { id: "name", label: "Name, Email & Roll No" },
+    { id: "course", label: "Course & Year" },
+    { id: "location", label: "Location" },
+    { id: "company", label: "Company" },
+    { id: "work", label: "Work Experience" },
+  ];
+
+  const handleTabClick = (tabId) => {
+    setFilters((current) => ({ ...current, activeTab: tabId }));
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      setIsExportingCsv(true);
+
+      const exportParams = Object.fromEntries(
+        Object.entries(filters).filter(([key, value]) => {
+          if (key === "activeTab") {
+            return false;
+          }
+
+          if (typeof value === "boolean") {
+            return value;
+          }
+
+          return String(value || "").trim() !== "";
+        })
+      );
+
+      if (sortBy === "Name A–Z") exportParams.sort = "name";
+      if (sortBy === "Batch Year") exportParams.sort = "batch";
+
+      const csvBlob = await exportAlumniCsv(exportParams);
+      const blob = csvBlob instanceof Blob ? csvBlob : new Blob([csvBlob], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `alumni-export-${timestamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(error?.message || "Failed to export CSV");
+    } finally {
+      setIsExportingCsv(false);
+    }
+  };
+
+  const renderSearchInputs = () => {
+    if (activeTab === "course") {
+      return (
+        <div className="ad-course-selects-row">
+          <select
+            className="ad-course-select"
+            value={filters.educationLevel || ""}
+            onChange={(e) => {
+              setFilters((f) => ({ ...f, educationLevel: e.target.value }));
+              setPage(1);
+            }}
+          >
+            {levelOptions.map((option) => (
+              <option key={option.value || "level"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="ad-course-select"
+            value={filters.department || ""}
+            onChange={(e) => {
+              setFilters((f) => ({
+                ...f,
+                department: e.target.value,
+                lastClassAttended: directoryConfig.isSchool ? e.target.value : "",
+                section: ""
+              }));
+              setPage(1);
+            }}
+          >
+            {courseOptions.map((option) => (
+              <option key={option.value || "course"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="ad-course-select"
+            value={filters.section || ""}
+            onChange={(e) => {
+              setFilters((f) => ({ ...f, section: e.target.value }));
+              setPage(1);
+            }}
+          >
+            {streamOptions.map((option) => (
+              <option key={option.value || "stream"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="ad-course-select"
+            value={filters.batch || filters.leavingYear || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFilters((f) => ({ ...f, batch: value, leavingYear: value }));
+              setPage(1);
+            }}
+          >
+            {yearOptions.map((option) => (
+              <option key={option.value || "year"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    if (activeTab === "location") {
+      return (
+        <input
+          className="ad-search-input-main"
+          placeholder="City, State or Country"
+          value={filters.location || filters.q}
+          onChange={e => {
+            setFilters(f => ({ ...f, q: e.target.value, activeTab: "location" }));
+            setPage(1);
+          }}
+        />
+      );
+    }
+
+    if (activeTab === "company") {
+      return (
+        <input
+          className="ad-search-input-main"
+          placeholder="Company Name"
+          value={filters.company || ""}
+          onChange={e => {
+            setFilters(f => ({ ...f, company: e.target.value }));
+            setPage(1);
+          }}
+        />
+      );
+    }
+
+    if (activeTab === "work") {
+      return (
+        <input
+          className="ad-search-input-main"
+          placeholder="Experience or Skills"
+          value={filters.skill || ""}
+          onChange={e => {
+            setFilters(f => ({ ...f, skill: e.target.value }));
+            setPage(1);
+          }}
+        />
+      );
+    }
+
+    return (
+      <>
+        <input
+          className="ad-search-input-main ad-search-input-main--wide"
+          placeholder="Name or Email"
+          value={filters.q}
+          onChange={e => {
+            setFilters(f => ({ ...f, q: e.target.value, activeTab: "name" }));
+            setPage(1);
+          }}
+        />
+        <input
+          className="ad-search-input-main ad-search-input-main--narrow"
+          placeholder="Roll No"
+          value={filters.rollNo || ""}
+          onChange={e => {
+            setFilters(f => ({ ...f, rollNo: e.target.value, activeTab: "name" }));
+            setPage(1);
+          }}
+        />
+      </>
+    );
+  };
+
+  const applyCourseFilters = () => {
+    setPage(1);
+  };
+
+  const resultsView =
+    viewMode === "map" ? (
+      <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8edf3", minHeight: 460 }}>
+        <AlumniMap members={allMembers} />
+      </div>
+    ) : viewMode === "grid" ? (
+      <div className="ad-member-grid">
+        {pageMembers.map(alumni => (
+          <AlumniDirCardV2
+            key={alumni._id}
+            alumni={alumni}
+            isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
+            onConnect={item => setSelectedForChat(item)}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="ad-member-list">
+        {pageMembers.map(alumni => (
+          <AlumniDirCardV2
+            key={alumni._id}
+            alumni={alumni}
+            isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
+            onConnect={item => setSelectedForChat(item)}
+          />
+        ))}
+      </div>
+    );
 
   return (
     <div className="ad-root">
@@ -358,64 +663,90 @@ export default function TenantAlumniPage() {
       </div>
 
       {/* ── Filter Card ─────────────────────────────────── */}
-      <div className="ad-filter-card">
-        <div className="ad-search-input-group">
-          <span className="material-symbols-outlined ad-search-icon-main">search</span>
-          <input
-            className="ad-search-input-main"
-            placeholder={directoryConfig.filterPlaceholder}
-            value={filters.q}
-            onChange={e => { setFilters(f => ({ ...f, q: e.target.value, activeTab: "name" })); setPage(1); }}
-          />
-          <span className="material-symbols-outlined ad-search-icon-main" style={{ opacity: 0.5 }}>search</span>
+      <div className="ad-filter-card ad-search-engine-card">
+        <div className="ad-search-engine-topbar">
+          <div className="ad-search-engine-brand">
+            <span className="material-symbols-outlined">search</span>
+            <strong>Search</strong>
+          </div>
+          <div className="ad-search-engine-browse-text">or browse members by</div>
+          <div className="ad-search-engine-categories">
+            {browseCategories.map((category) => (
+              <button
+                key={`${category.id}-${category.label}`}
+                type="button"
+                className={`ad-search-engine-category ${activeTab === category.id ? "active" : ""}`}
+                onClick={() => handleTabClick(category.id)}
+              >
+                <span className="material-symbols-outlined">{category.icon}</span>
+                {category.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="ad-filter-controls-row">
-          <div className="ad-dropdown-filter">
-            <span className="material-symbols-outlined">event</span>
-            <select value={filters.batch || filters.leavingYear || ""} onChange={e => { setFilters(f => ({ ...f, batch: e.target.value, leavingYear: e.target.value })); setPage(1); }}>
-              <option value="">{directoryConfig.yearFieldLabel}</option>
-              {uniqueValues.years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
-
-          <div className="ad-dropdown-filter" onClick={() => setShowMap(!showMap)}>
-            <span className="material-symbols-outlined">location_on</span>
-            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: showMap ? "#6366f1" : "#1e293b" }}>
-              {showMap ? "Hide Map" : "Location"}
-            </span>
-          </div>
-
-          <div className="ad-dropdown-filter">
-            <span className="material-symbols-outlined">work</span>
-            <select value={filters.industry || ""} onChange={e => { setFilters(f => ({ ...f, industry: e.target.value })); setIndustryFilter(e.target.value || "All Industries"); setPage(1); }}>
-              <option value="">Industry</option>
-              {Array.from(new Set([...COMMON_INDUSTRIES, ...uniqueValues.industries])).sort().map(i => (
-                <option key={i} value={i}>{i}</option>
+        <div className="ad-search-engine-card-shell">
+          <div className="ad-search-engine-tabs-row">
+            <div className="ad-search-engine-tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`ad-search-engine-tab ${activeTab === tab.id ? "active" : ""}`}
+                  onClick={() => handleTabClick(tab.id)}
+                >
+                  {tab.label}
+                </button>
               ))}
-            </select>
+            </div>
+
+            <div className="ad-sort-wrap-v2 ad-search-engine-sort">
+              <select className="ad-sort-select-v2" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                {SORT_OPTIONS.map(o => <option key={o}>{o}</option>)}
+              </select>
+            </div>
           </div>
 
-          <button className="ad-more-filters-btn-v2">
-            <span className="material-symbols-outlined">tune</span>
-            More Filters
-            {activeFiltersCount > 0 && <span className="ad-filter-badge">{activeFiltersCount}</span>}
-          </button>
+          <div className="ad-search-engine-content">
+            <div className="ad-search-input-group ad-search-engine-inputs">
+              {activeTab !== "course" && (
+                <span className="material-symbols-outlined ad-search-icon-main">search</span>
+              )}
+              {renderSearchInputs()}
+              <button className="ad-search-go-btn" type="button" onClick={applyCourseFilters}>
+                <span className="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
 
-          {(filters.q || activeFiltersCount > 0) && (
-            <button className="ad-clear-all-link" onClick={() => { resetFilters(); setPage(1); setIndustryFilter("All Industries"); setShowMap(false); }}>
-              <span className="material-symbols-outlined">restart_alt</span>
-              Clear all
-            </button>
-          )}
+            <div className="ad-alpha-index-row">
+              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(letter => (
+                <button
+                  key={letter}
+                  type="button"
+                  className={`ad-alpha-btn ${filters.alphaIndex === letter ? "active" : ""}`}
+                  onClick={() => setFilters(f => ({ ...f, alphaIndex: f.alphaIndex === letter ? "" : letter }))}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ad-status-bar">
+            <div className="ad-status-filters">
+              <span className="ad-status-label">Show:</span>
+              <button className={`ad-status-btn ${!filters.isFaculty && !filters.registeredOnly ? "active" : ""}`} onClick={clearStatusFilters} type="button">All</button>
+              <button className={`ad-status-btn ${filters.isFaculty ? "active" : ""}`} onClick={() => setFilters(f => ({ ...f, isFaculty: !f.isFaculty }))} type="button">Faculty</button>
+              <button className="ad-status-btn" type="button">Batchmates</button>
+              <button className={`ad-status-btn ${filters.registeredOnly ? "active" : ""}`} onClick={() => setFilters(f => ({ ...f, registeredOnly: !f.registeredOnly }))} type="button">Registered Only</button>
+            </div>
+
+            <div className="ad-results-count-inline">
+              <strong>{totalFound}</strong> Member(s) Found
+            </div>
+          </div>
         </div>
       </div>
-
-      {showMap && (
-        <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8edf3", height: 350 }}>
-          <AlumniMap members={derived.directoryEntries} />
-        </div>
-      )}
 
       <div className="ad-layout">
         {/* Main column */}
@@ -425,18 +756,50 @@ export default function TenantAlumniPage() {
               <span className="ad-results-num">{totalFound.toLocaleString()}</span> alumni found
             </span>
             <div className="ad-results-controls">
+              {isAdmin && (
+                <button
+                  className="ad-export-btn-v2"
+                  type="button"
+                  onClick={handleExportCsv}
+                  disabled={queries.alumni.isLoading || isExportingCsv}
+                >
+                  <span className="material-symbols-outlined">download</span>
+                  {isExportingCsv ? "Exporting..." : "Export CSV"}
+                </button>
+              )}
               <div className="ad-sort-wrap-v2">
                 <span className="ad-sort-label">Sort by:</span>
                 <select className="ad-sort-select-v2" value={sortBy} onChange={e => setSortBy(e.target.value)}>
                   {SORT_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
-              <div className="ad-view-toggle-v2">
-                <button className="ad-view-btn-v2 ad-view-btn-v2--active" aria-label="Grid">
+              <div className="ad-view-toggle-v2" role="tablist" aria-label="Change results view">
+                <button
+                  className={`ad-view-btn-v2 ${viewMode === "grid" ? "ad-view-btn-v2--active" : ""}`}
+                  aria-label="Grid"
+                  aria-pressed={viewMode === "grid"}
+                  onClick={() => setViewMode("grid")}
+                  type="button"
+                >
                   <span className="material-symbols-outlined">grid_view</span>
                 </button>
-                <button className="ad-view-btn-v2" aria-label="List">
+                <button
+                  className={`ad-view-btn-v2 ${viewMode === "list" ? "ad-view-btn-v2--active" : ""}`}
+                  aria-label="List"
+                  aria-pressed={viewMode === "list"}
+                  onClick={() => setViewMode("list")}
+                  type="button"
+                >
                   <span className="material-symbols-outlined">view_list</span>
+                </button>
+                <button
+                  className={`ad-view-btn-v2 ${viewMode === "map" ? "ad-view-btn-v2--active" : ""}`}
+                  aria-label="Map"
+                  aria-pressed={viewMode === "map"}
+                  onClick={() => setViewMode("map")}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined">map</span>
                 </button>
               </div>
             </div>
@@ -450,20 +813,11 @@ export default function TenantAlumniPage() {
               <p>Try adjusting your filters or search term.</p>
             </div>
           ) : (
-            <div className="ad-member-grid">
-              {pageMembers.map(alumni => (
-                <AlumniDirCardV2
-                  key={alumni._id}
-                  alumni={alumni}
-                  isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
-                  onConnect={item => setSelectedForChat(item)}
-                />
-              ))}
-            </div>
+            resultsView
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {viewMode !== "map" && totalPages > 1 && (
             <div className="ad-pagination">
               <button className="ad-page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                 <span className="material-symbols-outlined">chevron_left</span>
