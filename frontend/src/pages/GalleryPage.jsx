@@ -6,6 +6,8 @@ import {
   createGalleryItem,
   deleteGalleryItem,
   fetchGalleryItems,
+  resolveApiAssetUrl,
+  uploadGalleryMedia,
   toggleGalleryItemLike,
 } from "../lib/api.js";
 import "../styles/Gallery.css";
@@ -70,9 +72,14 @@ function getHighlightScore(item) {
   return likes * 2 + comments * 3 + recencyBoost;
 }
 
+function resolveMediaUrl(url) {
+  return resolveApiAssetUrl(url);
+}
+
 /* ── Lightbox ────────────────────────────────────────────── */
 function Lightbox({ item, onClose, commentDraft, onCommentDraftChange, onCommentSubmit, onLike, likePending, commentPending }) {
   const isVideo = item.mediaType === "video";
+  const mediaUrl = resolveMediaUrl(item.url);
   return (
     <div className="gl-lightbox-backdrop" onClick={onClose}>
       <div className="gl-lightbox" onClick={e=>e.stopPropagation()}>
@@ -80,8 +87,8 @@ function Lightbox({ item, onClose, commentDraft, onCommentDraftChange, onComment
           <span className="material-symbols-outlined">close</span>
         </button>
         {isVideo
-          ? <video src={item.url} controls className="gl-lightbox-media" autoPlay/>
-          : <img src={item.url} alt={item.caption||"Gallery"} className="gl-lightbox-media"/>
+          ? <video src={mediaUrl} controls className="gl-lightbox-media" autoPlay/>
+          : <img src={mediaUrl} alt={item.caption||"Gallery"} className="gl-lightbox-media"/>
         }
         {item.caption && <div className="gl-lightbox-caption">{item.caption}</div>}
         <div className="gl-lightbox-engagement">
@@ -118,6 +125,7 @@ function GalleryTile({ item, canDelete, onDelete, onOpen, wide, tall, highlightS
   const isVideo = item.mediaType === "video";
   const label   = sectionLabel(item.section);
   const ts      = tagStyle(item.section);
+  const mediaUrl = resolveMediaUrl(item.url);
 
   return (
     <div
@@ -125,8 +133,8 @@ function GalleryTile({ item, canDelete, onDelete, onOpen, wide, tall, highlightS
       onClick={() => onOpen(item)}
     >
       {isVideo
-        ? <video src={item.url} className="gl-tile-media" muted preload="metadata"/>
-        : <img src={item.url} alt={item.caption||"Gallery"} className="gl-tile-media" loading="lazy"/>
+        ? <video src={mediaUrl} className="gl-tile-media" muted preload="metadata"/>
+        : <img src={mediaUrl} alt={item.caption||"Gallery"} className="gl-tile-media" loading="lazy"/>
       }
       <div className="gl-tile-overlay"/>
       <span className="gl-tile-tag" style={ts}>{label}</span>
@@ -173,12 +181,15 @@ export default function GalleryPage() {
   const [lightbox, setLightbox]             = useState(null);
   const [showUpload, setShowUpload]         = useState(false);
   const [dragOver, setDragOver]             = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadError, setUploadError]       = useState("");
   const [uploadUrl, setUploadUrl]           = useState("");
   const [uploadCaption, setUploadCaption]   = useState("");
   const [uploadSection, setUploadSection]   = useState("personal_photos");
   const [uploadType, setUploadType]         = useState("image");
   const [page, setPage]                     = useState(1);
   const [commentDrafts, setCommentDrafts]   = useState({});
+  const fileInputRef = useRef(null);
   const PAGE_SIZE = 9;
 
   const galleryQuery = useQuery({ queryKey:["gallery-items"], queryFn:fetchGalleryItems });
@@ -214,7 +225,7 @@ export default function GalleryPage() {
     allItems.forEach(item => {
       const section = item.section || "General";
       if (!albums[section]) {
-        albums[section] = { title: section.replace("_", " "), count: 0, img: item.url };
+        albums[section] = { title: section.replace("_", " "), count: 0, img: resolveMediaUrl(item.url) };
       }
       albums[section].count++;
     });
@@ -272,6 +283,44 @@ export default function GalleryPage() {
     createMutation.mutate({ section, mediaType, url:form.url, caption:form.caption }, {
       onSuccess: () => setForm(emptyForm),
     });
+  }
+
+  async function handleSelectedFile(file) {
+    if (!file) {
+      return;
+    }
+
+    setUploadError("");
+    setUploadingMedia(true);
+    setShowUpload(true);
+
+    try {
+      const uploaded = await uploadGalleryMedia(file);
+      setUploadUrl(uploaded.publicPath || uploaded.url || "");
+      setUploadType(uploaded.mediaType || (file.type.startsWith("video/") ? "video" : "image"));
+    } catch (error) {
+      setUploadError(error?.response?.data?.message || error?.response?.data?.errors?.[0] || error.message || "Upload failed");
+    } finally {
+      setUploadingMedia(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  function handleFileInputChange(event) {
+    const file = event.target.files?.[0];
+    void handleSelectedFile(file);
+  }
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    setDragOver(false);
+    void handleSelectedFile(event.dataTransfer.files?.[0]);
   }
 
   function handleUploadSubmit() {
@@ -386,8 +435,8 @@ export default function GalleryPage() {
               {paged.map(item=>(
                 <div key={item._id} className="gl-list-item" onClick={()=>setLightbox(item)}>
                   {item.mediaType==="video"
-                    ? <video src={item.url} className="gl-list-thumb" muted preload="metadata"/>
-                    : <img src={item.url} alt={item.caption||""} className="gl-list-thumb" loading="lazy"/>
+                    ? <video src={resolveMediaUrl(item.url)} className="gl-list-thumb" muted preload="metadata"/>
+                    : <img src={resolveMediaUrl(item.url)} alt={item.caption||""} className="gl-list-thumb" loading="lazy"/>
                   }
                   <div className="gl-list-info">
                     <div className="gl-list-caption">{item.caption||"Untitled"}</div>
@@ -449,15 +498,25 @@ export default function GalleryPage() {
               className={`gl-drop-zone ${dragOver?"gl-drop-zone--active":""}`}
               onDragOver={e=>{e.preventDefault();setDragOver(true);}}
               onDragLeave={()=>setDragOver(false)}
-              onDrop={e=>{e.preventDefault();setDragOver(false);}}
+              onDrop={handleDrop}
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                style={{ display: "none" }}
+                onChange={handleFileInputChange}
+              />
               <span className="material-symbols-outlined" style={{fontSize:32,color:"#6366f1"}}>cloud_upload</span>
               <p className="gl-drop-text">Drag &amp; drop your files here</p>
               <p className="gl-drop-or">or</p>
-              <button className="gl-browse-btn" onClick={()=>setShowUpload(s=>!s)}>Browse Files</button>
+              <button className="gl-browse-btn" type="button" onClick={openFilePicker} disabled={uploadingMedia}>
+                {uploadingMedia ? "Uploading..." : "Browse Files"}
+              </button>
               <p className="gl-drop-hint">Supports JPG, PNG, MP4, MOV (Max 200MB)</p>
+              {uploadError && <p className="gl-drop-error">{uploadError}</p>}
             </div>
-            {/* URL upload for now (API uses URL) */}
+            {/* File upload populates a public URL, then the existing gallery create API stores it. */}
             {showUpload && (
               <div className="gl-url-upload">
                 <input className="gl-input" placeholder="Paste image/video URL" value={uploadUrl} onChange={e=>setUploadUrl(e.target.value)} type="url"/>
@@ -489,8 +548,8 @@ export default function GalleryPage() {
                 {dynamicHighlights.map(item => (
                   <button key={item._id} className="gl-highlight-tile" onClick={()=>setLightbox(item)} title={`${item.likeCount || 0} likes, ${item.commentCount || 0} comments`}>
                     {item.mediaType === "video"
-                      ? <video src={item.url} className="gl-highlight-img" muted preload="metadata" />
-                      : <img src={item.url} alt={item.caption || "Highlight"} className="gl-highlight-img" loading="lazy" />
+                      ? <video src={resolveMediaUrl(item.url)} className="gl-highlight-img" muted preload="metadata" />
+                      : <img src={resolveMediaUrl(item.url)} alt={item.caption || "Highlight"} className="gl-highlight-img" loading="lazy" />
                     }
                     <span className="gl-highlight-metric">{item.likeCount || 0}L {item.commentCount || 0}C</span>
                   </button>

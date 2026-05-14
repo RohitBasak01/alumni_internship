@@ -1,4 +1,8 @@
 import express from "express";
+import multer from "multer";
+import path from "node:path";
+import fs from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, requireTenantAccess } from "../middleware/auth.middleware.js";
@@ -6,6 +10,32 @@ import { validateBody, validateParams } from "../middleware/validate.middleware.
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 
 const router = express.Router();
+const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const uploadsRoot = path.join(backendRoot, "uploads");
+
+const galleryUpload = multer({
+  storage: multer.diskStorage({
+    destination: async (req, file, cb) => {
+      const uploadDir = path.join(uploadsRoot, "gallery", req.tenant._id.toString());
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, `${uniqueSuffix}-${file.originalname.replace(/\s+/g, "-")}`);
+    }
+  }),
+  limits: { fileSize: 200 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = new Set(["image/jpeg", "image/png", "video/mp4", "video/quicktime"]);
+    if (allowedMimeTypes.has(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error("Only JPG, PNG, MP4, and MOV files are allowed"));
+  }
+});
 
 function isValidHttpUrl(value) {
   try {
@@ -13,6 +43,25 @@ function isValidHttpUrl(value) {
     return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
+  }
+}
+
+function isValidGalleryMediaUrl(value) {
+  const trimmed = String(value || "").trim();
+  return isValidHttpUrl(trimmed) || trimmed.startsWith("/uploads/");
+}
+
+function normalizeGalleryMediaUrl(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed || trimmed.startsWith("/uploads/")) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.pathname.startsWith("/uploads/") ? parsed.pathname : trimmed;
+  } catch {
+    return trimmed;
   }
 }
 
@@ -27,8 +76,8 @@ function validateCreateGalleryItemBody(body) {
     issues.push("Media type must be image or video");
   }
 
-  if (!isNonEmptyString(body.url) || !isValidHttpUrl(body.url)) {
-    issues.push("A valid http(s) media URL is required");
+  if (!isNonEmptyString(body.url) || !isValidGalleryMediaUrl(body.url)) {
+    issues.push("A valid http(s) media URL or /uploads path is required");
   }
 
   if (body.caption !== undefined && body.caption !== null && typeof body.caption !== "string") {
@@ -55,7 +104,7 @@ function formatGalleryItem(item, req) {
     _id: item._id,
     section: item.section,
     mediaType: item.mediaType,
-    url: item.url,
+    url: normalizeGalleryMediaUrl(item.url),
     caption: item.caption,
     uploader: {
       id: item.userId?._id || null,
@@ -153,6 +202,31 @@ router.post("/", protect, requireTenantAccess, validateBody(validateCreateGaller
     await created.populate("userId", "name role");
 
     res.status(201).json(formatGalleryItem(created, req));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/upload", protect, requireTenantAccess, galleryUpload.single("file"), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      const error = new Error("No file uploaded");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const mediaType = req.file.mimetype.startsWith("video/") ? "video" : "image";
+    const publicPath = `/uploads/gallery/${req.tenant._id}/${req.file.filename}`;
+
+    res.status(201).json({
+      name: req.file.originalname,
+      url: publicPath,
+      publicPath,
+      absoluteUrl: `${req.protocol}://${req.get("host")}${publicPath}`,
+      mimeType: req.file.mimetype,
+      mediaType,
+      size: req.file.size
+    });
   } catch (error) {
     next(error);
   }

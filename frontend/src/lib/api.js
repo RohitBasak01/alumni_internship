@@ -742,6 +742,19 @@ export async function createGalleryItem(payload) {
   return data;
 }
 
+export async function uploadGalleryMedia(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { data } = await api.post("/gallery/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+
+  return data;
+}
+
 export async function deleteGalleryItem(id) {
   const { data } = await api.delete(`/gallery/${id}`);
   return data;

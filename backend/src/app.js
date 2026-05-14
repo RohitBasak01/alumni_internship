@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 import {
@@ -38,6 +39,9 @@ import mockRoutes from "./routes/mock.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import opsRoutes from "./routes/ops.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+
+const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const uploadsRoot = path.join(backendRoot, "uploads");
 
 const app = express();
 
@@ -107,7 +111,7 @@ if (process.env.NODE_ENV !== "production") {
   app.use(logRequest);
 }
 
-app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+app.use("/uploads", express.static(uploadsRoot));
 app.use(attachRequestContext);
 app.use(structuredRequestLogger);
 app.use("/api", apiRateLimiter);
