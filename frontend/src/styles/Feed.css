@@ -996,3 +996,84 @@
   .feed-comment-form { grid-template-columns: 1fr; }
   .feed-poll-options { grid-template-columns: 1fr; }
 }
+
+/* Phase 5 vibrant module refresh */
+.feed-root.module-feed {
+  --feed-accent: var(--module-accent, #f43f5e);
+  --feed-accent-strong: var(--module-accent-strong, #be123c);
+  --feed-surface: var(--module-surface, #fff1f2);
+  --feed-border: var(--module-border, #fecdd3);
+  --feed-shadow: var(--module-shadow, rgba(244, 63, 94, 0.2));
+}
+
+.feed-root.module-feed .feed-page-header {
+  position: relative;
+  align-items: center;
+  min-height: 8.25rem;
+  padding: 1.35rem 1.45rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--feed-border) 72%, white);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--feed-accent) 18%, transparent), transparent 14rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--feed-surface) 84%, white), #ffffff 66%);
+  box-shadow: 0 22px 46px -32px var(--feed-shadow);
+}
+
+.feed-root.module-feed .feed-page-header::after {
+  content: "forum";
+  position: absolute;
+  right: 1.3rem;
+  bottom: -0.35rem;
+  color: color-mix(in srgb, var(--feed-accent) 15%, transparent);
+  font-family: "Material Symbols Outlined";
+  font-size: 6rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.feed-root.module-feed .feed-page-title {
+  color: var(--feed-accent-strong);
+}
+
+.feed-root.module-feed .feed-page-sub {
+  max-width: 34rem;
+  color: #6b7280;
+}
+
+.feed-root.module-feed .feed-composer-card,
+.feed-root.module-feed .feed-post-card,
+.feed-root.module-feed .feed-sidebar-card,
+.feed-root.module-feed .feed-empty-state {
+  border-color: color-mix(in srgb, var(--feed-border) 58%, #e8edf3);
+  box-shadow: 0 18px 38px -32px var(--feed-shadow);
+}
+
+.feed-root.module-feed .feed-composer-card {
+  background:
+    linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--feed-surface) 32%, white) 100%);
+}
+
+.feed-root.module-feed .feed-composer-input-wrap--focused {
+  border-color: color-mix(in srgb, var(--feed-accent) 62%, white);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--feed-accent) 12%, transparent);
+}
+
+.feed-root.module-feed .feed-composer-type-btn--active,
+.feed-root.module-feed .feed-see-more:hover {
+  background: var(--feed-surface);
+  border-color: var(--feed-border);
+  color: var(--feed-accent-strong);
+}
+
+.feed-root.module-feed .feed-post-card:hover {
+  border-color: var(--feed-border);
+  box-shadow: 0 22px 42px -30px var(--feed-shadow);
+}
+
+@media (max-width: 600px) {
+  .feed-root.module-feed .feed-page-header {
+    min-height: 7.25rem;
+    padding: 1.1rem;
+  }
+}

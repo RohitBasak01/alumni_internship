@@ -103,7 +103,10 @@ export default function AlumniSettingsPage() {
       </header>
 
       <section className="as-account-card">
-        <h2>Account</h2>
+        <h2 className="as-section-title">
+          <span className="material-symbols-outlined" aria-hidden="true">badge</span>
+          Account
+        </h2>
         <div className="as-account-grid">
           <div>
             <span>Name</span>
@@ -125,7 +128,10 @@ export default function AlumniSettingsPage() {
       </section>
 
       <form className="as-settings-card" onSubmit={saveSettings}>
-        <h2>Privacy and Visibility</h2>
+        <h2 className="as-section-title">
+          <span className="material-symbols-outlined" aria-hidden="true">shield_lock</span>
+          Privacy and Visibility
+        </h2>
 
         <label className="as-field">
           <span>Profile visibility</span>

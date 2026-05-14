@@ -653,7 +653,7 @@ export default function TenantAlumniPage() {
     );
 
   return (
-    <div className="ad-root">
+    <div className="ad-root module-alumni">
       {/* ── Page header ─────────────────────────────────── */}
       <div className="ad-page-header">
         <div>

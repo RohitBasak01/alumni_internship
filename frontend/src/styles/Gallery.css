@@ -195,3 +195,116 @@
 @media (max-width:1024px) { .gl-layout { grid-template-columns:1fr 260px; } }
 @media (max-width:860px)  { .gl-layout { grid-template-columns:1fr; } .gl-sidebar { position:static; } .gl-masonry { grid-template-columns:repeat(2,1fr); } }
 @media (max-width:560px)  { .gl-masonry { grid-template-columns:1fr; } .gl-tile--wide { grid-column:span 1; } }
+
+/* Phase 8 page polish */
+.gl-root {
+  --gl-accent: var(--al-color-accent-cyan-500, #06b6d4);
+  --gl-accent-strong: var(--al-color-accent-cyan-700, #0e7490);
+  --gl-soft: var(--al-color-accent-cyan-50, #ecfeff);
+  --gl-border: var(--al-color-accent-cyan-200, #a5f3fc);
+}
+
+.gl-page-header {
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--gl-border) 64%, white);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 85% 16%, rgba(6, 182, 212, 0.16), transparent 12rem),
+    linear-gradient(135deg, rgba(236, 254, 255, 0.92), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 18px 42px rgba(6, 182, 212, 0.08);
+}
+
+.gl-page-title {
+  color: #0f2f3a;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+.gl-upload-header-btn,
+.gl-upload-submit-btn,
+.gl-lightbox-comment-form button {
+  background: linear-gradient(135deg, var(--gl-accent), var(--al-color-accent-violet-500, #8b5cf6));
+  box-shadow: 0 14px 28px rgba(6, 182, 212, 0.18);
+}
+
+.gl-tabs-row,
+.gl-toolbar,
+.gl-sidebar-card {
+  border-color: color-mix(in srgb, var(--gl-border) 58%, white);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+}
+
+.gl-tab--active,
+.gl-view-btn--active {
+  color: var(--gl-accent-strong);
+  background: linear-gradient(135deg, var(--gl-soft), #ffffff);
+  box-shadow: 0 8px 18px rgba(6, 182, 212, 0.12);
+}
+
+.gl-tab-badge,
+.gl-album-count {
+  color: var(--gl-accent-strong);
+  background: var(--gl-soft);
+}
+
+.gl-filter-btn,
+.gl-sort-select,
+.gl-view-toggle,
+.gl-load-more-btn,
+.gl-browse-btn,
+.gl-input {
+  border-color: color-mix(in srgb, var(--gl-border) 64%, white);
+}
+
+.gl-filter-btn:hover,
+.gl-load-more-btn:hover,
+.gl-browse-btn:hover,
+.gl-input:focus {
+  border-color: var(--gl-accent);
+  color: var(--gl-accent-strong);
+  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
+}
+
+.gl-tile {
+  border-radius: 16px;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08);
+}
+
+.gl-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.gl-tile-overlay {
+  background:
+    linear-gradient(to top, rgba(8, 17, 31, 0.76) 0%, rgba(8, 17, 31, 0.12) 62%, transparent 100%),
+    radial-gradient(circle at 20% 18%, rgba(6, 182, 212, 0.22), transparent 12rem);
+}
+
+.gl-tile-tag {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.gl-empty,
+.gl-highlight-empty,
+.gl-drop-zone {
+  border: 1px dashed var(--gl-border);
+  background:
+    linear-gradient(135deg, var(--gl-soft), rgba(255, 255, 255, 0.9));
+  border-radius: 16px;
+}
+
+.gl-drop-zone--active {
+  border-color: var(--gl-accent);
+  background: linear-gradient(135deg, var(--gl-soft), var(--al-color-accent-violet-50, #f5f3ff));
+}
+
+.gl-list-item:hover,
+.gl-album-item:hover {
+  box-shadow: 0 14px 28px rgba(6, 182, 212, 0.1);
+}

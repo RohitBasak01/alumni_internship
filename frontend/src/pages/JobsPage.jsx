@@ -217,7 +217,7 @@ export default function JobsPage(){
   ];
 
   return(
-    <div className="jb-root">
+    <div className="jb-root module-careers">
       <div className="jb-page-header">
         <div>
           <h1 className="jb-page-title">Jobs</h1>

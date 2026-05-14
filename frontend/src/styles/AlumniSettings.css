@@ -185,3 +185,97 @@
     width: 100%;
   }
 }
+
+/* Phase 8 page polish */
+.as-page {
+  --as-accent: var(--al-color-accent-violet-500, #8b5cf6);
+  --as-accent-strong: var(--al-color-accent-violet-700, #6d28d9);
+  --as-soft: var(--al-color-accent-violet-50, #f5f3ff);
+  --as-border: var(--al-color-accent-violet-200, #ddd6fe);
+}
+
+.as-header,
+.as-account-card,
+.as-settings-card {
+  border-color: color-mix(in srgb, var(--as-border) 60%, white);
+  background:
+    linear-gradient(145deg, rgba(245, 243, 255, 0.78), rgba(255, 255, 255, 0.98) 48%),
+    #ffffff;
+  box-shadow: 0 18px 42px rgba(139, 92, 246, 0.08);
+}
+
+.as-header {
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--as-border) 64%, white);
+  border-radius: 18px;
+}
+
+.as-header h1 {
+  color: #2f176f;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 850;
+}
+
+.as-edit-profile-btn,
+.as-btn-solid {
+  background: linear-gradient(135deg, var(--as-accent), var(--al-color-accent-cyan-600, #0891b2));
+  color: #ffffff;
+  border: 0;
+  box-shadow: 0 14px 28px rgba(139, 92, 246, 0.18);
+}
+
+.as-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.as-section-title .material-symbols-outlined {
+  display: inline-grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 12px;
+  color: var(--as-accent-strong);
+  background: var(--as-soft);
+  border: 1px solid var(--as-border);
+  font-size: 1.1rem;
+}
+
+.as-account-grid div,
+.as-toggle-row {
+  border-color: color-mix(in srgb, var(--as-border) 58%, white);
+  background: rgba(245, 243, 255, 0.58);
+}
+
+.as-account-grid div:nth-child(2n),
+.as-toggle-row:nth-of-type(2n) {
+  background: rgba(236, 254, 255, 0.58);
+  border-color: var(--al-color-accent-cyan-200, #a5f3fc);
+}
+
+.as-field select {
+  border-color: color-mix(in srgb, var(--as-border) 62%, white);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.as-field select:focus {
+  outline: none;
+  border-color: var(--as-accent);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+}
+
+.as-toggle-row input {
+  accent-color: var(--as-accent);
+}
+
+.as-success {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  color: #047857;
+  background: var(--al-color-accent-emerald-50, #ecfdf5);
+  border: 1px solid var(--al-color-accent-emerald-200, #a7f3d0);
+}

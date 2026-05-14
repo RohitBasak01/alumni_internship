@@ -13,7 +13,10 @@
 }
 
 .dark body {
-  background-color: var(--color-surface-50);
+  background:
+    radial-gradient(circle at 8% 4%, rgba(37, 84, 216, 0.18), transparent 26rem),
+    radial-gradient(circle at 88% 7%, rgba(20, 184, 166, 0.12), transparent 29rem),
+    linear-gradient(180deg, #0f172a 0%, #111827 50%, #0b1120 100%);
   color: var(--color-ink-50);
 }
 
@@ -47,12 +50,18 @@
 
 /* Dashboard dark mode styles */
 .dark .dl-shell {
-  background-color: var(--color-surface-50);
+  background:
+    radial-gradient(circle at 24% 0%, rgba(37, 84, 216, 0.2), transparent 28rem),
+    radial-gradient(circle at 86% 6%, rgba(20, 184, 166, 0.14), transparent 30rem),
+    linear-gradient(180deg, #0f172a 0%, #111827 52%, #0b1120 100%);
   color: var(--color-ink-50);
 }
 
 .dark .dl-sidebar {
-  background-color: var(--color-surface-100);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(37, 84, 216, 0.34), transparent 18rem),
+    radial-gradient(circle at 100% 22%, rgba(20, 184, 166, 0.2), transparent 16rem),
+    linear-gradient(180deg, #07101f 0%, #0f172a 52%, #0b1120 100%);
   border-right-color: var(--color-surface-200);
 }
 
@@ -96,13 +105,14 @@
 }
 
 .dark .dl-topbar {
-  background-color: var(--color-surface-100);
-  border-bottom-color: var(--color-surface-200);
+  background: rgba(15, 23, 42, 0.84);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
 }
 
 .dark .dl-search-bar {
-  background-color: var(--color-surface-200);
-  border-color: var(--color-surface-300);
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.96));
+  border-color: rgba(148, 163, 184, 0.18);
 }
 
 .dark .dl-search-input {
@@ -116,25 +126,168 @@
 
 .dark .dl-topbar-icon-btn {
   color: var(--color-ink-300);
-  background-color: var(--color-surface-200);
+  background-color: rgba(30, 41, 59, 0.84);
+  border-color: rgba(148, 163, 184, 0.18);
 }
 
 .dark .dl-topbar-icon-btn:hover {
-  background-color: var(--color-surface-300);
-  color: var(--color-ink-50);
+  background-color: rgba(37, 84, 216, 0.22);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #bfdbfe;
 }
 
 .dark .dl-topbar-user {
   color: var(--color-ink-50);
 }
 
+.dark .dl-topbar-user:hover {
+  background: rgba(30, 41, 59, 0.78);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
 .dark .dl-topbar-avatar {
-  background-color: var(--color-brand-500);
+  background: linear-gradient(135deg, #2554d8, #14b8a6);
   color: white;
 }
 
+.dark .dl-notification-menu {
+  border-color: rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.14), transparent 11rem),
+    linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+}
+
+.dark .dl-notification-header {
+  border-bottom-color: rgba(148, 163, 184, 0.14);
+}
+
+.dark .dl-notification-header h3,
+.dark .dl-notification-title {
+  color: var(--color-ink-900);
+}
+
+.dark .dl-notification-message {
+  color: var(--color-ink-600);
+}
+
+.dark .dl-notification-time {
+  color: var(--color-ink-500);
+}
+
+.dark .dl-notification-item {
+  border-bottom-color: rgba(148, 163, 184, 0.1);
+}
+
+.dark .dl-notification-item:hover,
+.dark .dl-notification-item--unread {
+  background: rgba(37, 84, 216, 0.14);
+}
+
+.dark .dl-notification-view-all {
+  border-top-color: rgba(148, 163, 184, 0.14);
+  color: #93c5fd;
+}
+
+.dark .dl-notification-view-all:hover {
+  background: rgba(37, 84, 216, 0.16);
+}
+
+.dark .dl-notification-empty {
+  color: var(--color-ink-600);
+}
+
+/* Phase 5 module dark-mode surfaces */
+.dark .feed-root.module-feed .feed-page-header,
+.dark .ad-root.module-alumni .ad-page-header,
+.dark .ev-root.module-events .ev-page-header,
+.dark .jb-root.module-careers .jb-page-header,
+.dark .adb-root.module-platform .adb-header-section,
+.dark .adm-root.module-admin .adm-header-section {
+  border-color: rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--module-accent, #60a5fa) 20%, transparent), transparent 14rem),
+    linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.96));
+  box-shadow: 0 22px 48px -34px rgba(0, 0, 0, 0.48);
+}
+
+.dark .feed-root.module-feed .feed-page-title,
+.dark .ad-root.module-alumni .ad-page-title,
+.dark .ev-root.module-events .ev-page-title,
+.dark .jb-root.module-careers .jb-page-title,
+.dark .adb-root.module-platform .adb-hero-greeting,
+.dark .adm-root.module-admin .adm-welcome-title {
+  color: var(--color-ink-900);
+}
+
+.dark .feed-root.module-feed .feed-page-sub,
+.dark .ad-root.module-alumni .ad-page-sub,
+.dark .ev-root.module-events .ev-page-sub,
+.dark .jb-root.module-careers .jb-page-sub,
+.dark .adb-root.module-platform .adb-hero-sub,
+.dark .adm-root.module-admin .adm-welcome-sub {
+  color: var(--color-ink-600);
+}
+
+.dark .feed-root.module-feed .feed-composer-card,
+.dark .feed-root.module-feed .feed-post-card,
+.dark .feed-root.module-feed .feed-sidebar-card,
+.dark .feed-root.module-feed .feed-empty-state,
+.dark .ad-root.module-alumni .ad-filter-card,
+.dark .ad-root.module-alumni .ad-search-engine-categories,
+.dark .ad-root.module-alumni .ad-search-engine-card-shell,
+.dark .ad-root.module-alumni .ad-card-v2,
+.dark .ad-root.module-alumni .ad-sidebar-card-v2,
+.dark .ev-root.module-events .ev-toolbar,
+.dark .ev-root.module-events .ev-composer-card,
+.dark .ev-root.module-events .ev-card,
+.dark .ev-root.module-events .ev-list-item,
+.dark .jb-root.module-careers .jb-stat-card,
+.dark .jb-root.module-careers .jb-search-wrap,
+.dark .jb-root.module-careers .jb-composer-card,
+.dark .jb-root.module-careers .jb-row,
+.dark .jb-root.module-careers .jb-sidebar-card,
+.dark .adb-root.module-platform.adb-root--modern,
+.dark .adb-root.module-platform .adb-metric-pill,
+.dark .adb-root.module-platform .adb-stat-card,
+.dark .adb-root.module-platform .adb-completion-mini,
+.dark .adb-root.module-platform .adb-activity-card,
+.dark .adb-root.module-platform .adb-sidebar-card,
+.dark .adm-root.module-admin.adm-root--modern,
+.dark .adm-root.module-admin .adm-card,
+.dark .adm-root.module-admin .adm-stat-pill,
+.dark .adm-root.module-admin .adm-footer-strip,
+.dark .adm-root.module-admin .adm-action-btn {
+  border-color: rgba(148, 163, 184, 0.18);
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.96));
+  box-shadow: 0 18px 38px -32px rgba(0, 0, 0, 0.52);
+}
+
+.dark .ad-root.module-alumni .ad-search-engine-category,
+.dark .ad-root.module-alumni .ad-search-engine-tabs-row {
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--color-ink-700);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.dark .ad-root.module-alumni .ad-search-engine-category:hover,
+.dark .ad-root.module-alumni .ad-search-engine-category.active,
+.dark .ad-root.module-alumni .ad-search-engine-tab.active,
+.dark .jb-root.module-careers .jb-new-badge,
+.dark .jb-root.module-careers .jb-cat-badge,
+.dark .jb-root.module-careers .jb-rec-exp,
+.dark .jb-root.module-careers .jb-res-icon,
+.dark .adm-root.module-admin .reg-tag,
+.dark .adm-root.module-admin .mini-date {
+  background: color-mix(in srgb, var(--module-accent, #60a5fa) 18%, #1e293b);
+  color: var(--color-ink-900);
+}
+
 .dark .dl-main {
-  background-color: var(--color-surface-50);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(6, 182, 212, 0.12), transparent 24rem),
+    radial-gradient(circle at 6% 88%, rgba(139, 92, 246, 0.1), transparent 22rem);
 }
 
 /* Card styles for dark mode */

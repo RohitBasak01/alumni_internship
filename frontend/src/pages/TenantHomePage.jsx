@@ -13,6 +13,7 @@ const ALL_FEATURES = [
     key: "enableDirectory",
     icon: "people",
     label: "Member Directory",
+    tone: "violet",
     description:
       "Browse graduates and former students with institution-aware filters — batch, department, location, and more."
   },
@@ -20,6 +21,7 @@ const ALL_FEATURES = [
     key: "enableFriendship",
     icon: "school",
     label: "Friendship",
+    tone: "teal",
     description:
       "Connect with experienced alumni for career guidance, skill development, and long-term friendship."
   },
@@ -27,6 +29,7 @@ const ALL_FEATURES = [
     key: "enableJobs",
     icon: "work",
     label: "Jobs & Opportunities",
+    tone: "emerald",
     description:
       "Discover job openings, referrals, and volunteering needs shared by trusted community members."
   },
@@ -34,6 +37,7 @@ const ALL_FEATURES = [
     key: "enableEvents",
     icon: "event",
     label: "Events",
+    tone: "amber",
     description:
       "Attend reunions, webinars, seminars, and campus events with seamless RSVP tracking."
   },
@@ -41,6 +45,7 @@ const ALL_FEATURES = [
     key: "enableAnnouncements",
     icon: "campaign",
     label: "Newsroom",
+    tone: "rose",
     description:
       "Stay informed with official announcements, news, and updates from your institution."
   },
@@ -48,14 +53,15 @@ const ALL_FEATURES = [
     key: "enableGroups",
     icon: "groups",
     label: "Community Groups",
+    tone: "cyan",
     description:
       "Join batch groups, departmental circles, or interest-based communities within your network."
   }
 ];
 
-function FeatureCard({ icon, label, description }) {
+function FeatureCard({ icon, label, description, tone }) {
   return (
-    <article className="th-feature-card">
+    <article className={`th-feature-card th-tone-${tone}`}>
       <span className="th-feature-icon material-symbols-outlined" aria-hidden="true">
         {icon}
       </span>
@@ -147,7 +153,7 @@ function TenantHomePage() {
 
           <h1 className="th-hero-title">
             Connect with the <br/>
-            <span className="th-brand-highlight" style={{ color: 'var(--th-primary)' }}>{name}</span> legacy.
+            <span className="th-brand-highlight" style={{ color: "var(--th-primary)" }}>{name}</span> legacy.
           </h1>
 
           <p className="th-hero-tagline">{tagline}</p>
@@ -159,6 +165,21 @@ function TenantHomePage() {
             <Link className="th-btn th-btn-secondary" to={tenant.getTenantAwarePath("/register")}>
               {memberPlural} Sign Up
             </Link>
+          </div>
+
+          <div className="th-hero-metrics" aria-label="Community highlights">
+            <span>
+              <strong>Directory</strong>
+              <small>Verified members</small>
+            </span>
+            <span>
+              <strong>Events</strong>
+              <small>Campus and virtual</small>
+            </span>
+            <span>
+              <strong>Careers</strong>
+              <small>Referrals and guidance</small>
+            </span>
           </div>
         </div>
       </section>
@@ -209,6 +230,7 @@ function TenantHomePage() {
                     icon={feature.icon}
                     label={feature.label}
                     description={feature.description}
+                    tone={feature.tone}
                   />
                 </div>
               ))}

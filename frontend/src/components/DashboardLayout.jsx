@@ -172,48 +172,52 @@ function DashboardLayout() {
           id="sidebar-nav"
           aria-label="Dashboard navigation"
         >
-          {sections.map((section) => (
-            <div key={section.label} className="dl-nav-group">
-              <div
-                className="dl-nav-group-label"
-                aria-label={`${section.label} section`}
-              >
-                {section.label}
-              </div>
-              {section.links.map((link) => {
-                const badge = getBadgeCount(link.to);
-                const badgeText = badge > 0 ? `, ${badge} unread` : '';
-                return (
-                  <NavLink
-                    key={link.to + link.label}
-                    to={link.to}
-                    end={link.end}
-                    className={({ isActive }) => `dl-nav-item ${isActive ? "dl-nav-item--active" : ""}`}
-                    onClick={() => setIsMobileOpen(false)}
-                    data-tooltip={link.label}
-                    aria-label={`${link.label}${badgeText}`}
-                    aria-current={({ isActive }) => isActive ? "page" : undefined}
-                  >
-                    <span
-                      className="material-symbols-outlined dl-nav-icon"
-                      aria-hidden="true"
+          {sections.map((section) => {
+            const sectionTone = section.label.toLowerCase().replace(/\s+/g, "-");
+
+            return (
+              <div key={section.label} className={`dl-nav-group dl-nav-group--${sectionTone}`}>
+                <div
+                  className="dl-nav-group-label"
+                  aria-label={`${section.label} section`}
+                >
+                  {section.label}
+                </div>
+                {section.links.map((link) => {
+                  const badge = getBadgeCount(link.to);
+                  const badgeText = badge > 0 ? `, ${badge} unread` : '';
+                  return (
+                    <NavLink
+                      key={link.to + link.label}
+                      to={link.to}
+                      end={link.end}
+                      className={({ isActive }) => `dl-nav-item ${isActive ? "dl-nav-item--active" : ""}`}
+                      onClick={() => setIsMobileOpen(false)}
+                      data-tooltip={link.label}
+                      aria-label={`${link.label}${badgeText}`}
+                      aria-current={({ isActive }) => isActive ? "page" : undefined}
                     >
-                      {link.icon}
-                    </span>
-                    <span className="dl-nav-label">{link.label}</span>
-                    {badge > 0 && (
                       <span
-                        className="dl-nav-badge"
-                        aria-label={`${badge} unread notifications`}
+                        className="material-symbols-outlined dl-nav-icon"
+                        aria-hidden="true"
                       >
-                        {badge}
+                        {link.icon}
                       </span>
-                    )}
-                  </NavLink>
-                );
-              })}
-            </div>
-          ))}
+                      <span className="dl-nav-label">{link.label}</span>
+                      {badge > 0 && (
+                        <span
+                          className="dl-nav-badge"
+                          aria-label={`${badge} unread notifications`}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            );
+          })}
 
           {/* Logout link inside nav (GENERAL section) */}
           <div className="dl-nav-group">
@@ -272,8 +276,8 @@ function DashboardLayout() {
             aria-label="Search dashboard"
           >
             <span
-              className="material-symbols-outlined"
-              style={{ fontSize: 18, color: "#94a3b8" }}
+              className="material-symbols-outlined dl-search-icon"
+              style={{ fontSize: 18 }}
               aria-hidden="true"
             >
               search
@@ -294,7 +298,8 @@ function DashboardLayout() {
 
           <div className="dl-topbar-actions">
             <NotificationDropdown />
-            <button
+            <Link
+              to="/portal/messages"
               className="dl-topbar-icon-btn"
               aria-label={`Messages${pendingFriendshipRequests > 0 ? `, ${pendingFriendshipRequests} unread` : ''}`}
             >
@@ -311,7 +316,7 @@ function DashboardLayout() {
                   aria-label={`${pendingFriendshipRequests} unread messages`}
                 />
               )}
-            </button>
+            </Link>
             <Link
               to={profileLink}
               className="dl-topbar-user"

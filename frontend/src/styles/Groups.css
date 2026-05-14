@@ -213,6 +213,107 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Phase 8 page polish */
+.community-groups-portal-section {
+  --group-accent: var(--al-color-accent-teal-500, #14b8a6);
+  --group-accent-strong: var(--al-color-accent-teal-700, #0f766e);
+  --group-soft: var(--al-color-accent-teal-50, #f0fdfa);
+  --group-border: var(--al-color-accent-teal-200, #99f6e4);
+}
+
+.group-portal-sidebar,
+.group-portal-pane,
+.group-browse-card,
+.group-composer-modal,
+.invite-modal {
+  border-color: color-mix(in srgb, var(--group-border) 58%, white);
+  background:
+    linear-gradient(145deg, rgba(240, 253, 250, 0.82), rgba(255, 255, 255, 0.98) 48%),
+    #ffffff;
+  box-shadow: 0 20px 44px rgba(20, 184, 166, 0.08);
+}
+
+.group-sidebar-search,
+.invite-search-bar,
+.member-picker-grid,
+.form-group input,
+.form-group select,
+.form-group textarea {
+  border-color: color-mix(in srgb, var(--group-border) 62%, white);
+  background: rgba(240, 253, 250, 0.62);
+}
+
+.group-sidebar-search:focus-within,
+.invite-search-bar:focus-within,
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--group-accent);
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.12);
+}
+
+.group-list-item,
+.group-browse-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.group-list-item::before,
+.group-browse-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--group-accent), var(--al-color-accent-cyan-500, #06b6d4));
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.group-list-item:hover::before,
+.group-list-item.active::before,
+.group-browse-card:hover::before {
+  opacity: 1;
+}
+
+.group-list-item.active,
+.group-list-item:hover,
+.group-browse-card:hover {
+  border-color: var(--group-border);
+  background:
+    linear-gradient(135deg, rgba(240, 253, 250, 0.92), rgba(236, 254, 255, 0.74)),
+    #ffffff;
+  box-shadow: 0 18px 38px rgba(20, 184, 166, 0.12);
+}
+
+.group-item-avatar,
+.group-browse-card-avatar,
+.member-picker-avatar {
+  background: linear-gradient(135deg, var(--group-accent), var(--al-color-accent-violet-500, #8b5cf6));
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(20, 184, 166, 0.2);
+}
+
+.group-sidebar-promo {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.36), transparent 7rem),
+    linear-gradient(135deg, var(--group-accent-strong), var(--al-color-accent-cyan-700, #0e7490));
+  color: #ffffff;
+  border: 0;
+  box-shadow: 0 24px 48px rgba(15, 118, 110, 0.22);
+}
+
+.group-promo-btn,
+.form-actions .button.primary {
+  background: linear-gradient(135deg, var(--group-accent), var(--group-accent-strong));
+  color: #ffffff;
+  border: 0;
+}
+
+.member-picker-item.selected {
+  background: var(--group-soft);
+  border-color: var(--group-border);
+}
+
 /* ── Invite Modal Extras ── */
 .invite-modal {
   max-width: 520px;

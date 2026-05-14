@@ -536,7 +536,7 @@ export default function EventsPage() {
 
   /* List view */
   return (
-    <div className="ev-root">
+    <div className="ev-root module-events">
       {/* Header */}
       <div className="ev-page-header">
         <div>

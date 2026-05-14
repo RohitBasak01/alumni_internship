@@ -18,12 +18,20 @@ function LoadingSpinner({
 
   const colorClasses = {
     brand: "border-brand-600 border-t-transparent",
+    gradient: "border-accent-violet-500 border-r-accent-coral-500 border-b-accent-teal-500 border-t-transparent",
     white: "border-white border-t-transparent",
     slate: "border-slate-600 border-t-transparent",
-    primary: "border-[#6366f1] border-t-transparent",
-    success: "border-emerald-600 border-t-transparent",
-    warning: "border-amber-600 border-t-transparent",
-    danger: "border-rose-600 border-t-transparent"
+    primary: "border-brand-600 border-t-transparent",
+    success: "border-success-600 border-t-transparent",
+    warning: "border-warning-600 border-t-transparent",
+    danger: "border-error-600 border-t-transparent",
+    violet: "border-accent-violet-600 border-t-transparent",
+    teal: "border-accent-teal-600 border-t-transparent",
+    coral: "border-accent-coral-600 border-t-transparent",
+    amber: "border-accent-amber-600 border-t-transparent",
+    cyan: "border-accent-cyan-600 border-t-transparent",
+    emerald: "border-accent-emerald-600 border-t-transparent",
+    rose: "border-accent-rose-600 border-t-transparent"
   };
 
   return (
@@ -56,10 +64,10 @@ function ButtonLoadingSpinner({ size = "sm", color = "white" }) {
  */
 function PageLoadingOverlay({ label = "Loading..." }) {
   return (
-    <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="text-center">
-        <LoadingSpinner size="lg" color="brand" />
-        <p className="mt-4 text-slate-600 font-medium">{label}</p>
+    <div className="fixed inset-0 bg-white/82 dark:bg-surface-900/82 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="rounded-2xl border border-brand-100 bg-white/90 px-8 py-7 text-center shadow-xl shadow-brand-500/10 dark:border-surface-700 dark:bg-surface-800/90">
+        <LoadingSpinner size="lg" color="gradient" />
+        <p className="mt-4 text-slate-600 font-semibold dark:text-ink-300">{label}</p>
       </div>
     </div>
   );
@@ -72,7 +80,7 @@ function InlineLoading({ text = "Loading...", size = "sm", color = "brand" }) {
   return (
     <div className="inline-flex items-center gap-2">
       <LoadingSpinner size={size} color={color} />
-      <span className="text-slate-600 text-sm font-medium">{text}</span>
+      <span className="text-slate-600 text-sm font-medium dark:text-ink-300">{text}</span>
     </div>
   );
 }

@@ -74,6 +74,168 @@ export const colors = {
     900: '#1e3a8a',
   },
 
+  // Vibrant accent families for module identity and decorative surfaces
+  accent: {
+    violet: {
+      50: '#f5f3ff',
+      100: '#ede9fe',
+      200: '#ddd6fe',
+      300: '#c4b5fd',
+      400: '#a78bfa',
+      500: '#8b5cf6',
+      600: '#7c3aed',
+      700: '#6d28d9',
+      800: '#5b21b6',
+      900: '#4c1d95',
+    },
+    teal: {
+      50: '#f0fdfa',
+      100: '#ccfbf1',
+      200: '#99f6e4',
+      300: '#5eead4',
+      400: '#2dd4bf',
+      500: '#14b8a6',
+      600: '#0d9488',
+      700: '#0f766e',
+      800: '#115e59',
+      900: '#134e4a',
+    },
+    coral: {
+      50: '#fff1f2',
+      100: '#ffe4e6',
+      200: '#fecdd3',
+      300: '#fda4af',
+      400: '#fb7185',
+      500: '#f43f5e',
+      600: '#e11d48',
+      700: '#be123c',
+      800: '#9f1239',
+      900: '#881337',
+    },
+    amber: {
+      50: '#fffbeb',
+      100: '#fef3c7',
+      200: '#fde68a',
+      300: '#fcd34d',
+      400: '#fbbf24',
+      500: '#f59e0b',
+      600: '#d97706',
+      700: '#b45309',
+      800: '#92400e',
+      900: '#78350f',
+    },
+    cyan: {
+      50: '#ecfeff',
+      100: '#cffafe',
+      200: '#a5f3fc',
+      300: '#67e8f9',
+      400: '#22d3ee',
+      500: '#06b6d4',
+      600: '#0891b2',
+      700: '#0e7490',
+      800: '#155e75',
+      900: '#164e63',
+    },
+    rose: {
+      50: '#fff1f2',
+      100: '#ffe4e6',
+      200: '#fecdd3',
+      300: '#fda4af',
+      400: '#fb7185',
+      500: '#e11d48',
+      600: '#be123c',
+      700: '#9f1239',
+      800: '#881337',
+      900: '#4c0519',
+    },
+    emerald: {
+      50: '#ecfdf5',
+      100: '#d1fae5',
+      200: '#a7f3d0',
+      300: '#6ee7b7',
+      400: '#34d399',
+      500: '#10b981',
+      600: '#059669',
+      700: '#047857',
+      800: '#065f46',
+      900: '#064e3b',
+    },
+  },
+
+  // Module role aliases keep page refreshes consistent across the app
+  modules: {
+    platform: {
+      accent: '#2554d8',
+      accentStrong: '#163795',
+      surface: '#eef3ff',
+      border: '#c7d2fe',
+      shadow: 'rgba(37, 84, 216, 0.22)',
+    },
+    alumni: {
+      accent: '#8b5cf6',
+      accentStrong: '#6d28d9',
+      surface: '#f5f3ff',
+      border: '#ddd6fe',
+      shadow: 'rgba(139, 92, 246, 0.22)',
+    },
+    feed: {
+      accent: '#f43f5e',
+      accentStrong: '#be123c',
+      surface: '#fff1f2',
+      border: '#fecdd3',
+      shadow: 'rgba(244, 63, 94, 0.2)',
+    },
+    events: {
+      accent: '#f59e0b',
+      accentStrong: '#b45309',
+      surface: '#fffbeb',
+      border: '#fde68a',
+      shadow: 'rgba(245, 158, 11, 0.2)',
+    },
+    careers: {
+      accent: '#10b981',
+      accentStrong: '#047857',
+      surface: '#ecfdf5',
+      border: '#a7f3d0',
+      shadow: 'rgba(16, 185, 129, 0.2)',
+    },
+    groups: {
+      accent: '#14b8a6',
+      accentStrong: '#0f766e',
+      surface: '#f0fdfa',
+      border: '#99f6e4',
+      shadow: 'rgba(20, 184, 166, 0.2)',
+    },
+    gallery: {
+      accent: '#06b6d4',
+      accentStrong: '#0e7490',
+      surface: '#ecfeff',
+      border: '#a5f3fc',
+      shadow: 'rgba(6, 182, 212, 0.2)',
+    },
+    newsroom: {
+      accent: '#e11d48',
+      accentStrong: '#9f1239',
+      surface: '#fff1f2',
+      border: '#fecdd3',
+      shadow: 'rgba(225, 29, 72, 0.2)',
+    },
+    directory: {
+      accent: '#0d9488',
+      accentStrong: '#115e59',
+      surface: '#f0fdfa',
+      border: '#99f6e4',
+      shadow: 'rgba(13, 148, 136, 0.2)',
+    },
+    admin: {
+      accent: '#3b82f6',
+      accentStrong: '#1d4ed8',
+      surface: '#eff6ff',
+      border: '#bfdbfe',
+      shadow: 'rgba(59, 130, 246, 0.18)',
+    },
+  },
+
   // Neutral colors (surface/ink)
   surface: {
     50: '#f8fbff',
@@ -271,32 +433,22 @@ export function generateCSSVariables(prefix = 'al') {
   const variables = {};
   
   // Color variables
-  Object.entries(colors.brand).forEach(([key, value]) => {
-    variables[`--${prefix}-color-brand-${key}`] = value;
+  ['brand', 'success', 'warning', 'error', 'info', 'surface', 'ink'].forEach((groupName) => {
+    Object.entries(colors[groupName]).forEach(([key, value]) => {
+      variables[`--${prefix}-color-${groupName}-${key}`] = value;
+    });
   });
-  
-  Object.entries(colors.success).forEach(([key, value]) => {
-    variables[`--${prefix}-color-success-${key}`] = value;
+
+  Object.entries(colors.accent).forEach(([accentName, palette]) => {
+    Object.entries(palette).forEach(([key, value]) => {
+      variables[`--${prefix}-color-accent-${accentName}-${key}`] = value;
+    });
   });
-  
-  Object.entries(colors.warning).forEach(([key, value]) => {
-    variables[`--${prefix}-color-warning-${key}`] = value;
-  });
-  
-  Object.entries(colors.error).forEach(([key, value]) => {
-    variables[`--${prefix}-color-error-${key}`] = value;
-  });
-  
-  Object.entries(colors.info).forEach(([key, value]) => {
-    variables[`--${prefix}-color-info-${key}`] = value;
-  });
-  
-  Object.entries(colors.surface).forEach(([key, value]) => {
-    variables[`--${prefix}-color-surface-${key}`] = value;
-  });
-  
-  Object.entries(colors.ink).forEach(([key, value]) => {
-    variables[`--${prefix}-color-ink-${key}`] = value;
+
+  Object.entries(colors.modules).forEach(([moduleName, roleValues]) => {
+    Object.entries(roleValues).forEach(([roleName, value]) => {
+      variables[`--${prefix}-module-${moduleName}-${roleName}`] = value;
+    });
   });
   
   // Dark mode color variables

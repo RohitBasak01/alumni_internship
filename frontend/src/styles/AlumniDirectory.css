@@ -1243,3 +1243,89 @@ input:checked + .ad-custom-check {
   border-radius: 8px;
   font-weight: 500;
 }
+
+/* Phase 5 vibrant module refresh */
+.ad-root.module-alumni {
+  --ad-accent: var(--module-accent, #8b5cf6);
+  --ad-accent-strong: var(--module-accent-strong, #6d28d9);
+  --ad-surface: var(--module-surface, #f5f3ff);
+  --ad-border: var(--module-border, #ddd6fe);
+  --ad-shadow: var(--module-shadow, rgba(139, 92, 246, 0.22));
+}
+
+.ad-root.module-alumni .ad-page-header {
+  position: relative;
+  min-height: 8rem;
+  padding: 1.35rem 1.45rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ad-border) 72%, white);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 84% 8%, color-mix(in srgb, var(--ad-accent) 18%, transparent), transparent 14rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--ad-surface) 84%, white), #ffffff 66%);
+  box-shadow: 0 22px 46px -32px var(--ad-shadow);
+}
+
+.ad-root.module-alumni .ad-page-header::after {
+  content: "diversity_3";
+  position: absolute;
+  right: 1.2rem;
+  bottom: -0.45rem;
+  color: color-mix(in srgb, var(--ad-accent) 15%, transparent);
+  font-family: "Material Symbols Outlined";
+  font-size: 6.2rem;
+  line-height: 1;
+}
+
+.ad-root.module-alumni .ad-page-title {
+  color: var(--ad-accent-strong);
+}
+
+.ad-root.module-alumni .ad-page-sub {
+  max-width: 38rem;
+  color: #6b7280;
+}
+
+.ad-root.module-alumni .ad-filter-card,
+.ad-root.module-alumni .ad-search-engine-categories,
+.ad-root.module-alumni .ad-search-engine-card-shell,
+.ad-root.module-alumni .ad-card-v2,
+.ad-root.module-alumni .ad-sidebar-card-v2 {
+  border-color: color-mix(in srgb, var(--ad-border) 58%, #e8edf3);
+  box-shadow: 0 18px 38px -32px var(--ad-shadow);
+}
+
+.ad-root.module-alumni .ad-filter-card {
+  background:
+    linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--ad-surface) 32%, white) 100%);
+}
+
+.ad-root.module-alumni .ad-search-engine-brand .material-symbols-outlined,
+.ad-root.module-alumni .ad-search-engine-tab.active,
+.ad-root.module-alumni .ad-search-engine-category.active,
+.ad-root.module-alumni .ad-page-btn--active {
+  color: var(--ad-accent-strong);
+}
+
+.ad-root.module-alumni .ad-search-engine-tab.active::after,
+.ad-root.module-alumni .ad-page-btn--active {
+  background: linear-gradient(135deg, var(--ad-accent), var(--ad-accent-strong));
+  border-color: var(--ad-accent);
+  color: #ffffff;
+}
+
+.ad-root.module-alumni .ad-search-engine-category:hover,
+.ad-root.module-alumni .ad-search-engine-category.active {
+  background: var(--ad-surface);
+}
+
+.ad-root.module-alumni .ad-search-go-btn {
+  background: linear-gradient(135deg, var(--ad-accent), var(--ad-accent-strong));
+}
+
+@media (max-width: 600px) {
+  .ad-root.module-alumni .ad-page-header {
+    min-height: 7.25rem;
+    padding: 1.1rem;
+  }
+}

@@ -15,6 +15,46 @@ const institutions = [
   { name: "XLRI JAMSHEDPUR", abbr: "XLRI" },
 ];
 
+const mockupStats = [
+  { icon: "dynamic_feed", label: "Feed Posts", value: "128", change: "+12%", tone: "coral" },
+  { icon: "group", label: "Network", value: "2.4K", change: "+8%", tone: "violet" },
+  { icon: "work", label: "Referrals", value: "320", change: "+16%", tone: "emerald" },
+  { icon: "event", label: "Events", value: "24", change: "+5%", tone: "amber" },
+];
+
+const featureCards = [
+  {
+    icon: "contacts",
+    title: "Member Directory",
+    desc: "Find graduates using institution-aware filters like batch, department, organization, and location.",
+    tone: "violet"
+  },
+  {
+    icon: "groups",
+    title: "Community Hub",
+    desc: "Enable mentorship, collaborations, reunions, and meaningful networking inside one trusted ecosystem.",
+    tone: "teal"
+  },
+  {
+    icon: "work",
+    title: "Opportunities",
+    desc: "Share openings, referrals, volunteering needs, and community opportunities with the right members.",
+    tone: "emerald"
+  },
+  {
+    icon: "event",
+    title: "Event Management",
+    desc: "Run reunions, webinars, and campus events with seamless RSVP tracking and real-time updates.",
+    tone: "amber"
+  },
+];
+
+const journeySteps = [
+  { icon: "account_balance", title: "Launch a branded portal", text: "Create a trusted home that looks connected to the institution from day one.", tone: "blue" },
+  { icon: "diversity_3", title: "Activate alumni circles", text: "Bring batches, departments, mentors, and clubs into one shared community rhythm.", tone: "teal" },
+  { icon: "rocket_launch", title: "Grow career momentum", text: "Turn alumni goodwill into referrals, events, advice, and measurable engagement.", tone: "rose" },
+];
+
 function InstitutionLogo({ name, abbr }) {
   return (
     <div className="hp-inst-logo">
@@ -39,7 +79,7 @@ function DashboardMockup() {
           </div>
         </div>
         <div className="hp-mockup-topbar">
-          <span className="hp-mockup-greeting">Good morning, Aarav 👋</span>
+          <span className="hp-mockup-greeting">Good morning, Aarav</span>
           <span className="hp-mockup-sub-greeting">Your alumni community is thriving today.</span>
         </div>
         <div className="hp-mockup-search">
@@ -80,19 +120,14 @@ function DashboardMockup() {
         <div className="hp-mockup-main">
           {/* Stats row */}
           <div className="hp-stats-row">
-            {[
-              { icon: "dynamic_feed", label: "Feed Posts", value: "128", change: "+12%", color: "#6366f1" },
-              { icon: "group", label: "Network", value: "2.4K", change: "+8%", color: "#0ea5e9" },
-              { icon: "handshake", label: "Friendships", value: "320", change: "+16%", color: "#10b981" },
-              { icon: "event", label: "Events", value: "24", change: "+5%", color: "#f59e0b" },
-            ].map((stat) => (
-              <div key={stat.label} className="hp-stat-card">
-                <div className="hp-stat-icon" style={{ color: stat.color }}>
+            {mockupStats.map((stat) => (
+              <div key={stat.label} className={`hp-stat-card hp-tone-${stat.tone}`}>
+                <div className="hp-stat-icon">
                   <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{stat.icon}</span>
                   <span>{stat.label}</span>
                 </div>
                 <div className="hp-stat-value">{stat.value}</div>
-                <div className="hp-stat-change" style={{ color: "#10b981" }}>{stat.change}</div>
+                <div className="hp-stat-change">{stat.change}</div>
               </div>
             ))}
           </div>
@@ -106,19 +141,19 @@ function DashboardMockup() {
                 <span className="hp-section-viewall">View All</span>
               </div>
               {[
-                { name: "Riya Desai", role: "Product Manager at Finaverse", time: "2h ago", text: "Excited to share that our community mixer was a huge success! 🎉", likes: 42, comments: 12, shares: 8, color: "#6366f1" },
-                { name: "Dev Mehta", role: "Engineering Lead at Orbit Systems", time: "5h ago", text: "Looking forward to mentoring 5 final-year students this month.", likes: 25, comments: 8, shares: 4, color: "#0ea5e9" },
-                { name: "SPIT Alumni Association", role: "Official", time: "1d ago", text: "Registrations open for the Annual Alumni Meet 2026!", likes: 67, comments: 18, shares: 12, color: "#10b981" },
+                { name: "Riya Desai", role: "Product Manager at Finaverse", time: "2h ago", text: "Community mixer highlights are live now.", likes: 42, comments: 12, shares: 8, tone: "violet" },
+                { name: "Dev Mehta", role: "Engineering Lead at Orbit Systems", time: "5h ago", text: "Looking forward to mentoring five final-year students this month.", likes: 25, comments: 8, shares: 4, tone: "cyan" },
+                { name: "SPIT Alumni Association", role: "Official", time: "1d ago", text: "Registrations open for the Annual Alumni Meet 2026.", likes: 67, comments: 18, shares: 12, tone: "emerald" },
               ].map((post) => (
                 <div key={post.name} className="hp-activity-item">
-                  <div className="hp-activity-avatar" style={{ background: post.color }}>{post.name[0]}</div>
+                  <div className={`hp-activity-avatar hp-tone-${post.tone}`}>{post.name[0]}</div>
                   <div className="hp-activity-content">
                     <div className="hp-activity-name">{post.name} <span className="hp-activity-role">{post.role}</span> <span className="hp-activity-time">{post.time}</span></div>
                     <div className="hp-activity-text">{post.text}</div>
                     <div className="hp-activity-actions">
-                      <span>❤️ {post.likes}</span>
-                      <span>💬 {post.comments}</span>
-                      <span>↗ {post.shares}</span>
+                      <span>favorite {post.likes}</span>
+                      <span>comment {post.comments}</span>
+                      <span>share {post.shares}</span>
                     </div>
                   </div>
                 </div>
@@ -132,13 +167,13 @@ function DashboardMockup() {
                 <span className="hp-section-viewall">View All</span>
               </div>
               {[
-                { month: "MAY", day: "24", title: "Annual Alumni Meet 2026", details: "May 24, 2026 • 10:00 AM\nSPIT Campus, Mumbai", color: "#6366f1" },
-                { month: "JUN", day: "07", title: "Startup Networking Night", details: "Jun 07, 2026 • 6:30 PM\nWeWork, BKC Mumbai", color: "#10b981" },
-                { month: "JUN", day: "21", title: "Career Friendship Summit", details: "Jun 21, 2026 • 11:00 AM\nOnline Event", color: "#f59e0b" },
+                { month: "MAY", day: "24", title: "Annual Alumni Meet 2026", details: "May 24, 2026 - 10:00 AM\nSPIT Campus, Mumbai", tone: "violet" },
+                { month: "JUN", day: "07", title: "Startup Networking Night", details: "Jun 07, 2026 - 6:30 PM\nWeWork, BKC Mumbai", tone: "emerald" },
+                { month: "JUN", day: "21", title: "Career Mentorship Summit", details: "Jun 21, 2026 - 11:00 AM\nOnline Event", tone: "amber" },
               ].map((ev) => (
-                <div key={ev.title} className="hp-event-item">
-                  <div className="hp-event-date" style={{ borderLeftColor: ev.color }}>
-                    <div className="hp-event-month" style={{ color: ev.color }}>{ev.month}</div>
+                <div key={ev.title} className={`hp-event-item hp-tone-${ev.tone}`}>
+                  <div className="hp-event-date">
+                    <div className="hp-event-month">{ev.month}</div>
                     <div className="hp-event-day">{ev.day}</div>
                   </div>
                   <div className="hp-event-details">
@@ -159,6 +194,9 @@ function HomePage() {
   const tenant = useTenantContext();
   const [instPage, setInstPage] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const visibleInstitutions = institutions.slice(
+    instPage % institutions.length
+  ).concat(institutions.slice(0, instPage % institutions.length));
 
   return (
     <div className="hp-root">
@@ -196,7 +234,7 @@ function HomePage() {
             aria-controls="hp-mobile-menu"
           >
             <span className="material-symbols-outlined">
-              {mobileMenuOpen ? 'close' : 'menu'}
+              {mobileMenuOpen ? "close" : "menu"}
             </span>
           </button>
         </div>
@@ -234,9 +272,7 @@ function HomePage() {
 
       {/* ── Hero ───────────────────────────────────────────────── */}
       <section className="hp-hero" id="main-content">
-        {/* Background blobs */}
-        <div className="hp-blob hp-blob--tl" />
-        <div className="hp-blob hp-blob--br" />
+        <div className="hp-hero-pattern" aria-hidden="true" />
 
         <div className="hp-hero-inner">
           {/* Left copy */}
@@ -326,16 +362,38 @@ function HomePage() {
         <div className="hp-trust-strip" id="institutes">
           <div className="hp-trust-title">Trusted by leading institutions</div>
           <div className="hp-trust-logos">
-            <button className="hp-trust-arrow" onClick={() => setInstPage(p => Math.max(0, p - 1))} aria-label="Previous">
+            <button className="hp-trust-arrow" onClick={() => setInstPage((p) => Math.max(0, p - 1))} aria-label="Previous">
               <span className="material-symbols-outlined">chevron_left</span>
             </button>
-            {institutions.map((inst) => (
+            {visibleInstitutions.map((inst) => (
               <InstitutionLogo key={inst.name} name={inst.name} abbr={inst.abbr} />
             ))}
-            <button className="hp-trust-arrow" onClick={() => setInstPage(p => p + 1)} aria-label="Next">
+            <button className="hp-trust-arrow" onClick={() => setInstPage((p) => p + 1)} aria-label="Next">
               <span className="material-symbols-outlined">chevron_right</span>
             </button>
           </div>
+        </div>
+      </section>
+
+      <section className="hp-network" id="process">
+        <div className="hp-network-copy">
+          <div className="hp-section-label">Community rhythm</div>
+          <h2 className="hp-features-title">From quiet database to living alumni network</h2>
+          <p className="hp-features-sub">
+            AlumNet turns institution records into an active portal where alumni can find each other, show up for events, and create useful career momentum.
+          </p>
+        </div>
+        <div className="hp-journey-grid">
+          {journeySteps.map((step, index) => (
+            <article key={step.title} className={`hp-journey-card hp-tone-${step.tone}`}>
+              <div className="hp-journey-index">{String(index + 1).padStart(2, "0")}</div>
+              <div className="hp-journey-icon">
+                <span className="material-symbols-outlined">{step.icon}</span>
+              </div>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -345,14 +403,9 @@ function HomePage() {
         <h2 className="hp-features-title">Built for thriving communities</h2>
         <p className="hp-features-sub">Everything you need to maintain a vibrant, supportive institutional network.</p>
         <div className="hp-features-grid">
-          {[
-            { icon: "contacts", title: "Member Directory", desc: "Find graduates using institution-aware filters like batch, department, organization, and location.", color: "#6366f1" },
-            { icon: "groups", title: "Community Hub", desc: "Enable friendship, collaborations, reunions, and meaningful networking inside one trusted ecosystem.", color: "#0ea5e9" },
-            { icon: "work", title: "Opportunities", desc: "Share openings, referrals, volunteering needs, and community opportunities with the right members.", color: "#f59e0b" },
-            { icon: "event", title: "Event Management", desc: "Run reunions, webinars, and campus events with seamless RSVP tracking and real-time updates.", color: "#10b981" },
-          ].map((f) => (
-            <div key={f.title} className="hp-feature-card">
-              <div className="hp-feature-icon" style={{ background: f.color + "18", color: f.color }}>
+          {featureCards.map((f) => (
+            <div key={f.title} className={`hp-feature-card hp-tone-${f.tone}`}>
+              <div className="hp-feature-icon">
                 <span className="material-symbols-outlined">{f.icon}</span>
               </div>
               <h3 className="hp-feature-card-title">{f.title}</h3>
@@ -362,8 +415,24 @@ function HomePage() {
         </div>
       </section>
 
+      <section className="hp-cta-band" id="about">
+        <div className="hp-cta-band-inner">
+          <div>
+            <div className="hp-section-label hp-section-label--light">For institutions</div>
+            <h2>Launch a portal that feels alive on day one.</h2>
+            <p>
+              Pair institution branding with community tools for alumni discovery, events, jobs, groups, announcements, and a cleaner admin workflow.
+            </p>
+          </div>
+          <Link to={tenant.getTenantAwarePath("/request-portal")} className="hp-cta-band-button">
+            Request Portal
+            <span className="material-symbols-outlined">arrow_forward</span>
+          </Link>
+        </div>
+      </section>
+
       {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer className="hp-footer">
+      <footer className="hp-footer" id="contact">
         <div className="hp-footer-inner">
           <div className="hp-footer-logo">
             <div className="hp-footer-logo-icon">

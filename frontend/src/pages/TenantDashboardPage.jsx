@@ -125,7 +125,7 @@ function AlumniDashboard({ logic }) {
   const topContributor = communityHighlights.topContributor;
 
   return (
-    <div className="adb-root adb-root--modern">
+    <div className="adb-root adb-root--modern module-platform">
       {/* ── Top Section: Greeting & Stats ── */}
       <div className="adb-header-section">
         <div className="adb-greeting-box">
@@ -422,7 +422,7 @@ function AdminDashboard({ logic }) {
   ];
 
   return (
-    <div className="adm-root adm-root--modern">
+    <div className="adm-root adm-root--modern module-admin">
       {/* ── Top Section: Title & Actions ── */}
       <div className="adm-header-section">
         <div className="adm-title-box">

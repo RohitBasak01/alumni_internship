@@ -372,3 +372,78 @@
   color: #6366f1;
   text-decoration: none;
 }
+
+/* Phase 5 vibrant admin dashboard refresh */
+.adm-root.module-admin {
+  --adm-accent: var(--module-accent, #3b82f6);
+  --adm-accent-strong: var(--module-accent-strong, #1d4ed8);
+  --adm-surface: var(--module-surface, #eff6ff);
+  --adm-border: var(--module-border, #bfdbfe);
+  --adm-shadow: var(--module-shadow, rgba(59, 130, 246, 0.18));
+}
+
+.adm-root.module-admin.adm-root--modern {
+  background:
+    radial-gradient(circle at 7% 0%, color-mix(in srgb, var(--adm-accent) 12%, transparent), transparent 22rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--adm-surface) 58%, white), #ffffff 70%);
+  border: 1px solid color-mix(in srgb, var(--adm-border) 58%, white);
+  box-shadow: 0 22px 48px -34px var(--adm-shadow);
+}
+
+.adm-root.module-admin .adm-header-section {
+  position: relative;
+  min-height: 8rem;
+  padding: 1.3rem 1.45rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--adm-border) 66%, white);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(20, 184, 166, 0.14), transparent 14rem),
+    linear-gradient(135deg, #ffffff, color-mix(in srgb, var(--adm-surface) 58%, white));
+}
+
+.adm-root.module-admin .adm-header-section::after {
+  content: "admin_panel_settings";
+  position: absolute;
+  right: 1.25rem;
+  bottom: -0.45rem;
+  color: color-mix(in srgb, var(--adm-accent) 14%, transparent);
+  font-family: "Material Symbols Outlined";
+  font-size: 6.2rem;
+  line-height: 1;
+}
+
+.adm-root.module-admin .adm-welcome-title,
+.adm-root.module-admin .view-link,
+.adm-root.module-admin .adm-view-all,
+.adm-root.module-admin .adm-view-all-link {
+  color: var(--adm-accent-strong);
+}
+
+.adm-root.module-admin .adm-card,
+.adm-root.module-admin .adm-stat-pill,
+.adm-root.module-admin .adm-footer-strip,
+.adm-root.module-admin .adm-action-btn {
+  border-color: color-mix(in srgb, var(--adm-border) 58%, #e2e8f0);
+  box-shadow: 0 18px 38px -32px var(--adm-shadow);
+}
+
+.adm-root.module-admin .adm-action-btn.primary {
+  background: linear-gradient(135deg, var(--adm-accent), var(--adm-accent-strong));
+  border-color: var(--adm-accent);
+}
+
+.adm-root.module-admin .adm-quick-item:hover,
+.adm-root.module-admin .reg-tag,
+.adm-root.module-admin .mini-date {
+  background: var(--adm-surface);
+  color: var(--adm-accent-strong);
+  border-color: var(--adm-border);
+}
+
+@media (max-width: 760px) {
+  .adm-root.module-admin .adm-header-section {
+    min-height: 7.25rem;
+    padding: 1.1rem;
+  }
+}

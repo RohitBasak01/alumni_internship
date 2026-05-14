@@ -712,7 +712,7 @@ export default function FeedPage() {
   }, [alumniQuery.data, auth.user?.id]);
 
   return (
-    <div className="feed-root">
+    <div className="feed-root module-feed">
       {/* ── Page header ─────────────────────────────────────── */}
       <div className="feed-page-header">
         <div>

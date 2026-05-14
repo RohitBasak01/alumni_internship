@@ -2156,3 +2156,117 @@
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
 }
+
+/* Phase 8 chat polish */
+.member-messages-shell {
+  --chat-accent: var(--al-color-accent-cyan-500, #06b6d4);
+  --chat-accent-deep: var(--al-color-accent-cyan-700, #0e7490);
+  --chat-warm: var(--al-color-accent-rose-50, #fff1f2);
+  --chat-success: var(--al-color-accent-emerald-500, #10b981);
+  --chat-border: rgba(6, 182, 212, 0.18);
+}
+
+.member-messages-sidebar,
+.member-messages-panel,
+.member-contact-panel {
+  border-radius: 22px;
+  border-color: rgba(6, 182, 212, 0.18);
+  box-shadow: 0 24px 60px rgba(6, 182, 212, 0.1);
+}
+
+.member-messages-sidebar {
+  background:
+    radial-gradient(circle at top left, rgba(6, 182, 212, 0.16), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 253, 255, 0.96));
+}
+
+.member-messages-panel {
+  background:
+    radial-gradient(circle at top right, rgba(6, 182, 212, 0.18), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(225, 29, 72, 0.1), transparent 32%),
+    linear-gradient(180deg, #ffffff 0%, #f7fbff 48%, #f0fdfa 100%);
+}
+
+.member-thread-item.active {
+  border-color: rgba(6, 182, 212, 0.32);
+  background:
+    linear-gradient(135deg, rgba(236, 254, 255, 0.82), rgba(245, 243, 255, 0.72)),
+    rgba(255, 255, 255, 0.94);
+  box-shadow:
+    inset 3px 0 0 var(--chat-accent),
+    0 22px 48px rgba(6, 182, 212, 0.12);
+}
+
+.member-thread-avatar,
+.member-message-avatar,
+.member-picker-avatar,
+.member-person-card-avatar {
+  background: linear-gradient(135deg, var(--chat-accent), var(--al-color-accent-violet-500, #8b5cf6));
+  color: #ffffff;
+}
+
+.member-thread-unread-pill,
+.member-status-pill.status-active,
+.member-status-pill.status-accepted {
+  background: var(--al-color-accent-emerald-50, #ecfdf5);
+  color: #047857;
+  border: 1px solid var(--al-color-accent-emerald-200, #a7f3d0);
+}
+
+.member-chat-status-pill.accent {
+  background: var(--al-color-accent-cyan-50, #ecfeff);
+  color: var(--chat-accent-deep);
+  border-color: var(--al-color-accent-cyan-200, #a5f3fc);
+}
+
+.member-message-bubble {
+  border: 1px solid rgba(6, 182, 212, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+}
+
+.member-message-bubble.own {
+  color: #ffffff;
+  background:
+    linear-gradient(135deg, var(--chat-accent-deep), var(--al-color-accent-violet-600, #7c3aed));
+  box-shadow: 0 18px 36px rgba(6, 182, 212, 0.2);
+}
+
+.member-message-bubble.pending {
+  background:
+    linear-gradient(135deg, rgba(255, 251, 235, 0.92), rgba(255, 255, 255, 0.92));
+  border-color: var(--al-color-accent-amber-200, #fde68a);
+}
+
+.member-attachment-file,
+.member-compose-attachment,
+.member-reaction-pill,
+.member-message-action {
+  border-color: rgba(6, 182, 212, 0.16);
+}
+
+.member-reaction-pill.active,
+.member-reaction-pill:hover {
+  color: var(--chat-accent-deep);
+  background: var(--al-color-accent-cyan-50, #ecfeff);
+  border-color: var(--al-color-accent-cyan-200, #a5f3fc);
+}
+
+.member-message-composer {
+  border-color: rgba(6, 182, 212, 0.18);
+  background:
+    linear-gradient(135deg, rgba(236, 254, 255, 0.72), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 18px 40px rgba(6, 182, 212, 0.1);
+}
+
+.alumni-chat-panel .member-message-composer .member-send-button {
+  background: linear-gradient(135deg, var(--chat-accent), var(--al-color-accent-violet-500, #8b5cf6));
+  color: #ffffff;
+}
+
+.member-messages-empty-state {
+  border: 1px dashed var(--al-color-accent-cyan-200, #a5f3fc);
+  background:
+    linear-gradient(135deg, var(--al-color-accent-cyan-50, #ecfeff), rgba(255, 255, 255, 0.9));
+}
