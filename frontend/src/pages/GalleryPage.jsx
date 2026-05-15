@@ -169,7 +169,7 @@ function GalleryTile({ item, canDelete, onDelete, onOpen, wide, tall, highlightS
 export default function GalleryPage() {
   const auth        = useAuth();
   const queryClient = useQueryClient();
-  const isAdmin  = auth.user?.role === "institute_admin";
+  const isAdmin = auth.hasPermission("manage_gallery");
   const isAlumni = auth.user?.role === "alumni";
 
   const [adminImageForm, setAdminImageForm] = useState(emptyForm);

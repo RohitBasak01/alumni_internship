@@ -375,3 +375,94 @@ export async function sendPasswordResetEmail({
 
   return { delivered: true, mode: "smtp" };
 }
+
+export async function sendRoleDelegationEmail({
+  to,
+  recipientName,
+  instituteName,
+  action,           // 'granted' | 'revoked'
+  permissions = [],
+  expiresAt = null,
+  institutionType = "college",
+}) {
+  const config = getEmailConfig();
+  const name = recipientName || "there";
+  const labels = getInstitutionEmailLabels(institutionType);
+  const portalUrl = process.env.CLIENT_URL || "http://localhost:5173";
+
+  if (!hasSmtpConfig(config)) {
+    console.log(`[RoleDelegation] SMTP not configured — ${action} email not sent to ${to}.`);
+    return { delivered: false, mode: "log", message: "SMTP not configured." };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
+  });
+
+  const permissionRows = permissions
+    .map(p => `<li style="margin:4px 0;">${p.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</li>`)
+    .join("");
+
+  const expiryLine = expiresAt
+    ? `<p>This access <strong>expires on ${new Date(expiresAt).toLocaleString()}</strong>.</p>`
+    : "";
+
+  const isGrant = action === "granted";
+
+  const subject = isGrant
+    ? `You have been given co-admin access to the ${instituteName} ${labels.portalName}`
+    : `Your co-admin access to the ${instituteName} ${labels.portalName} has been removed`;
+
+  const html = isGrant ? `
+    <div style="font-family:Arial,sans-serif;color:#14213d;line-height:1.6;max-width:600px;">
+      <h2>Co-Admin Access Granted</h2>
+      <p>Hello ${name},</p>
+      <p>
+        You have been granted <strong>co-admin access</strong> to the
+        <strong>${instituteName}</strong> ${labels.portalName}.
+      </p>
+      <p>You can now perform the following actions:</p>
+      <ul style="padding-left:20px;">${permissionRows}</ul>
+      ${expiryLine}
+      <p style="margin-top:20px;">
+        <a href="${portalUrl}/portal"
+           style="display:inline-block;padding:12px 18px;background:#6366f1;color:#fff;
+                  text-decoration:none;border-radius:8px;">
+          Go to Portal
+        </a>
+      </p>
+      <p style="color:#6b7280;font-size:13px;">
+        If you were not expecting this, please contact the institute administrator.
+      </p>
+    </div>
+  ` : `
+    <div style="font-family:Arial,sans-serif;color:#14213d;line-height:1.6;max-width:600px;">
+      <h2>Co-Admin Access Removed</h2>
+      <p>Hello ${name},</p>
+      <p>
+        Your co-admin access to the <strong>${instituteName}</strong> ${labels.portalName}
+        has been <strong>removed</strong>.
+      </p>
+      <p>You continue to have regular alumni access to the portal.</p>
+      <p style="margin-top:20px;">
+        <a href="${portalUrl}/portal"
+           style="display:inline-block;padding:12px 18px;background:#6366f1;color:#fff;
+                  text-decoration:none;border-radius:8px;">
+          Go to Portal
+        </a>
+      </p>
+    </div>
+  `;
+
+  const info = await transporter.sendMail({ from: config.from, to, subject, html });
+  return {
+    delivered: true,
+    mode: "smtp",
+    message: `Role delegation ${action} email sent.`,
+    previewUrl: nodemailer.getTestMessageUrl(info) || null,
+  };
+}
+

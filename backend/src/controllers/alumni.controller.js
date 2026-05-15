@@ -38,6 +38,38 @@ function getInstitutionType(tenant) {
 }
 
 /**
+ * Build a birthday-range predicate that works on month/day, ignoring the year.
+ * @param {string} start  - "MM-DD" e.g. "01-15"
+ * @param {string} end    - "MM-DD" e.g. "03-20"
+ * @returns {(entry: object) => boolean}
+ */
+function buildBirthdayFilter(start, end) {
+  // Parse start/end into [month, day] pairs (1-indexed month).
+  const [sm, sd] = start.split("-").map(Number);
+  const [em, ed] = end.split("-").map(Number);
+
+  if (!sm || !sd || !em || !ed) return () => true; // invalid input → no filter
+
+  const toOrdinal = (m, d) => m * 100 + d; // e.g. Jan 15 → 115, Dec 10 → 1210
+  const startOrd = toOrdinal(sm, sd);
+  const endOrd   = toOrdinal(em, ed);
+
+  return (entry) => {
+    if (!entry.dateOfBirth) return false;
+    const dob = new Date(entry.dateOfBirth);
+    if (isNaN(dob.getTime())) return false;
+    const ord = toOrdinal(dob.getUTCMonth() + 1, dob.getUTCDate());
+    if (startOrd <= endOrd) {
+      // Normal range: e.g. Mar 01 – Nov 30
+      return ord >= startOrd && ord <= endOrd;
+    } else {
+      // Wrap-around: e.g. Nov 15 – Feb 10
+      return ord >= startOrd || ord <= endOrd;
+    }
+  };
+}
+
+/**
  * Controller for Alumni Directory and Management
  */
 export const getAlumni = asyncHandler(async (req, res) => {
@@ -64,6 +96,9 @@ export const getAlumni = asyncHandler(async (req, res) => {
     experienceMax,
     companySize,
     availability, // comma-separated list
+    // Birthday range filter (admin-only, format: MM-DD)
+    birthdayStart,
+    birthdayEnd,
     sort: sortParam,
     page: pageParam,
     limit: limitParam,
@@ -187,6 +222,12 @@ export const getAlumni = asyncHandler(async (req, res) => {
     result = result.filter((entry) =>
       String(entry.userId?.name || "").toUpperCase().startsWith(letter),
     );
+  }
+
+  // Birthday range filter (month/day, year-agnostic)
+  if (birthdayStart && birthdayEnd) {
+    const birthdayPredicate = buildBirthdayFilter(birthdayStart, birthdayEnd);
+    result = result.filter(birthdayPredicate);
   }
 
   // Text search on user fields (name, email) - only if not already filtered at DB level
@@ -401,6 +442,9 @@ export const exportAlumniCsv = asyncHandler(async (req, res) => {
     alphaIndex,
     isFaculty,
     registeredOnly,
+    // Birthday range filter (format: MM-DD)
+    birthdayStart,
+    birthdayEnd,
     sort: sortParam
   } = req.query;
   const searchText = String(q || "").trim();
@@ -457,6 +501,12 @@ export const exportAlumniCsv = asyncHandler(async (req, res) => {
     alumni = alumni.filter((entry) =>
       String(entry.userId?.name || "").toUpperCase().startsWith(letter)
     );
+  }
+
+  // Birthday range filter (month/day, year-agnostic)
+  if (birthdayStart && birthdayEnd) {
+    const birthdayPredicate = buildBirthdayFilter(birthdayStart, birthdayEnd);
+    alumni = alumni.filter(birthdayPredicate);
   }
 
   if (searchText) {

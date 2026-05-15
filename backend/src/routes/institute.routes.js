@@ -3,13 +3,16 @@ import express from "express";
 
 import { attachTenantDatabaseContext, buildTenantPersistenceConfig, getTenantModels } from "../db/tenantConnectionManager.js";
 import { authorize, protect, requireTenantAccess } from "../middleware/auth.middleware.js";
+import { blockDelegatedAdmins } from "../middleware/delegation.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import Institute from "../models/Institute.js";
 import PortalOnboardingDraft from "../models/PortalOnboardingDraft.js";
+import RoleDelegation from "../models/RoleDelegation.js";
 import User from "../models/User.js";
 import { logAuditEvent } from "../utils/audit.js";
 import { hashPassword } from "../utils/auth.js";
-import { sendInviteEmail } from "../utils/email.js";
+import { DELEGATION_SCOPES } from "../utils/delegationScopes.js";
+import { sendInviteEmail, sendRoleDelegationEmail } from "../utils/email.js";
 import { getPlatformTenantSummaries } from "../utils/tenantAdminData.js";
 import { getDefaultBranding, getDefaultCommunityLabels, getDefaultFeatureFlags } from "../utils/tenantConfig.js";
 import { isEmail, isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
@@ -780,6 +783,254 @@ router.patch(
           name: institute.name
         }
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ─── Role Delegation Routes ───────────────────────────────────────────────────
+// Only the primary (non-delegated) institute admin can grant / revoke.
+
+/**
+ * POST /me/admins
+ * Grant an alumni co-admin access with scoped permissions and mandatory expiry.
+ */
+router.post(
+  "/me/admins",
+  protect,
+  authorize("institute_admin"),
+  blockDelegatedAdmins,
+  requireTenantAccess,
+  async (req, res, next) => {
+    try {
+      const { userId, permissions, expiresAt, note } = req.body;
+
+      // ── Validation ────────────────────────────────────────
+      if (!isObjectIdLike(userId)) {
+        const error = new Error("A valid userId is required");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (!Array.isArray(permissions) || permissions.length === 0) {
+        const error = new Error("At least one permission scope must be selected");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const invalidScopes = permissions.filter(p => !DELEGATION_SCOPES.includes(p));
+      if (invalidScopes.length > 0) {
+        const error = new Error(`Invalid permission scope(s): ${invalidScopes.join(", ")}`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (!expiresAt) {
+        const error = new Error("An expiry date is required for role delegations");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const expiryDate = new Date(expiresAt);
+      if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+        const error = new Error("Expiry date must be a valid future date");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // ── Resolve target user ───────────────────────────────
+      const { User: TenantUser } = getTenantModels(req);
+      const targetUser = await TenantUser.findOne({
+        _id: userId,
+        instituteId: req.tenant._id,
+      });
+
+      if (!targetUser) {
+        const error = new Error("User not found in this institute");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (targetUser.role !== "alumni") {
+        const error = new Error("Only alumni users can be promoted to co-admin");
+        error.statusCode = 409;
+        throw error;
+      }
+
+      // ── Promote user ──────────────────────────────────────
+      targetUser.role = "institute_admin";
+      targetUser.isDelegatedAdmin = true;
+      targetUser.delegatedAdminSince = new Date();
+      targetUser.delegatedAdminExpiresAt = expiryDate;
+      targetUser.delegatedPermissions = permissions;
+      await targetUser.save();
+
+      // ── Audit record ──────────────────────────────────────
+      await RoleDelegation.create({
+        instituteId: req.tenant._id,
+        grantedByUserId: req.user._id,
+        targetUserId: targetUser._id,
+        targetName: targetUser.name,
+        targetEmail: targetUser.email,
+        action: "granted",
+        permissions,
+        expiresAt: expiryDate,
+        note: String(note || "").trim(),
+        grantedAt: new Date(),
+      });
+
+      await logAuditEvent(req, {
+        action: "role.delegation.granted",
+        targetType: "User",
+        targetId: targetUser._id.toString(),
+        instituteId: req.tenant._id,
+        metadata: { targetEmail: targetUser.email, permissions, expiresAt: expiryDate },
+      });
+
+      // ── Email (fire-and-forget) ───────────────────────────
+      sendRoleDelegationEmail({
+        to: targetUser.email,
+        recipientName: targetUser.name,
+        instituteName: req.tenant.name,
+        action: "granted",
+        permissions,
+        expiresAt: expiryDate,
+        institutionType: req.tenant.institutionType,
+      }).catch(() => {});
+
+      res.status(201).json({
+        message: `${targetUser.name} has been granted co-admin access`,
+        user: {
+          _id: targetUser._id,
+          name: targetUser.name,
+          email: targetUser.email,
+          isDelegatedAdmin: true,
+          delegatedAdminSince: targetUser.delegatedAdminSince,
+          delegatedAdminExpiresAt: targetUser.delegatedAdminExpiresAt,
+          delegatedPermissions: targetUser.delegatedPermissions,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /me/admins
+ * List all active delegated admins and delegation history for this institute.
+ */
+router.get(
+  "/me/admins",
+  protect,
+  authorize("institute_admin"),
+  blockDelegatedAdmins,
+  requireTenantAccess,
+  async (req, res, next) => {
+    try {
+      const { User: TenantUser } = getTenantModels(req);
+
+      // Active delegated admins
+      const activeDelegates = await TenantUser.find({
+        instituteId: req.tenant._id,
+        isDelegatedAdmin: true,
+      }).select("-passwordHash -inviteTokenHash -resetPasswordTokenHash -e2eePublicKey");
+
+      // Delegation history (all events for this institute)
+      const history = await RoleDelegation.find({ instituteId: req.tenant._id })
+        .sort({ createdAt: -1 })
+        .limit(100);
+
+      res.json({
+        active: activeDelegates,
+        history,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * DELETE /me/admins/:userId
+ * Revoke a delegation — returns the user to the alumni role.
+ */
+router.delete(
+  "/me/admins/:userId",
+  protect,
+  authorize("institute_admin"),
+  blockDelegatedAdmins,
+  requireTenantAccess,
+  async (req, res, next) => {
+    try {
+      if (!isObjectIdLike(req.params.userId)) {
+        const error = new Error("Invalid userId");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // Self-demotion guard
+      if (req.params.userId === req.user._id.toString()) {
+        const error = new Error("You cannot remove your own admin role");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const { User: TenantUser } = getTenantModels(req);
+      const targetUser = await TenantUser.findOne({
+        _id: req.params.userId,
+        instituteId: req.tenant._id,
+        isDelegatedAdmin: true,
+      });
+
+      if (!targetUser) {
+        const error = new Error("Delegated admin not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const previousPermissions = [...(targetUser.delegatedPermissions || [])];
+
+      // Revert user
+      targetUser.role = "alumni";
+      targetUser.isDelegatedAdmin = false;
+      targetUser.delegatedAdminSince = null;
+      targetUser.delegatedAdminExpiresAt = null;
+      targetUser.delegatedPermissions = [];
+      await targetUser.save();
+
+      // Audit record
+      await RoleDelegation.create({
+        instituteId: req.tenant._id,
+        grantedByUserId: req.user._id,
+        targetUserId: targetUser._id,
+        targetName: targetUser.name,
+        targetEmail: targetUser.email,
+        action: "revoked",
+        permissions: previousPermissions,
+        revokedAt: new Date(),
+        note: String(req.body?.note || "").trim(),
+      });
+
+      await logAuditEvent(req, {
+        action: "role.delegation.revoked",
+        targetType: "User",
+        targetId: targetUser._id.toString(),
+        instituteId: req.tenant._id,
+        metadata: { targetEmail: targetUser.email },
+      });
+
+      // Email (fire-and-forget)
+      sendRoleDelegationEmail({
+        to: targetUser.email,
+        recipientName: targetUser.name,
+        instituteName: req.tenant.name,
+        action: "revoked",
+        institutionType: req.tenant.institutionType,
+      }).catch(() => {});
+
+      res.json({ message: `${targetUser.name}'s co-admin access has been revoked` });
     } catch (error) {
       next(error);
     }

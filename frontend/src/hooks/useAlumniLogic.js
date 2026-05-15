@@ -43,7 +43,9 @@ const initialFilters = {
   alphaIndex: "",
   isFaculty: false,
   registeredOnly: false,
-  activeTab: "name"
+  activeTab: "name",
+  birthdayStart: "",
+  birthdayEnd: "",
 };
 
 export function useAlumniLogic() {

@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { fetchCurrentUser, logout as logoutRequest } from "../lib/api.js";
+import { hasPermission as checkPermission } from "../lib/delegationScopes.js";
 
 const AuthContext = createContext(null);
 
@@ -61,6 +62,7 @@ export function AuthProvider({ children }) {
     logout,
     refreshSession,
     clearSession,
+    hasPermission: (scope) => checkPermission(currentUser, scope),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

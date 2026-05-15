@@ -4,6 +4,7 @@ import crypto from "crypto";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
+import { authorizeWithDelegation } from "../middleware/delegation.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 import { createNotification, createNotificationsForUsers, listActiveAlumniUserIds } from "../utils/notifications.js";
@@ -310,7 +311,7 @@ router.post(
 router.patch(
   "/:id",
   protect,
-  authorize("institute_admin"),
+  authorizeWithDelegation("manage_events"),
   requireTenantAccess,
   validateParams(validateEventId),
   async (req, res, next) => {

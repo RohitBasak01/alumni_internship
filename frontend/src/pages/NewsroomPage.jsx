@@ -135,7 +135,7 @@ const initialForm = { title: "", category: "News", summary: "", imageUrl: "", co
 export default function NewsroomPage() {
   const auth = useAuth();
   const queryClient = useQueryClient();
-  const isAdmin = auth.user?.role === "institute_admin";
+  const isAdmin = auth.hasPermission("manage_announcements");
   const [activeCategory, setActiveCategory] = useState("All");
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [showComposer, setShowComposer] = useState(false);

@@ -390,7 +390,7 @@ export default function EventsPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["events"] }); queryClient.invalidateQueries({ queryKey: ["feed"] }); }
   });
 
-  const isAdmin = auth.user?.role === "institute_admin";
+  const isAdmin = auth.hasPermission("manage_events");
   const canCreateEvent = isAdmin || auth.user?.role === "alumni";
 
   function canDeleteEvent(item) {

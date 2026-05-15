@@ -7,7 +7,11 @@
     "dev": "vite --force",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
@@ -22,11 +26,13 @@
     "axios": "^1.8.1",
     "emoji-picker-react": "^4.19.1",
     "leaflet": "^1.9.4",
+    "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",
     "react-leaflet-cluster": "^4.1.3",
     "react-router-dom": "^7.1.5",
+    "recharts": "^3.8.1",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
@@ -47,15 +53,5 @@
     "tailwindcss": "^4.2.1",
     "vite": "^6.1.0",
     "vitest": "^4.1.5"
-  },
-  "scripts": {
-    "dev": "vite --force",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
   }
 }

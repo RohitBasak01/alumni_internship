@@ -989,3 +989,113 @@ export async function deleteFriendshipConversation(id) {
 }
 
 export const deleteAlumniConversation = deleteFriendshipConversation;
+
+// ─── Role Delegation ───────────────────────────────────────────────────────
+
+export async function fetchDelegatedAdmins() {
+  const { data } = await api.get("/institutes/me/admins");
+  return data;
+}
+
+export async function grantDelegation({ userId, permissions, expiresAt, note }) {
+  const { data } = await api.post("/institutes/me/admins", { userId, permissions, expiresAt, note });
+  return data;
+}
+
+export async function revokeDelegation(userId) {
+  const { data } = await api.delete(`/institutes/me/admins/${userId}`);
+  return data;
+}
+
+// ─── Fundraising ───────────────────────────────────────────────────────────
+
+export const fetchCampaigns = async (status) => {
+  const url = status ? `/fundraising/campaigns?status=${status}` : "/fundraising/campaigns";
+  const { data } = await api.get(url);
+  return data.data;
+};
+
+export const fetchCampaign = async (id) => {
+  const { data } = await api.get(`/fundraising/campaigns/${id}`);
+  return data.data;
+};
+
+export const createCampaign = async (payload) => {
+  const { data } = await api.post("/fundraising/campaigns", payload);
+  return data.data;
+};
+
+export const updateCampaign = async (id, payload) => {
+  const { data } = await api.patch(`/fundraising/campaigns/${id}`, payload);
+  return data.data;
+};
+
+export const initiateDonation = async (id, payload) => {
+  const { data } = await api.post(`/fundraising/campaigns/${id}/donate`, payload);
+  return data.data;
+};
+
+export const verifyDonation = async (id, payload) => {
+  const { data } = await api.post(`/fundraising/campaigns/${id}/verify`, payload);
+  return data.data;
+};
+
+// ─── Mentorship ────────────────────────────────────────────────────────────
+
+export const fetchMentors = async (expertise) => {
+  const url = expertise ? `/mentorship/mentors?expertise=${expertise}` : "/mentorship/mentors";
+  const { data } = await api.get(url);
+  return data.data;
+};
+
+export const fetchMyMentorProfile = async () => {
+  const { data } = await api.get("/mentorship/profile/me");
+  return data.data;
+};
+
+export const optInAsMentor = async (payload) => {
+  const { data } = await api.post("/mentorship/profile", payload);
+  return data.data;
+};
+
+export const toggleMentorStatus = async () => {
+  const { data } = await api.patch("/mentorship/profile/toggle");
+  return data.data;
+};
+
+export const fetchMySessions = async () => {
+  const { data } = await api.get("/mentorship/sessions");
+  return data.data;
+};
+
+export const requestMentorshipSession = async (payload) => {
+  const { data } = await api.post("/mentorship/sessions/request", payload);
+  return data.data;
+};
+
+export const respondToSession = async (id, payload) => {
+  const { data } = await api.patch(`/mentorship/sessions/${id}/respond`, payload);
+  return data.data;
+};
+
+export const cancelSession = async (id) => {
+  const { data } = await api.patch(`/mentorship/sessions/${id}/cancel`);
+  return data.data;
+};
+
+// ─── Digital ID Card ───────────────────────────────────────────────────────
+
+export const fetchIdCardPayload = async () => {
+  const { data } = await api.get("/idcard/payload");
+  return data.data;
+};
+
+// ─── Analytics ─────────────────────────────────────────────────────────────
+
+export const fetchAdminAnalytics_duplicate = async () => {
+  const { data } = await api.get("/analytics/admin");
+  return data.data;
+};
+
+
+

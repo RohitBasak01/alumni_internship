@@ -29,12 +29,14 @@ function buildMemberSections(tenant) {
   if (tenant.featureFlags.enableDirectory) community.links.push({ to: "/portal/business-directory", label: "Directory", icon: "contacts" });
   community.links.push({ to: "/portal/gallery", label: "Gallery", icon: "photo_library" });
   if (tenant.featureFlags.enableAnnouncements) community.links.push({ to: "/portal/newsroom", label: "Newsroom", icon: "campaign" });
+  community.links.push({ to: "/portal/fundraising", label: "Fundraising", icon: "volunteer_activism" });
   if (community.links.length > 0) sections.push(community);
 
   // CAREER
   const career = { label: "CAREER", links: [] };
+  career.links.push({ to: "/portal/mentors", label: "Find a Mentor", icon: "school" });
   if (tenant.featureFlags.enableFriendship) career.links.push({ to: "/portal/messages", label: "Friendships", icon: "handshake" });
-  career.links.push({ to: "/portal/jobs", label: "Career Resources", icon: "school" });
+  career.links.push({ to: "/portal/jobs", label: "Career Resources", icon: "work" });
   if (career.links.length > 0) sections.push(career);
 
   // GENERAL
@@ -47,8 +49,10 @@ function buildMemberSections(tenant) {
 }
 
 /* ── Categorised nav sections for admin ─────────────────── */
-function buildAdminSections(tenant) {
+function buildAdminSections(tenant, user) {
+  const isPrimaryAdmin = !user?.isDelegatedAdmin;
   const sections = [];
+
 
   const main = { label: "MAIN", links: [] };
   main.links.push({ to: "/portal", label: "Dashboard", icon: "dashboard", end: true });
@@ -62,10 +66,17 @@ function buildAdminSections(tenant) {
   if (tenant.featureFlags.enableDirectory) community.links.push({ to: "/portal/business-directory", label: "Directory", icon: "contacts" });
   community.links.push({ to: "/portal/gallery", label: "Gallery", icon: "photo_library" });
   if (tenant.featureFlags.enableAnnouncements) community.links.push({ to: "/portal/newsroom", label: "Newsroom", icon: "campaign" });
+  community.links.push({ to: "/portal/fundraising", label: "Fundraising", icon: "volunteer_activism" });
   if (community.links.length > 0) sections.push(community);
 
   const admin = { label: "ADMIN", links: [] };
   admin.links.push({ to: "/portal/moderation", label: "Content Moderation", icon: "shield" });
+  if (!user?.isDelegatedAdmin || user.delegatedScopes?.includes("manage_fundraising")) {
+    admin.links.push({ to: "/portal/admin/fundraising", label: "Manage Campaigns", icon: "payments" });
+  }
+  if (isPrimaryAdmin) {
+    admin.links.push({ to: "/portal/admins", label: "Manage Admins", icon: "manage_accounts" });
+  }
   sections.push(admin);
 
   const general = { label: "GENERAL", links: [] };
@@ -106,7 +117,7 @@ function DashboardLayout() {
     enabled: Boolean(auth.user),
   });
 
-  const sections = isAlumni ? buildMemberSections(tenant) : buildAdminSections(tenant);
+  const sections = isAlumni ? buildMemberSections(tenant) : buildAdminSections(tenant, auth.user);
   const unreadCount = notificationsQuery.data?.unreadCount || 0;
   const pendingFriendshipRequests = notificationsQuery.data?.pendingFriendshipRequests || 0;
   const pendingAlumniInvites = notificationsQuery.data?.pendingAlumniInvites || 0;
@@ -137,7 +148,7 @@ function DashboardLayout() {
   };
 
   const handleSidebarKeyDown = (e) => {
-    if (e.key === 'Escape' && isMobileOpen) {
+    if (e.key === 'Escape') {
       setIsMobileOpen(false);
       const menuButton = document.querySelector('[aria-label="Toggle menu"]');
       if (menuButton) menuButton.focus();
@@ -146,7 +157,7 @@ function DashboardLayout() {
 
   return (
     <div className="dl-shell">
-      {/* ── Mobile overlay ─────────────────────────────────────── */}
+      {/* Mobile overlay */}
       {isMobileOpen && (
         <div
           className="dl-overlay"
@@ -154,11 +165,11 @@ function DashboardLayout() {
           onKeyDown={handleOverlayKeyDown}
           role="button"
           tabIndex={0}
-          aria-label="Close sidebar menu"
+          aria-label="Close menu overlay"
         />
       )}
 
-      {/* ── Sidebar ────────────────────────────────────────────── */}
+      {/* Sidebar */}
       <aside
         className={sidebarCls}
         aria-label="Dashboard sidebar navigation"

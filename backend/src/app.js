@@ -39,6 +39,10 @@ import mockRoutes from "./routes/mock.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import opsRoutes from "./routes/ops.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import fundraisingRoutes from "./routes/fundraising.routes.js";
+import mentorshipRoutes from "./routes/mentorship.routes.js";
+import idcardRoutes from "./routes/idcard.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const uploadsRoot = path.join(backendRoot, "uploads");
@@ -216,6 +220,10 @@ app.use("/api/gallery", galleryRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/friendships", friendshipRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/fundraising", fundraisingRoutes);
+app.use("/api/mentorship", mentorshipRoutes);
+app.use("/api/idcard", idcardRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

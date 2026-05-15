@@ -2,6 +2,7 @@ import express from "express";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
+import { authorizeWithDelegation } from "../middleware/delegation.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import { sendApplicationEmail } from "../utils/email.js";
 import { createNotification, createNotificationsForUsers, listActiveAlumniUserIds } from "../utils/notifications.js";
@@ -191,7 +192,7 @@ router.post(
 router.patch(
   "/:id",
   protect,
-  authorize("institute_admin"),
+  authorizeWithDelegation("manage_jobs"),
   requireTenantAccess,
   validateParams(validateJobId),
   async (req, res, next) => {
@@ -259,7 +260,7 @@ router.patch(
 router.delete(
   "/:id",
   protect,
-  authorize("institute_admin"),
+  authorizeWithDelegation("manage_jobs"),
   requireTenantAccess,
   validateParams(validateJobId),
   async (req, res, next) => {

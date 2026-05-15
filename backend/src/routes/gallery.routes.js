@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, requireTenantAccess } from "../middleware/auth.middleware.js";
+import { authorizeWithDelegation } from "../middleware/delegation.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import { isNonEmptyString, isObjectIdLike } from "../utils/validation.js";
 
@@ -131,8 +132,16 @@ function formatGalleryItem(item, req) {
   };
 }
 
-function assertCreatePolicy(userRole, section, mediaType) {
+function assertCreatePolicy(user, section, mediaType) {
+  const userRole = user.role;
   if (userRole === "institute_admin") {
+    // Delegated admins must have manage_gallery scope
+    if (user.isDelegatedAdmin && !user.delegatedPermissions?.includes("manage_gallery")) {
+      const error = new Error("Your delegated admin access does not include the \"manage_gallery\" permission");
+      error.statusCode = 403;
+      throw error;
+    }
+
     if (section === "personal_photos") {
       const error = new Error("Institute admins can upload only to images or videos sections");
       error.statusCode = 403;
@@ -188,7 +197,7 @@ router.post("/", protect, requireTenantAccess, validateBody(validateCreateGaller
     const { GalleryItem } = getTenantModels(req);
     const { section, mediaType, url, caption } = req.body;
 
-    assertCreatePolicy(req.user.role, section, mediaType);
+    assertCreatePolicy(req.user, section, mediaType);
 
     const created = await GalleryItem.create({
       instituteId: req.tenant._id,
@@ -315,7 +324,8 @@ router.delete("/:id", protect, requireTenantAccess, validateParams(validateGalle
       throw error;
     }
 
-    const isInstituteAdmin = req.user.role === "institute_admin";
+    const isInstituteAdmin = req.user.role === "institute_admin" &&
+      (!req.user.isDelegatedAdmin || req.user.delegatedPermissions?.includes("manage_gallery"));
     const isOwner = item.userId.toString() === req.user._id.toString();
 
     if (!isInstituteAdmin && !isOwner) {

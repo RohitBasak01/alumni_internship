@@ -4,6 +4,7 @@ import multer from "multer";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
+import { authorizeWithDelegation } from "../middleware/delegation.middleware.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.middleware.js";
 import { logAuditEvent } from "../utils/audit.js";
 import { sendInviteEmail } from "../utils/email.js";
@@ -174,14 +175,14 @@ router.get("/", protect, requireTenantAccess, validateQuery(validateAlumniQuery)
 router.get("/me", protect, requireTenantAccess, getMyProfile);
 router.patch("/me", protect, authorize("alumni"), requireTenantAccess, validateBody(validateMentorshipLikeBody), updateMyProfile);
 router.post("/invite", protect, authorize("institute_admin"), requireTenantAccess, validateBody(validateInviteBody), inviteAlumni);
-router.get("/export/csv", protect, authorize("institute_admin"), requireTenantAccess, exportAlumniCsv);
+router.get("/export/csv", protect, authorizeWithDelegation("export_csv"), requireTenantAccess, exportAlumniCsv);
 
 // Handlers migrated to alumni.controller.js
 
 router.post(
   "/bulk-resend-invite",
   protect,
-  authorize("institute_admin"),
+  authorizeWithDelegation("approve_registrations"),
   requireTenantAccess,
   validateBody(validateBulkResendBody),
   async (req, res, next) => {
@@ -277,7 +278,7 @@ router.post(
 router.get(
   "/approval-turnaround-kpi",
   protect,
-  authorize("institute_admin"),
+  authorizeWithDelegation("approve_registrations"),
   requireTenantAccess,
   async (req, res, next) => {
     try {
@@ -341,7 +342,7 @@ router.get(
 router.post(
   "/bulk-review",
   protect,
-  authorize("institute_admin"),
+  authorizeWithDelegation("approve_registrations"),
   requireTenantAccess,
   validateBody(validateBulkReviewBody),
   async (req, res, next) => {

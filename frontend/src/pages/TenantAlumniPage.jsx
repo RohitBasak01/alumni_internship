@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAlumniLogic } from "../hooks/useAlumniLogic.js";
 import { AlumniMap } from "../components/AlumniMap.jsx";
-import { exportAlumniCsv, fetchBusinessListings } from "../lib/api.js";
+import { exportAlumniCsv, fetchBusinessListings, grantDelegation, revokeDelegation } from "../lib/api.js";
+import { DELEGATION_SCOPES, DELEGATION_SCOPE_LABELS, DELEGATION_SCOPE_ICONS } from "../lib/delegationScopes.js";
 import "../styles/AlumniDirectory.css";
+import "../styles/ManageAdmins.css";
 
 /* ── Helpers ──────────────────────────────────────────────── */
 function getDirectoryConfig(tenant) {
@@ -66,8 +68,8 @@ function SkillChip({ skill }) {
   return <span className="ad-card-v2-tag" style={{ background: bg, color }}>{skill}</span>;
 }
 
-/* ── Alumni card V2 ───────────────────────────────────────── */
-function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf }) {
+/* ── Alumni card V2 ─────────────────────────────────────── */
+function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf, isPrimaryAdmin, onDelegate, onRevoke }) {
   const name = alumni.name || alumni.userId?.name || "Alumni";
   const role = alumni.designation || alumni.occupation || "Alumni Member";
   const company = alumni.company || "";
@@ -78,13 +80,21 @@ function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf }) {
   const location = alumni.location || alumni.city || "";
   const skills = Array.isArray(alumni.skills) ? alumni.skills.slice(0, 3) : ["React", "Node.js", "Leadership"].slice(0, 3);
   const avatar = alumni.profilePicture || alumni.userId?.profilePicture;
-
   const isActive = alumni.userId?.isActive ?? alumni.isActive;
+  const targetUserId = alumni.userId?._id || alumni.userId;
+  const isDelegated = alumni.userId?.isDelegatedAdmin ?? false;
+  const alumniRole = alumni.userId?.role || "alumni";
 
   return (
     <div className="ad-card-v2">
       <div className="ad-card-v2-status">
         <span className={`ad-status-dot-v2 ${isActive ? "ad-status-dot-v2--active" : "ad-status-dot-v2--pending"}`} />
+        {isDelegated && (
+          <span className="ad-delegated-badge" title="Co-Admin">
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>manage_accounts</span>
+            Co-Admin
+          </span>
+        )}
         <span className="material-symbols-outlined ad-more-menu-v2" style={{ fontSize: 20 }}>more_horiz</span>
       </div>
 
@@ -114,10 +124,32 @@ function AlumniDirCardV2({ alumni, onConnect, onViewProfile, isSelf }) {
 
       <div className="ad-card-v2-footer">
         <button className="ad-btn-ghost" onClick={() => onViewProfile?.(alumni)}>View Profile</button>
-        <button className="ad-btn-solid" onClick={() => onConnect?.(alumni)}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>person_add</span>
-          Connect
-        </button>
+        {isPrimaryAdmin && !isSelf && alumniRole === "alumni" && !isDelegated && (
+          <button
+            className="ad-btn-delegate"
+            onClick={() => onDelegate?.(alumni)}
+            title="Grant co-admin access to this alumni"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>manage_accounts</span>
+            Co-Admin
+          </button>
+        )}
+        {isPrimaryAdmin && !isSelf && isDelegated && (
+          <button
+            className="ad-btn-revoke"
+            onClick={() => onRevoke?.(alumni)}
+            title="Revoke co-admin access"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>person_remove</span>
+            Revoke
+          </button>
+        )}
+        {!isPrimaryAdmin && (
+          <button className="ad-btn-solid" onClick={() => onConnect?.(alumni)}>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>person_add</span>
+            Connect
+          </button>
+        )}
       </div>
     </div>
   );
@@ -291,6 +323,14 @@ export default function TenantAlumniPage() {
   const [previousViewMode, setPreviousViewMode] = useState("grid");
   const [selectedCompanyDetails, setSelectedCompanyDetails] = useState(null);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [delegatingAlumni, setDelegatingAlumni] = useState(null);
+  const [revokingAlumni, setRevokingAlumni]     = useState(null);
+  const [delegatePerms, setDelegatePerms]       = useState([]);
+  const [delegateExpiry, setDelegateExpiry]     = useState("");
+  const [delegateNote, setDelegateNote]         = useState("");
+  const [delegateError, setDelegateError]       = useState("");
+  const queryClient = useQueryClient();
+  const isPrimaryAdmin = isAdmin && !auth.user?.isDelegatedAdmin;
   const PAGE_SIZE = 9;
 
   const directoryConfig = useMemo(() => getDirectoryConfig(tenant), [tenant]);
@@ -305,6 +345,7 @@ export default function TenantAlumniPage() {
     q: "", batch: "", department: "", leavingYear: "", lastClassAttended: "",
     section: "", company: "", skill: "", rollNo: "", industry: "",
     alphaIndex: "", isFaculty: false, registeredOnly: false, activeTab: "name",
+    birthdayStart: "", birthdayEnd: "",
   });
 
   const openLocationMap = () => {
@@ -461,6 +502,10 @@ export default function TenantAlumniPage() {
 
       if (sortBy === "Name A–Z") exportParams.sort = "name";
       if (sortBy === "Batch Year") exportParams.sort = "batch";
+
+      // Pass birthday range params explicitly (already in filters, but reinforce)
+      if (filters.birthdayStart) exportParams.birthdayStart = filters.birthdayStart;
+      if (filters.birthdayEnd) exportParams.birthdayEnd = filters.birthdayEnd;
 
       const csvBlob = await exportAlumniCsv(exportParams);
       const blob = csvBlob instanceof Blob ? csvBlob : new Blob([csvBlob], { type: "text/csv;charset=utf-8;" });
@@ -623,6 +668,41 @@ export default function TenantAlumniPage() {
     setPage(1);
   };
 
+  const grantMutation = useMutation({
+    mutationFn: () => grantDelegation({
+      userId: delegatingAlumni?.userId?._id || delegatingAlumni?.userId,
+      permissions: delegatePerms,
+      expiresAt: delegateExpiry,
+      note: delegateNote,
+    }),
+    onSuccess: () => {
+      setDelegatingAlumni(null);
+      setDelegatePerms([]);
+      setDelegateExpiry("");
+      setDelegateNote("");
+      setDelegateError("");
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      queryClient.invalidateQueries({ queryKey: ["delegated-admins"] });
+    },
+    onError: (err) => setDelegateError(err.response?.data?.message || "Failed to grant delegation"),
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: () => {
+      const userId = revokingAlumni?.userId?._id || revokingAlumni?.userId;
+      return revokeDelegation(userId);
+    },
+    onSuccess: () => {
+      setRevokingAlumni(null);
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      queryClient.invalidateQueries({ queryKey: ["delegated-admins"] });
+    },
+    onError: () => setRevokingAlumni(null),
+  });
+
+  const minDelegateDate = new Date(Date.now() + 3600000).toISOString().slice(0, 16);
+  const canGrantDelegate = delegatePerms.length > 0 && delegateExpiry && !grantMutation.isPending;
+
   const resultsView =
     viewMode === "map" ? (
       <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8edf3", minHeight: 460 }}>
@@ -636,6 +716,9 @@ export default function TenantAlumniPage() {
             alumni={alumni}
             isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
             onConnect={item => setSelectedForChat(item)}
+            isPrimaryAdmin={isPrimaryAdmin}
+            onDelegate={setDelegatingAlumni}
+            onRevoke={setRevokingAlumni}
           />
         ))}
       </div>
@@ -647,6 +730,9 @@ export default function TenantAlumniPage() {
             alumni={alumni}
             isSelf={String(alumni.userId?._id || alumni.userId) === selfUserId}
             onConnect={item => setSelectedForChat(item)}
+            isPrimaryAdmin={isPrimaryAdmin}
+            onDelegate={setDelegatingAlumni}
+            onRevoke={setRevokingAlumni}
           />
         ))}
       </div>
@@ -904,6 +990,81 @@ export default function TenantAlumniPage() {
               ))}
             </div>
           </div>
+
+          {/* Birthday Filter — admin only */}
+          {isAdmin && (
+            <div className="ad-sidebar-card-v2">
+              <div className="ad-sidebar-header-v2">
+                <span className="ad-sidebar-title-v2">
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, verticalAlign: "middle", marginRight: 4 }}>cake</span>
+                  Birthday Filter
+                </span>
+                {(filters.birthdayStart || filters.birthdayEnd) && (
+                  <button
+                    className="ad-sidebar-reset-v2"
+                    onClick={() => {
+                      setFilters(f => ({ ...f, birthdayStart: "", birthdayEnd: "" }));
+                      setPage(1);
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              <div className="ad-filter-section-v2">
+                <div className="ad-filter-label-v2">Birthdays falling between</div>
+                <div className="ad-birthday-range">
+                  <div className="ad-birthday-field">
+                    <label className="ad-birthday-field-label" htmlFor="birthday-start">From</label>
+                    <input
+                      id="birthday-start"
+                      type="date"
+                      className="ad-birthday-input"
+                      value={filters.birthdayStart ? `2000-${filters.birthdayStart}` : ""}
+                      onChange={e => {
+                        const mmdd = e.target.value ? e.target.value.slice(5) : "";
+                        setFilters(f => ({ ...f, birthdayStart: mmdd }));
+                        setPage(1);
+                      }}
+                    />
+                  </div>
+                  <span className="ad-birthday-sep">—</span>
+                  <div className="ad-birthday-field">
+                    <label className="ad-birthday-field-label" htmlFor="birthday-end">To</label>
+                    <input
+                      id="birthday-end"
+                      type="date"
+                      className="ad-birthday-input"
+                      value={filters.birthdayEnd ? `2000-${filters.birthdayEnd}` : ""}
+                      onChange={e => {
+                        const mmdd = e.target.value ? e.target.value.slice(5) : "";
+                        setFilters(f => ({ ...f, birthdayEnd: mmdd }));
+                        setPage(1);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {filters.birthdayStart && filters.birthdayEnd && (
+                  <p className="ad-birthday-hint">
+                    Showing alumni born between{" "}
+                    <strong>
+                      {new Date(`2000-${filters.birthdayStart}`).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                    </strong>
+                    {" "}and{" "}
+                    <strong>
+                      {new Date(`2000-${filters.birthdayEnd}`).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                    </strong>
+                    {" "}(any year)
+                  </p>
+                )}
+                {((filters.birthdayStart && !filters.birthdayEnd) || (!filters.birthdayStart && filters.birthdayEnd)) && (
+                  <p className="ad-birthday-warn">Please set both a start and end date to apply the filter.</p>
+                )}
+              </div>
+            </div>
+          )}
         </aside>
       </div>
 
@@ -924,6 +1085,122 @@ export default function TenantAlumniPage() {
       )}
 
       <CompanyDetailsDialog company={selectedCompanyDetails} onClose={() => setSelectedCompanyDetails(null)} />
+
+      {/* ── Delegate Admin Modal ──────────────────────────────── */}
+      {delegatingAlumni && (
+        <div className="ma-overlay" role="dialog" aria-modal="true">
+          <div className="ma-modal">
+            <div className="ma-modal-header">
+              <h2 className="ma-modal-title">Grant Co-Admin Access</h2>
+              <button className="ma-modal-close" onClick={() => { setDelegatingAlumni(null); setDelegateError(""); }}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="ma-modal-alumniinfo">
+              <div className="ma-modal-avatar">
+                {(delegatingAlumni.name || "?")[0].toUpperCase()}
+              </div>
+              <div>
+                <div className="ma-modal-alumni-name">{delegatingAlumni.name}</div>
+                <div className="ma-modal-alumni-meta">{delegatingAlumni.email || delegatingAlumni.userId?.email || ""}</div>
+              </div>
+            </div>
+            <div className="ma-modal-section">
+              <div className="ma-modal-label">Permissions to grant</div>
+              <div className="ma-permission-grid">
+                {DELEGATION_SCOPES.map(scope => (
+                  <label
+                    key={scope}
+                    className={`ma-perm-pill ${delegatePerms.includes(scope) ? "ma-perm-pill--on" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      hidden
+                      checked={delegatePerms.includes(scope)}
+                      onChange={() => setDelegatePerms(p => p.includes(scope) ? p.filter(s => s !== scope) : [...p, scope])}
+                    />
+                    <span className="material-symbols-outlined ma-perm-icon">{DELEGATION_SCOPE_ICONS[scope]}</span>
+                    <span className="ma-perm-label">{DELEGATION_SCOPE_LABELS[scope]}</span>
+                    <span className="ma-perm-check material-symbols-outlined">
+                      {delegatePerms.includes(scope) ? "check_circle" : "radio_button_unchecked"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {delegatePerms.length === 0 && <p className="ma-field-hint">Select at least one permission</p>}
+            </div>
+            <div className="ma-modal-section">
+              <label className="ma-modal-label" htmlFor="dlg-expires-dir">
+                Access expires on <span className="ma-required">*</span>
+              </label>
+              <input
+                id="dlg-expires-dir"
+                type="datetime-local"
+                className="ma-date-input"
+                min={minDelegateDate}
+                value={delegateExpiry}
+                onChange={e => setDelegateExpiry(e.target.value)}
+              />
+              <p className="ma-field-hint">Required — delegations must have an expiry date</p>
+            </div>
+            <div className="ma-modal-section">
+              <label className="ma-modal-label" htmlFor="dlg-note-dir">
+                Note <span className="ma-optional">(optional)</span>
+              </label>
+              <textarea
+                id="dlg-note-dir"
+                className="ma-textarea"
+                rows={2}
+                placeholder="e.g. Covering while on leave"
+                value={delegateNote}
+                onChange={e => setDelegateNote(e.target.value)}
+              />
+            </div>
+            {delegateError && <p className="ma-error">{delegateError}</p>}
+            <div className="ma-modal-actions">
+              <button className="ma-btn-secondary" onClick={() => { setDelegatingAlumni(null); setDelegateError(""); }}>
+                Cancel
+              </button>
+              <button
+                className="ma-btn-primary"
+                disabled={!canGrantDelegate}
+                onClick={() => grantMutation.mutate()}
+              >
+                {grantMutation.isPending ? "Granting…" : "Grant Access"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Revoke Confirm Dialog ─────────────────────────────── */}
+      {revokingAlumni && (
+        <div className="ma-overlay" role="dialog" aria-modal="true">
+          <div className="ma-modal ma-modal--sm">
+            <div className="ma-modal-header">
+              <h2 className="ma-modal-title">Revoke Admin Access</h2>
+              <button className="ma-modal-close" onClick={() => setRevokingAlumni(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <p className="ma-modal-body-text">
+              Are you sure you want to revoke co-admin access for{" "}
+              <strong>{revokingAlumni.name}</strong>? They will return to regular alumni access immediately.
+            </p>
+            <div className="ma-modal-actions">
+              <button className="ma-btn-secondary" onClick={() => setRevokingAlumni(null)}>Cancel</button>
+              <button
+                className="ma-btn-danger"
+                disabled={revokeMutation.isPending}
+                onClick={() => revokeMutation.mutate()}
+              >
+                {revokeMutation.isPending ? "Revoking…" : "Yes, Revoke Access"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -96,7 +96,7 @@ function CommunityGroupsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const deferredSearch = useDeferredValue(search);
-  const isAdmin = auth.user?.role === "institute_admin";
+  const isAdmin = auth.hasPermission("manage_groups");
   const currentUserId = String(auth.user?._id || auth.user?.id || "");
 
   const groupsQuery = useQuery({

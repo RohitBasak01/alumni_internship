@@ -100,8 +100,41 @@ export async function protect(req, _res, next) {
       }
     }
 
+    // Lazy expiry: if the delegation has passed its expiry, silently revert
+    if (
+      user.isDelegatedAdmin &&
+      user.delegatedAdminExpiresAt &&
+      new Date() > new Date(user.delegatedAdminExpiresAt)
+    ) {
+      try {
+        user.role = "alumni";
+        user.isDelegatedAdmin = false;
+        user.delegatedAdminSince = null;
+        user.delegatedAdminExpiresAt = null;
+        user.delegatedPermissions = [];
+        await user.save();
+
+        // Write auto_expired delegation record (fire-and-forget)
+        import("../models/RoleDelegation.js").then(({ default: RoleDelegation }) => {
+          RoleDelegation.create({
+            instituteId: user.instituteId?._id || user.instituteId,
+            grantedByUserId: user._id, // best-effort; actual granter not in scope here
+            targetUserId: user._id,
+            targetName: user.name,
+            targetEmail: user.email,
+            action: "auto_expired",
+            revokedAt: new Date(),
+          }).catch(() => {});
+        }).catch(() => {});
+      } catch {
+        // non-fatal: continue as alumni even if save fails
+        user.role = "alumni";
+      }
+    }
+
     req.user = user;
     next();
+
   } catch (error) {
     error.statusCode = error.statusCode || 401;
     next(error);

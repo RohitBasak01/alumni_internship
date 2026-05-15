@@ -108,6 +108,23 @@ const userSchema = new mongoose.Schema(
       type: [mongoose.Schema.Types.ObjectId],
       ref: "MentorshipRequest",
       default: []
+    },
+    // Role delegation fields
+    isDelegatedAdmin: {
+      type: Boolean,
+      default: false
+    },
+    delegatedAdminSince: {
+      type: Date,
+      default: null
+    },
+    delegatedAdminExpiresAt: {
+      type: Date,
+      default: null
+    },
+    delegatedPermissions: {
+      type: [String],
+      default: []
     }
   },
   {

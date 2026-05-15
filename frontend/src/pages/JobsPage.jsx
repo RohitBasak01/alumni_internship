@@ -181,7 +181,7 @@ export default function JobsPage(){
   function handleCancel(){setEditingId(null);setForm(initialForm);setShowComposer(false);}
   function clearFilters(){setFilters(initialFilters);}
 
-  const isAdmin=auth.user?.role==="institute_admin";
+  const isAdmin = auth.hasPermission("manage_jobs");
   const locationOptions=[...new Set(data.map(i=>i.locationLabel).filter(Boolean))];
   const industryOptions=[...new Set(data.map(i=>i.industryLabel).filter(Boolean))];
 

@@ -18,22 +18,26 @@ const queryClient = new QueryClient();
 
 // Initialize accessibility features on app load
 if (typeof window !== 'undefined') {
-  initializeAccessibility();
-  
-  // Inject design tokens as CSS variables
-  const style = document.createElement('style');
-  const cssVariables = generateCSSVariables();
-  let css = ':root {\n';
-  
-  Object.entries(cssVariables).forEach(([key, value]) => {
-    css += `  ${key}: ${value};\n`;
-  });
-  
-  css += '}\n\n';
-  css += generateDarkModeCSS();
-  
-  style.textContent = css;
-  document.head.appendChild(style);
+  try {
+    initializeAccessibility();
+    
+    // Inject design tokens as CSS variables
+    const style = document.createElement('style');
+    const cssVariables = generateCSSVariables();
+    let css = ':root {\n';
+    
+    Object.entries(cssVariables).forEach(([key, value]) => {
+      css += `  ${key}: ${value};\n`;
+    });
+    
+    css += '}\n\n';
+    css += generateDarkModeCSS();
+    
+    style.textContent = css;
+    document.head.appendChild(style);
+  } catch (err) {
+    console.error("Failed to inject design tokens:", err);
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

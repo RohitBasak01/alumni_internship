@@ -46,19 +46,24 @@ const TenantDashboardPage = lazy(
 const TenantHomePage = lazy(() => import("./pages/TenantHomePage.jsx"));
 const FeedPage = lazy(() => import("./pages/FeedPage.jsx"));
 const ContentModerationPage = lazy(() => import("./pages/ContentModerationPage.jsx"));
+const ManageAdminsPage = lazy(() => import("./pages/ManageAdminsPage.jsx"));
+const FundraisingPage = lazy(() => import("./pages/FundraisingPage.jsx"));
+const CampaignDetailsPage = lazy(() => import("./pages/CampaignDetailsPage.jsx"));
+const AdminFundraisingPage = lazy(() => import("./pages/AdminFundraisingPage.jsx"));
+const MentorsDirectoryPage = lazy(() => import("./pages/MentorsDirectoryPage.jsx"));
+const MentorOptInPage = lazy(() => import("./pages/MentorOptInPage.jsx"));
+const MentorshipDashboard = lazy(() => import("./pages/MentorshipDashboard.jsx"));
 
 /**
  * RootPage — serves the platform landing page for the main domain
  * and the per-institution home page for tenant subdomains / domains.
  */
 function RootPage() {
-  const { isTenant } = useTenantContext();
-  return isTenant ? <TenantHomePage /> : <HomePage />;
-}
-
-function PortalSettingsRoute() {
-  const auth = useAuth();
-  return auth.user?.role === "institute_admin" ? <InstitutionSettingsPage /> : <AlumniSettingsPage />;
+  const tenant = useTenantContext();
+  if (tenant.isTenant) {
+    return <TenantHomePage />;
+  }
+  return <HomePage />;
 }
 
 function App() {
@@ -86,11 +91,11 @@ function App() {
             }
           />
           <Route
-            path="/portal/*"
+            path="/portal"
             element={
               <ProtectedRoute
                 allow={(user) =>
-                  user?.role === "institute_admin" || user?.role === "alumni"
+                  user?.role === "alumni" || user?.role === "institute_admin"
                 }
               >
                 <DashboardLayout />
@@ -98,28 +103,8 @@ function App() {
             }
           >
             <Route index element={<TenantDashboardPage />} />
-            <Route path="feed" element={<FeedPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route
-              path="announcements"
-              element={<Navigate replace to="/portal/newsroom" />}
-            />
-            <Route path="newsroom" element={<NewsroomPage />} />
-            <Route path="settings" element={<PortalSettingsRoute />} />
             <Route path="alumni" element={<TenantAlumniPage />} />
-            <Route
-              path="approvals"
-              element={<Navigate replace to="/portal/alumni" />}
-            />
-            <Route
-              path="moderation"
-              element={
-                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
-                  <ContentModerationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="messages" element={<ConnectionsPage />} />
+            <Route path="feed" element={<FeedPage />} />
             <Route
               path="friendship"
               element={<Navigate replace to="/portal/messages" />}
@@ -130,17 +115,63 @@ function App() {
             <Route path="events" element={<EventsPage />} />
             <Route path="events/create" element={<CreateEventPage />} />
             <Route path="jobs" element={<JobsPage />} />
+            
+            {/* Mentorship Routes */}
+            <Route path="mentors" element={<MentorsDirectoryPage />} />
+            <Route path="mentors/join" element={<MentorOptInPage />} />
+            <Route path="mentorship-sessions" element={<MentorshipDashboard />} />
+            
             <Route path="gallery" element={<GalleryPage />} />
+            
+            <Route path="fundraising" element={<FundraisingPage />} />
+            <Route path="fundraising/:id" element={<CampaignDetailsPage />} />
+            <Route
+              path="admin/fundraising"
+              element={
+                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
+                  <AdminFundraisingPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="business-directory"
               element={<BusinessDirectoryPage />}
             />
+            <Route path="newsroom" element={<NewsroomPage />} />
             <Route
-              path="business-directory/add"
-              element={<BusinessDirectoryPage />}
+              path="notifications"
+              element={<NotificationsPage />}
             />
+            <Route path="settings" element={<AlumniSettingsPage />} />
+            <Route
+              path="institution-settings"
+              element={
+                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
+                  <InstitutionSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="moderation"
+              element={
+                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
+                  <ContentModerationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admins"
+              element={
+                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
+                  <ManageAdminsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="requests" element={<ConnectionsPage />} />
+            <Route path="*" element={<Navigate replace to="/portal" />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </Suspense>
     </AppShell>

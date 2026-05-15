@@ -13,6 +13,10 @@ import Friendship from "../models/Friendship.js";
 import Message from "../models/message.model.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
+import Campaign from "../models/Campaign.js";
+import Donation from "../models/Donation.js";
+import MentorProfile from "../models/MentorProfile.js";
+import MentorshipSession from "../models/MentorshipSession.js";
 
 const TENANT_CONNECTION_CACHE = new Map();
 
@@ -29,7 +33,11 @@ const TENANT_MODEL_BUILDERS = {
   JobApplication,
   Friendship,
   Notification,
-  Message
+  Message,
+  Campaign,
+  Donation,
+  MentorProfile,
+  MentorshipSession
 };
 
 function sanitizeDatabaseName(value = "") {
