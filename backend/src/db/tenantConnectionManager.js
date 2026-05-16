@@ -17,6 +17,11 @@ import Campaign from "../models/Campaign.js";
 import Donation from "../models/Donation.js";
 import MentorProfile from "../models/MentorProfile.js";
 import MentorshipSession from "../models/MentorshipSession.js";
+import Referral from "../models/Referral.js";
+import Resume from "../models/Resume.js";
+import Reunion from "../models/Reunion.js";
+import ForumThread from "../models/ForumThread.js";
+import ForumReply from "../models/ForumReply.js";
 
 const TENANT_CONNECTION_CACHE = new Map();
 
@@ -37,7 +42,12 @@ const TENANT_MODEL_BUILDERS = {
   Campaign,
   Donation,
   MentorProfile,
-  MentorshipSession
+  MentorshipSession,
+  Referral,
+  Resume,
+  Reunion,
+  ForumThread,
+  ForumReply
 };
 
 function sanitizeDatabaseName(value = "") {

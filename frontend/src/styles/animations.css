@@ -1,0 +1,147 @@
+/* ═══════════════════════════════════════════════════════════
+   animations.css — Shared animation keyframes & utilities
+   GPU-composited (transform + opacity only), accessible.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ─────────────────────────────────────────────── */
+
+@keyframes anim-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes anim-fadeInUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes anim-fadeInDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes anim-fadeInScale {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes anim-slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes anim-slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes anim-bounceIn {
+  0%   { opacity: 0; transform: scale(0.88); }
+  60%  { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes anim-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes anim-countPulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes anim-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes anim-glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50%      { box-shadow: 0 0 18px 4px rgba(99, 102, 241, 0.12); }
+}
+
+@keyframes anim-progressFill {
+  from { width: 0%; }
+}
+
+/* ── Utility classes ───────────────────────────────────────── */
+
+.anim-fade-in {
+  animation: anim-fadeIn 300ms ease both;
+}
+
+.anim-fade-in-up {
+  animation: anim-fadeInUp 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-fade-in-down {
+  animation: anim-fadeInDown 350ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-fade-in-scale {
+  animation: anim-fadeInScale 380ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-slide-in-left {
+  animation: anim-slideInLeft 400ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-slide-in-right {
+  animation: anim-slideInRight 400ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-bounce-in {
+  animation: anim-bounceIn 500ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-pop {
+  animation: anim-pop 200ms ease both;
+}
+
+.anim-count-pulse {
+  animation: anim-countPulse 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-glow-pulse {
+  animation: anim-glowPulse 2.4s ease-in-out infinite;
+}
+
+/* ── Stagger delays (80ms increments) ──────────────────────── */
+
+.anim-delay-1 { animation-delay: 80ms; }
+.anim-delay-2 { animation-delay: 160ms; }
+.anim-delay-3 { animation-delay: 240ms; }
+.anim-delay-4 { animation-delay: 320ms; }
+.anim-delay-5 { animation-delay: 400ms; }
+.anim-delay-6 { animation-delay: 480ms; }
+.anim-delay-7 { animation-delay: 560ms; }
+.anim-delay-8 { animation-delay: 640ms; }
+
+/* ── Micro-interaction: press feedback ─────────────────────── */
+
+.anim-press:active {
+  transform: scale(0.97) !important;
+  transition: transform 80ms ease !important;
+}
+
+/* ── Accessibility: honour reduced-motion ──────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-in,
+  .anim-fade-in-up,
+  .anim-fade-in-down,
+  .anim-fade-in-scale,
+  .anim-slide-in-left,
+  .anim-slide-in-right,
+  .anim-bounce-in,
+  .anim-pop,
+  .anim-count-pulse,
+  .anim-glow-pulse,
+  [class*="anim-delay-"] {
+    animation: none !important;
+    transition: none !important;
+  }
+}

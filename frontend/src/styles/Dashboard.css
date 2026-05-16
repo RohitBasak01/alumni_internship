@@ -269,7 +269,18 @@
   cursor: pointer;
   width: 100%;
   font-family: inherit;
+  animation: anim-slideInLeft 380ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
+
+/* Stagger sidebar nav items */
+.dl-nav-item:nth-child(1) { animation-delay: 40ms; }
+.dl-nav-item:nth-child(2) { animation-delay: 80ms; }
+.dl-nav-item:nth-child(3) { animation-delay: 120ms; }
+.dl-nav-item:nth-child(4) { animation-delay: 160ms; }
+.dl-nav-item:nth-child(5) { animation-delay: 200ms; }
+.dl-nav-item:nth-child(6) { animation-delay: 240ms; }
+.dl-nav-item:nth-child(7) { animation-delay: 280ms; }
+.dl-nav-item:nth-child(8) { animation-delay: 320ms; }
 
 .dl-nav-item:hover {
   background:
@@ -508,6 +519,7 @@
   z-index: 40;
   backdrop-filter: blur(18px);
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.04);
+  animation: anim-fadeInDown 400ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
 .dl-mobile-menu-btn {
@@ -607,14 +619,17 @@
   border-radius: 12px;
   display: grid;
   place-items: center;
-  transition: background 150ms, color 150ms, border-color 150ms, transform 150ms;
+  transition: background 200ms, color 200ms, border-color 200ms, transform 200ms cubic-bezier(0.34,1.56,0.64,1);
   text-decoration: none;
 }
 .dl-topbar-icon-btn:hover {
   background: #eef3ff;
   border-color: #c7d2fe;
   color: #2554d8;
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.08);
+}
+.dl-topbar-icon-btn:active {
+  transform: scale(0.95);
 }
 
 /* Blue dot indicator */
@@ -701,6 +716,7 @@
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
   z-index: 80;
   transform-origin: top right;
+  animation: anim-fadeInScale 250ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
 .dl-notification-header {
@@ -940,6 +956,7 @@
   overflow: hidden;
   position: relative;
   min-height: 160px;
+  animation: anim-fadeInUp 450ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
 .adb-hero-left { flex: 1; min-width: 0; }
@@ -1054,9 +1071,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  transition: box-shadow 200ms;
+  transition: box-shadow 250ms, transform 250ms cubic-bezier(0.22,0.61,0.36,1);
+  animation: anim-fadeInUp 420ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
-.adb-stat-card:hover { box-shadow: 0 8px 24px rgba(99,102,241,0.1); }
+.adb-stat-card:nth-child(1) { animation-delay: 60ms; }
+.adb-stat-card:nth-child(2) { animation-delay: 130ms; }
+.adb-stat-card:nth-child(3) { animation-delay: 200ms; }
+.adb-stat-card:nth-child(4) { animation-delay: 270ms; }
+.adb-stat-card:nth-child(5) { animation-delay: 340ms; }
+.adb-stat-card:hover {
+  box-shadow: 0 10px 28px rgba(99,102,241,0.12);
+  transform: translateY(-3px);
+}
 
 .adb-stat-top {
   display: flex;
@@ -1152,9 +1178,17 @@
   border-radius: 14px;
   background: #fff;
   border: 1px solid #e2e8f0;
-  transition: box-shadow 150ms;
+  transition: box-shadow 200ms, transform 200ms ease;
+  animation: anim-fadeInUp 380ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
-.adb-activity-card:hover { box-shadow: 0 4px 16px rgba(99,102,241,0.08); }
+.adb-activity-card:nth-child(1) { animation-delay: 80ms; }
+.adb-activity-card:nth-child(2) { animation-delay: 160ms; }
+.adb-activity-card:nth-child(3) { animation-delay: 240ms; }
+.adb-activity-card:nth-child(4) { animation-delay: 320ms; }
+.adb-activity-card:hover {
+  box-shadow: 0 6px 20px rgba(99,102,241,0.1);
+  transform: translateY(-2px);
+}
 
 .adb-activity-avatar {
   width: 38px;
@@ -2249,3 +2283,14 @@
   }
 }
 
+/* ─── Accessibility: reduced motion ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dl-topbar,
+  .dl-nav-item,
+  .dl-notification-menu,
+  .adb-hero-card,
+  .adb-stat-card,
+  .adb-activity-card {
+    animation: none !important;
+  }
+}

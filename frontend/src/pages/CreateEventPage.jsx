@@ -13,7 +13,9 @@ const initialForm = {
   startTime: "16:00",
   venue: "",
   address: "",
-  webinarLink: "",
+  isVirtual: false,
+  meetingLink: "",
+  meetingPassword: "",
   visibility: "members",
   disableRegistrations: "no",
   registrationCloseDate: "",
@@ -220,7 +222,6 @@ function CreateEventPage() {
       form.registrationInstructions ? `Instructions: ${form.registrationInstructions}` : "",
       customQuestions.length ? `Registration Questions: ${customQuestions.join(" | ")}` : "",
       form.category && form.category !== "All Events" ? `Category: ${form.category}` : "",
-      form.webinarLink ? `Webinar Link: ${form.webinarLink}` : "",
       form.visibility ? `Visibility: ${form.visibility === "members" ? "Only registered members" : "Public"}` : "",
       form.disableRegistrations === "yes" ? "Registrations Disabled" : "",
       feeSummary
@@ -233,6 +234,9 @@ function CreateEventPage() {
       description: mergedDescription,
       eventDate,
       location,
+      isVirtual: form.isVirtual,
+      meetingLink: form.meetingLink,
+      meetingPassword: form.meetingPassword,
       groupId: searchParams.get("groupId") || null,
       registrationCap: form.disableRegistrations === "yes" ? 0 : undefined,
       fees: fees.length > 0 ? fees : undefined
@@ -317,10 +321,32 @@ function CreateEventPage() {
               <input name="address" onChange={handleChange} value={form.address} />
             </label>
 
-            <label>
-              <span>Webinar Link</span>
-              <input name="webinarLink" onChange={handleChange} placeholder="Add a webinar link" value={form.webinarLink} />
+            <label className="full">
+              <span>Is this a Virtual Event?</span>
+              <div className="inline-actions">
+                <label>
+                  <input checked={form.isVirtual === true} name="isVirtual" onChange={() => setForm(c => ({...c, isVirtual: true}))} type="radio" />
+                  Yes
+                </label>
+                <label>
+                  <input checked={form.isVirtual === false} name="isVirtual" onChange={() => setForm(c => ({...c, isVirtual: false}))} type="radio" />
+                  No
+                </label>
+              </div>
             </label>
+
+            {form.isVirtual && (
+              <div className="form-grid two-column">
+                <label>
+                  <span>Meeting Link (Zoom, Meet, etc)</span>
+                  <input name="meetingLink" onChange={handleChange} placeholder="https://..." value={form.meetingLink} />
+                </label>
+                <label>
+                  <span>Meeting Password (optional)</span>
+                  <input name="meetingPassword" onChange={handleChange} placeholder="Password" value={form.meetingPassword} />
+                </label>
+              </div>
+            )}
 
             <label className="full">
               <span>Visibility *</span>

@@ -7,7 +7,8 @@ import {
   copyAlumniInviteLink,
   revokeAlumniInvite,
   approveAlumniRegistration,
-  createFriendshipRequest
+  createFriendshipRequest,
+  fetchNearbyAlumni
 } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
@@ -46,6 +47,7 @@ const initialFilters = {
   activeTab: "name",
   birthdayStart: "",
   birthdayEnd: "",
+  nearby: null,
 };
 
 export function useAlumniLogic() {
@@ -69,12 +71,24 @@ export function useAlumniLogic() {
 
   const alumniQuery = useQuery({
     queryKey: ["alumni", appliedFilters],
-    queryFn: () =>
-      fetchAlumni(
+    queryFn: () => {
+      if (appliedFilters.nearby) {
+        return fetchNearbyAlumni(
+          appliedFilters.nearby.lat,
+          appliedFilters.nearby.lng,
+          appliedFilters.nearby.radius
+        );
+      }
+      
+      const safeFilters = { ...appliedFilters };
+      delete safeFilters.nearby;
+      
+      return fetchAlumni(
         Object.fromEntries(
-          Object.entries(appliedFilters).filter(([, v]) => String(v || "").trim() !== "")
+          Object.entries(safeFilters).filter(([, v]) => String(v || "").trim() !== "")
         )
-      )
+      );
+    }
   });
 
   const inviteMutation = useMutation({

@@ -466,3 +466,49 @@ export async function sendRoleDelegationEmail({
   };
 }
 
+export async function sendCampaignEmail({
+  to,
+  recipientName,
+  subject,
+  htmlContent,
+  instituteName
+}) {
+  const config = getEmailConfig();
+
+  if (!hasSmtpConfig(config)) {
+    console.log(`[Campaign] SMTP not configured. Email to ${to} skipped.`);
+    return { delivered: false, mode: "log" };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
+  });
+
+  const name = recipientName || "there";
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #14213d; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+      <div style="margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #14213d;">${subject}</h2>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">From ${instituteName}</p>
+      </div>
+      <div>
+        <p>Hello ${name},</p>
+        ${htmlContent}
+      </div>
+      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 12px; text-align: center;">
+        <p>You are receiving this email because you are registered on the ${instituteName} Alumni Portal.</p>
+        <p>Please do not reply directly to this automated email.</p>
+      </div>
+    </div>
+  `;
+
+  const info = await transporter.sendMail({ from: config.from, to, subject, html });
+  return {
+    delivered: true,
+    mode: "smtp",
+  };
+}

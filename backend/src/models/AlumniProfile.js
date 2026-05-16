@@ -112,6 +112,17 @@ const alumniProfileSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    coordinates: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [0, 0],
+      },
+    },
     industry: {
       type: String,
       trim: true,
@@ -196,8 +207,46 @@ const alumniProfileSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
+
+alumniProfileSchema.index({ coordinates: "2dsphere" });
+
+// Pre-save hook to geocode location if city/state/country has changed
+alumniProfileSchema.pre("save", async function (next) {
+  if (this.isModified("city") || this.isModified("state") || this.isModified("country")) {
+    const queryParts = [];
+    if (this.city) queryParts.push(this.city);
+    if (this.state) queryParts.push(this.state);
+    if (this.country) queryParts.push(this.country);
+    
+    if (queryParts.length > 0) {
+      try {
+        const query = encodeURIComponent(queryParts.join(", "));
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+          headers: {
+            "User-Agent": "AlumniPlatform/1.0 (contact@example.com)"
+          }
+        });
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          if (!isNaN(lat) && !isNaN(lon)) {
+            this.coordinates = {
+              type: "Point",
+              coordinates: [lon, lat] // GeoJSON format: [lng, lat]
+            };
+          }
+        }
+      } catch (error) {
+        console.error("Geocoding failed:", error);
+      }
+    }
+  }
+  next();
+});
 
 alumniProfileSchema.plugin(softDeletePlugin);
 

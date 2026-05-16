@@ -1,6 +1,7 @@
 import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { randomUUID } from "node:crypto";
 
 import { getTenantModels } from "../db/tenantConnectionManager.js";
 import { protect, authorize, requireTenantAccess } from "../middleware/auth.middleware.js";
@@ -38,11 +39,18 @@ function deriveStatus(event) {
 }
 
 function formatEvent(event, user) {
-  const isRegistered = event.registrations?.some(
-    (entry) => entry.userId?._id?.toString?.() === user._id.toString() || entry.userId?.toString?.() === user._id.toString()
+  const userId = user._id.toString();
+  const userReg = event.registrations?.find(
+    (entry) => (entry.userId?._id?.toString?.() || entry.userId?.toString?.()) === userId
+  );
+  const isRegistered = Boolean(userReg);
+  const isWaitlisted = event.waitlist?.some(
+    (entry) => (entry.userId?._id?.toString?.() || entry.userId?.toString?.()) === userId
   );
   const instituteName = user.instituteId?.name || "Institute";
   const organizerName = `${instituteName} Alumni Association`;
+  const confirmedCount = (event.registrations || []).filter(r => r.status !== "cancelled").length;
+  const cap = Number.isFinite(Number(event.registrationCap)) ? Number(event.registrationCap) : null;
 
   return {
     _id: event._id,
@@ -60,17 +68,29 @@ function formatEvent(event, user) {
     status: deriveStatus(event),
     organizerName,
     publishedByLabel: `${organizerName} Committee`,
-    registrationCap: Number.isFinite(Number(event.registrationCap)) ? Number(event.registrationCap) : null,
-    attendeeCount: event.registrations?.length || 0,
-    isRegistered: Boolean(isRegistered),
+    registrationCap: cap,
+    attendeeCount: confirmedCount,
+    waitlistCount: event.waitlist?.length || 0,
+    isRegistered,
+    isWaitlisted: Boolean(isWaitlisted),
+    registrationStatus: userReg?.status || null,
+    ticketCode: userReg?.ticketCode || null,
+    isVirtual: Boolean(event.isVirtual),
+    meetingLink: (isRegistered || user.role === "institute_admin") ? event.meetingLink : null,
+    meetingPassword: (isRegistered || user.role === "institute_admin") ? event.meetingPassword : null,
+    recordingLink: (isRegistered || user.role === "institute_admin") ? event.recordingLink : null,
     fees: event.fees || [],
     attendees:
       user.role === "institute_admin"
-        ? (event.registrations || []).map((entry) => ({
+        ? (event.registrations || []).filter(r => r.status !== "cancelled").map((entry) => ({
             userId: entry.userId?._id || entry.userId,
             name: entry.userId?.name || "Unknown User",
             email: entry.userId?.email || "",
-            registeredAt: entry.registeredAt
+            registeredAt: entry.registeredAt,
+            ticketCode: entry.ticketCode,
+            checkedInAt: entry.checkedInAt,
+            ticketType: entry.ticketType,
+            status: entry.status
           }))
         : []
   };
@@ -154,25 +174,228 @@ router.post(
         throw error;
       }
 
+      const uid = req.user._id.toString();
+
       const alreadyRegistered = event.registrations.some(
-        (entry) => entry.userId.toString() === req.user._id.toString()
+        (entry) => entry.userId.toString() === uid && entry.status !== "cancelled"
+      );
+      const alreadyWaitlisted = event.waitlist?.some(
+        (entry) => entry.userId.toString() === uid
       );
 
-      if (alreadyRegistered) {
+      if (alreadyRegistered || alreadyWaitlisted) {
         const error = new Error("You have already registered for this event");
         error.statusCode = 400;
         throw error;
       }
 
+      const cap = Number.isFinite(Number(event.registrationCap)) ? Number(event.registrationCap) : null;
+      const confirmedCount = event.registrations.filter(r => r.status !== "cancelled").length;
+      const isFull = cap !== null && confirmedCount >= cap;
+
+      if (isFull) {
+        // Add to waitlist
+        event.waitlist.push({ userId: req.user._id, addedAt: new Date() });
+        await event.save();
+        await event.populate("registrations.userId", "name email");
+        return res.json({ ...formatEvent(event, req.user), _waitlistAdded: true });
+      }
+
+      const ticketCode = randomUUID();
       event.registrations.push({
         userId: req.user._id,
-        registeredAt: new Date()
+        registeredAt: new Date(),
+        ticketCode,
+        ticketType: req.body.ticketType || "general",
+        status: "confirmed"
       });
 
       await event.save();
       await event.populate("registrations.userId", "name email");
 
       res.json(formatEvent(event, req.user));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get my ticket for an event
+router.get(
+  "/:id/my-ticket",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const { Event } = getTenantModels(req);
+      const event = await Event.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!event) {
+        const error = new Error("Event not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const uid = req.user._id.toString();
+      const reg = event.registrations.find(
+        (entry) => entry.userId.toString() === uid && entry.status === "confirmed"
+      );
+
+      if (!reg) {
+        const error = new Error("You are not registered for this event");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      res.json({
+        ticketCode: reg.ticketCode,
+        ticketType: reg.ticketType,
+        registeredAt: reg.registeredAt,
+        checkedInAt: reg.checkedInAt,
+        status: reg.status,
+        event: {
+          _id: event._id,
+          title: event.title,
+          eventDate: event.eventDate,
+          location: event.location
+        },
+        attendee: {
+          name: req.user.name,
+          email: req.user.email
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Admin: check in an attendee via ticket code
+router.post(
+  "/:id/checkin",
+  protect,
+  authorize("institute_admin"),
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const { ticketCode } = req.body;
+      if (!ticketCode) {
+        const error = new Error("Ticket code is required");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const { Event } = getTenantModels(req);
+      const event = await Event.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      });
+
+      if (!event) {
+        const error = new Error("Event not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const reg = event.registrations.find(
+        (entry) => entry.ticketCode === ticketCode
+      );
+
+      if (!reg) {
+        const error = new Error("Invalid ticket code");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (reg.status === "cancelled") {
+        const error = new Error("This ticket has been cancelled");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (reg.checkedInAt) {
+        const error = new Error("Attendee has already been checked in");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      reg.checkedInAt = new Date();
+      await event.save();
+      await event.populate("registrations.userId", "name email");
+
+      const checkedInUser = event.registrations.find(r => r.ticketCode === ticketCode);
+
+      res.json({
+        message: "Check-in successful",
+        attendee: {
+          name: checkedInUser?.userId?.name || "Unknown",
+          email: checkedInUser?.userId?.email || "",
+          ticketType: checkedInUser?.ticketType,
+          checkedInAt: checkedInUser?.checkedInAt
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Admin: list attendees with check-in status
+router.get(
+  "/:id/attendees",
+  protect,
+  authorize("institute_admin"),
+  requireTenantAccess,
+  validateParams(validateEventId),
+  async (req, res, next) => {
+    try {
+      const { Event } = getTenantModels(req);
+      const event = await Event.findOne({
+        _id: req.params.id,
+        instituteId: req.tenant._id
+      }).populate("registrations.userId", "name email").populate("waitlist.userId", "name email");
+
+      if (!event) {
+        const error = new Error("Event not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const attendees = event.registrations
+        .filter(r => r.status !== "cancelled")
+        .map((entry) => ({
+          userId: entry.userId?._id || entry.userId,
+          name: entry.userId?.name || "Unknown",
+          email: entry.userId?.email || "",
+          registeredAt: entry.registeredAt,
+          ticketCode: entry.ticketCode,
+          ticketType: entry.ticketType,
+          checkedInAt: entry.checkedInAt,
+          status: entry.status
+        }));
+
+      const waitlist = (event.waitlist || []).map((entry) => ({
+        userId: entry.userId?._id || entry.userId,
+        name: entry.userId?.name || "Unknown",
+        email: entry.userId?.email || "",
+        addedAt: entry.addedAt
+      }));
+
+      const checkedInCount = attendees.filter(a => a.checkedInAt).length;
+
+      res.json({
+        total: attendees.length,
+        checkedIn: checkedInCount,
+        waitlistCount: waitlist.length,
+        attendees,
+        waitlist
+      });
     } catch (error) {
       next(error);
     }

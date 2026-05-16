@@ -60,6 +60,7 @@
   border: 1px solid #e8edf3;
   padding: 1.1rem 1.2rem 0.9rem;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  animation: anim-fadeInScale 400ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
 .feed-composer-top {
@@ -307,12 +308,21 @@
   border-radius: 16px;
   border: 1px solid #e8edf3;
   padding: 1.2rem;
-  transition: box-shadow 200ms, transform 200ms;
+  transition: box-shadow 250ms, transform 250ms cubic-bezier(0.22,0.61,0.36,1);
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  animation: anim-fadeInUp 400ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
+
+/* Stagger feed posts */
+.feed-posts-list .feed-post-card:nth-child(1) { animation-delay: 60ms; }
+.feed-posts-list .feed-post-card:nth-child(2) { animation-delay: 140ms; }
+.feed-posts-list .feed-post-card:nth-child(3) { animation-delay: 220ms; }
+.feed-posts-list .feed-post-card:nth-child(4) { animation-delay: 300ms; }
+.feed-posts-list .feed-post-card:nth-child(5) { animation-delay: 380ms; }
+
 .feed-post-card:hover {
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.09);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.1);
+  transform: translateY(-2px);
 }
 
 .feed-post-header {
@@ -405,6 +415,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  animation: anim-fadeInScale 200ms cubic-bezier(0.22,0.61,0.36,1) both;
+  transform-origin: top right;
 }
 
 .feed-post-menu-dropdown button {
@@ -723,7 +735,12 @@
   border: 1px solid #e8edf3;
   padding: 1.1rem 1.15rem;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  animation: anim-slideInRight 420ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
+
+.feed-sidebar-col .feed-sidebar-card:nth-child(1) { animation-delay: 100ms; }
+.feed-sidebar-col .feed-sidebar-card:nth-child(2) { animation-delay: 200ms; }
+.feed-sidebar-col .feed-sidebar-card:nth-child(3) { animation-delay: 300ms; }
 
 .feed-sidebar-header {
   display: flex;

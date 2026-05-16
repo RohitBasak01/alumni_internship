@@ -32,6 +32,9 @@ const InstitutionSettingsPage = lazy(
 const JobsPage = lazy(() => import("./pages/JobsPage.jsx"));
 const LegalPage = lazy(() => import("./pages/LegalPage.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
+const ResumeBuilderPage = lazy(() => import("./pages/ResumeBuilderPage.jsx"));
+const ReunionPage = lazy(() => import("./pages/ReunionPage.jsx"));
+const ForumPage = lazy(() => import("./pages/ForumPage.jsx"));
 const ConnectionsPage = lazy(() => import("./pages/ConnectionsPage.jsx"));
 const NewsroomPage = lazy(() => import("./pages/NewsroomPage.jsx"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage.jsx"));
@@ -53,6 +56,7 @@ const AdminFundraisingPage = lazy(() => import("./pages/AdminFundraisingPage.jsx
 const MentorsDirectoryPage = lazy(() => import("./pages/MentorsDirectoryPage.jsx"));
 const MentorOptInPage = lazy(() => import("./pages/MentorOptInPage.jsx"));
 const MentorshipDashboard = lazy(() => import("./pages/MentorshipDashboard.jsx"));
+const EmailCampaignPage = lazy(() => import("./pages/EmailCampaignPage.jsx"));
 
 /**
  * RootPage — serves the platform landing page for the main domain
@@ -115,6 +119,9 @@ function App() {
             <Route path="events" element={<EventsPage />} />
             <Route path="events/create" element={<CreateEventPage />} />
             <Route path="jobs" element={<JobsPage />} />
+            <Route path="resume-builder" element={<ResumeBuilderPage />} />
+            <Route path="reunions" element={<ReunionPage />} />
+            <Route path="forums" element={<ForumPage />} />
             
             {/* Mentorship Routes */}
             <Route path="mentors" element={<MentorsDirectoryPage />} />
@@ -130,6 +137,14 @@ function App() {
               element={
                 <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
                   <AdminFundraisingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/campaigns"
+              element={
+                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
+                  <EmailCampaignPage />
                 </ProtectedRoute>
               }
             />

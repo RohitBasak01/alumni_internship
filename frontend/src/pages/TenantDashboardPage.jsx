@@ -1,9 +1,11 @@
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDashboardLogic } from "../hooks/useDashboardLogic.js";
 import { PortalPageHeader } from "../components/PortalPrimitives.jsx";
 import { DashboardMetrics } from "../components/DashboardMetrics.jsx";
 import { ActivityFeed } from "../components/ActivityFeed.jsx";
 import SectionCard from "../components/SectionCard.jsx";
+import CelebrationWidget from "../components/CelebrationWidget.jsx";
 import { formatRelativeTime } from "../utils/formatters.js";
 import "../styles/Dashboard.css";
 import "../styles/AdminDashboard.css";
@@ -259,6 +261,9 @@ function AlumniDashboard({ logic }) {
             </div>
           </div>
 
+          {/* Celebrations Widget */}
+          <CelebrationWidget />
+
           {/* Community Stats Donut (Visual Only) */}
           <div className="adb-sidebar-card adb-community-card">
              <div className="adb-card-blob" />
@@ -351,6 +356,34 @@ function AdminDashboard({ logic }) {
   const events    = queries.events.data    || [];
   const jobs      = queries.jobs.data      || [];
   const announce  = queries.announcements.data || [];
+  
+  const dashboardRef = useRef(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (!dashboardRef.current || isExporting) return;
+    setIsExporting(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const opt = {
+        margin:       [10, 10, 10, 10], // top, left, bottom, right
+        filename:     `${tenant.displayName}_Dashboard_Report.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+      
+      // Temporarily add a class for printing styles if needed
+      dashboardRef.current.classList.add("exporting-pdf");
+      await html2pdf().set(opt).from(dashboardRef.current).save();
+      dashboardRef.current.classList.remove("exporting-pdf");
+    } catch (err) {
+      console.error("PDF Export failed:", err);
+      alert("Failed to export dashboard to PDF.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const STATS = [
     { icon:"people",      label:"Total Members",      value: alumni.length || 4892,  change:"12.5% vs last month", color:"#6366f1", bg:"#eff0ff" },
@@ -422,7 +455,7 @@ function AdminDashboard({ logic }) {
   ];
 
   return (
-    <div className="adm-root adm-root--modern module-admin">
+    <div className="adm-root adm-root--modern module-admin" ref={dashboardRef}>
       {/* ── Top Section: Title & Actions ── */}
       <div className="adm-header-section">
         <div className="adm-title-box">
@@ -430,9 +463,15 @@ function AdminDashboard({ logic }) {
           <p className="adm-welcome-sub">Managing {tenant.displayName} Central Hub</p>
         </div>
         <div className="adm-header-actions">
-           <button className="adm-action-btn primary">
-              <span className="material-symbols-outlined">download</span>
-              Export Report
+           <button 
+              className="adm-action-btn primary"
+              onClick={handleExportPdf}
+              disabled={isExporting}
+           >
+              <span className="material-symbols-outlined">
+                {isExporting ? "hourglass_empty" : "download"}
+              </span>
+              {isExporting ? "Exporting..." : "Export Report"}
            </button>
            <button className="adm-action-btn">
               <span className="material-symbols-outlined">settings</span>

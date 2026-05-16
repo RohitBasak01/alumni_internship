@@ -463,16 +463,13 @@ export default function TenantAlumniPage() {
   const activeTab = filters.activeTab || "name";
   const browseCategories = [
     { id: "location", icon: "location_on", label: "Location" },
-    { id: "course", icon: "school", label: "Institute" },
     { id: "company", icon: "apartment", label: "Company" },
     { id: "work", icon: "person_search", label: "Roles" },
-    { id: "work", icon: "psychology", label: "Professional Skills" },
     { id: "company", icon: "factory", label: "Industry" },
   ];
 
   const tabs = [
     { id: "name", label: "Name, Email & Roll No" },
-    { id: "course", label: "Course & Year" },
     { id: "location", label: "Location" },
     { id: "company", label: "Company" },
     { id: "work", label: "Work Experience" },
@@ -706,7 +703,11 @@ export default function TenantAlumniPage() {
   const resultsView =
     viewMode === "map" ? (
       <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8edf3", minHeight: 460 }}>
-        <AlumniMap members={allMembers} />
+        <AlumniMap
+          members={allMembers}
+          isFilteringNearby={!!filters.nearby}
+          onFilterNearby={(nearby) => { setFilters(f => ({ ...f, nearby })); setPage(1); }}
+        />
       </div>
     ) : viewMode === "grid" ? (
       <div className="ad-member-grid">

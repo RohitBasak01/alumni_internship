@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 
 const CATEGORIES = [
   { id: "location", icon: "location_on", label: "Location" },
-  { id: "institute", icon: "school", label: "Institute" },
   { id: "company", icon: "apartment", label: "Company" },
   { id: "roles", icon: "person_search", label: "Roles" },
   { id: "industry", icon: "factory", label: "Industry" },
@@ -13,7 +12,6 @@ const CATEGORIES = [
 
 const TABS = [
   { id: "name", label: "Name, Email & Roll No" },
-  { id: "course", label: "Course & Year" },
   { id: "location", label: "Location" },
   { id: "company", label: "Company" },
   { id: "work", label: "Work Experience" },
@@ -69,7 +67,7 @@ export function AlumniFilters({
       {filters.activeTab !== "name" && (
         <div className="directory-location-header">
           <h1 className="directory-title">
-            Browse Members <small>by location, institute, company, industry or role</small>
+            Browse Members <small>by location, company, industry or role</small>
           </h1>
         </div>
       )}

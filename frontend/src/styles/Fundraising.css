@@ -18,6 +18,7 @@
   color: white;
   margin-bottom: 2rem;
   box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.3);
+  animation: anim-fadeInUp 500ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
 .fr-hero-content {
@@ -102,14 +103,19 @@
   border-radius: 16px;
   border: 1px solid #e2e8f0;
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.22,0.61,0.36,1), box-shadow 0.25s ease;
   display: flex;
   flex-direction: column;
+  animation: anim-fadeInUp 420ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
+.fr-grid .fr-card:nth-child(1) { animation-delay: 60ms; }
+.fr-grid .fr-card:nth-child(2) { animation-delay: 150ms; }
+.fr-grid .fr-card:nth-child(3) { animation-delay: 240ms; }
+
 .fr-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 16px 28px -8px rgba(0, 0, 0, 0.12);
 }
 
 .fr-card-img-wrap {
@@ -218,6 +224,7 @@
   background: linear-gradient(90deg, #34d399, #10b981);
   border-radius: 4px;
   transition: width 1s ease-out;
+  animation: anim-progressFill 1.2s ease-out both;
 }
 
 .fr-progress-pct {

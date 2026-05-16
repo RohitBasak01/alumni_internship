@@ -43,6 +43,12 @@ import fundraisingRoutes from "./routes/fundraising.routes.js";
 import mentorshipRoutes from "./routes/mentorship.routes.js";
 import idcardRoutes from "./routes/idcard.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import referralRoutes from "./routes/referral.routes.js";
+import resumeRoutes from "./routes/resume.routes.js";
+import reunionRoutes from "./routes/reunion.routes.js";
+import celebrationsRoutes from "./routes/celebrations.routes.js";
+import forumRoutes from "./routes/forum.routes.js";
+import campaignRoutes from "./routes/campaign.routes.js";
 
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const uploadsRoot = path.join(backendRoot, "uploads");
@@ -206,6 +212,7 @@ app.use(metricsMiddleware());
 
 app.use(resolveTenant);
 app.use("/api/auth", authRateLimiter, authRoutes);
+app.use("/api/admin/campaigns", campaignRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/institutes", instituteRoutes);
 app.use("/api/ops", opsRoutes);
@@ -224,6 +231,11 @@ app.use("/api/fundraising", fundraisingRoutes);
 app.use("/api/mentorship", mentorshipRoutes);
 app.use("/api/idcard", idcardRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/referrals", referralRoutes);
+app.use("/api/resumes", resumeRoutes);
+app.use("/api/reunions", reunionRoutes);
+app.use("/api/celebrations", celebrationsRoutes);
+app.use("/api/forums", forumRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

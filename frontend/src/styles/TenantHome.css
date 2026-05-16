@@ -73,7 +73,8 @@
   box-shadow: 0 10px 20px -10px var(--th-primary);
 }
 .th-btn:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.97);
+  transition: transform 80ms ease;
 }
 
 .th-btn-primary {
@@ -183,10 +184,11 @@
   overflow: hidden;
   box-shadow: var(--th-shadow-lg);
   margin-bottom: 1rem;
-  transition: transform 0.5s ease;
+  transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  animation: anim-bounceIn 600ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 .th-hero-badge:hover {
-  transform: rotate(5deg) scale(1.05);
+  transform: rotate(5deg) scale(1.08);
 }
 
 .th-logo-img {
@@ -239,6 +241,7 @@
   gap: 1rem;
   justify-content: center;
   margin-top: 1.5rem;
+  animation: anim-fadeInUp 500ms cubic-bezier(0.22,0.61,0.36,1) 400ms both;
 }
 
 /* Decorative floating cards */
@@ -364,9 +367,24 @@
   gap: 1.25rem;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  animation: anim-fadeInUp 450ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
+
+/* Stagger feature cards */
+.th-feature-grid > :nth-child(1) .th-feature-card,
+.th-feature-grid > :nth-child(1) { animation-delay: 80ms; }
+.th-feature-grid > :nth-child(2) .th-feature-card,
+.th-feature-grid > :nth-child(2) { animation-delay: 180ms; }
+.th-feature-grid > :nth-child(3) .th-feature-card,
+.th-feature-grid > :nth-child(3) { animation-delay: 280ms; }
+.th-feature-grid > :nth-child(4) .th-feature-card,
+.th-feature-grid > :nth-child(4) { animation-delay: 380ms; }
+.th-feature-grid > :nth-child(5) .th-feature-card,
+.th-feature-grid > :nth-child(5) { animation-delay: 480ms; }
+.th-feature-grid > :nth-child(6) .th-feature-card,
+.th-feature-grid > :nth-child(6) { animation-delay: 580ms; }
 .th-feature-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-8px) scale(1.01);
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
   border-color: var(--th-primary);
 }
@@ -425,6 +443,7 @@
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+  animation: anim-fadeInUp 600ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 .th-cta-section h2 {
   font-size: clamp(2rem, 5vw, 3.5rem);
@@ -653,7 +672,12 @@
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+  animation: anim-fadeInUp 420ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
+
+.th-hero-metrics span:nth-child(1) { animation-delay: 500ms; }
+.th-hero-metrics span:nth-child(2) { animation-delay: 600ms; }
+.th-hero-metrics span:nth-child(3) { animation-delay: 700ms; }
 
 .th-hero-metrics strong {
   color: var(--th-text);
@@ -742,7 +766,12 @@
   .th-hero-inner,
   .th-hero-glow::before,
   .th-hero-glow::after,
-  .th-float-card {
+  .th-float-card,
+  .th-hero-badge,
+  .th-hero-actions,
+  .th-feature-card,
+  .th-cta-inner,
+  .th-hero-metrics span {
     animation: none;
   }
 }

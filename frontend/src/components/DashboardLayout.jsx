@@ -30,13 +30,15 @@ function buildMemberSections(tenant) {
   community.links.push({ to: "/portal/gallery", label: "Gallery", icon: "photo_library" });
   if (tenant.featureFlags.enableAnnouncements) community.links.push({ to: "/portal/newsroom", label: "Newsroom", icon: "campaign" });
   community.links.push({ to: "/portal/fundraising", label: "Fundraising", icon: "volunteer_activism" });
+  community.links.push({ to: "/portal/reunions", label: "Reunions", icon: "celebration" });
+  community.links.push({ to: "/portal/forums", label: "Forums", icon: "forum" });
   if (community.links.length > 0) sections.push(community);
 
   // CAREER
   const career = { label: "CAREER", links: [] };
   career.links.push({ to: "/portal/mentors", label: "Find a Mentor", icon: "school" });
   if (tenant.featureFlags.enableFriendship) career.links.push({ to: "/portal/messages", label: "Friendships", icon: "handshake" });
-  career.links.push({ to: "/portal/jobs", label: "Career Resources", icon: "work" });
+  career.links.push({ to: "/portal/resume-builder", label: "Resume Builder", icon: "document_scanner" });
   if (career.links.length > 0) sections.push(career);
 
   // GENERAL
@@ -75,6 +77,7 @@ function buildAdminSections(tenant, user) {
     admin.links.push({ to: "/portal/admin/fundraising", label: "Manage Campaigns", icon: "payments" });
   }
   if (isPrimaryAdmin) {
+    admin.links.push({ to: "/portal/admin/campaigns", label: "Email Campaigns", icon: "forward_to_inbox" });
     admin.links.push({ to: "/portal/admins", label: "Manage Admins", icon: "manage_accounts" });
   }
   sections.push(admin);

@@ -1,0 +1,497 @@
+/* ── Ticket Modal ─────────────────────────────────────────── */
+.ticket-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ticketFadeIn 0.2s ease;
+}
+
+@keyframes ticketFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ticket-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 400px;
+  max-width: 92vw;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+  animation: ticketSlideUp 0.3s ease;
+}
+
+@keyframes ticketSlideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ticket-modal-header {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  padding: 24px 28px 20px;
+  color: #fff;
+  position: relative;
+}
+
+.ticket-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ticket-modal-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.ticket-modal-event-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+  line-height: 1.3;
+  padding-right: 36px;
+}
+
+.ticket-modal-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+.ticket-modal-event-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── QR Section ──────────────────────────────────────────── */
+.ticket-qr-section {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 2px dashed #e2e8f0;
+  position: relative;
+}
+
+.ticket-qr-section::before,
+.ticket-qr-section::after {
+  content: "";
+  position: absolute;
+  bottom: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.ticket-qr-section::before { left: -14px; }
+.ticket-qr-section::after { right: -14px; }
+
+.ticket-qr-wrapper {
+  background: #fff;
+  border: 3px solid #6366f1;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ticket-qr-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ticket-code-display {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 6px 14px;
+  border-radius: 8px;
+  letter-spacing: 1px;
+  user-select: all;
+}
+
+/* ── Ticket Info ─────────────────────────────────────────── */
+.ticket-info-section {
+  padding: 20px 28px 24px;
+}
+
+.ticket-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ticket-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ticket-info-label {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ticket-info-value {
+  font-size: 0.85rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.ticket-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.ticket-status-badge--confirmed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ticket-status-badge--waitlisted {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.ticket-status-badge--checkedin {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* ── Capacity Bar ────────────────────────────────────────── */
+.ev-capacity-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.ev-capacity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.ev-capacity-header strong {
+  color: #1e293b;
+}
+
+.ev-capacity-bar {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ev-capacity-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+}
+
+.ev-capacity-fill--full {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+.ev-capacity-fill--warning {
+  background: linear-gradient(90deg, #f59e0b, #eab308);
+}
+
+.ev-waitlist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #fef3c7;
+  color: #a16207;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.ev-waitlisted-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #fefce8;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: #a16207;
+  margin-top: 6px;
+}
+
+/* ── Ticket button (on event card) ───────────────────────── */
+.ev-ticket-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #6366f1;
+  background: #eef2ff;
+  color: #6366f1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ev-ticket-btn:hover {
+  background: #6366f1;
+  color: #fff;
+}
+
+/* ── Admin Check-in Panel ────────────────────────────────── */
+.checkin-panel {
+  padding: 20px 0;
+}
+
+.checkin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.checkin-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.checkin-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  min-width: 90px;
+}
+
+.checkin-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.checkin-stat-label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.checkin-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.checkin-input {
+  flex: 1;
+  height: 42px;
+  padding: 0 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: #1e293b;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.checkin-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.checkin-submit-btn {
+  height: 42px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.checkin-submit-btn:hover { opacity: 0.9; }
+.checkin-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.checkin-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: #15803d;
+  font-weight: 500;
+  margin-bottom: 16px;
+  animation: ticketFadeIn 0.3s ease;
+}
+
+.checkin-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: #dc2626;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+/* ── Attendee List ───────────────────────────────────────── */
+.attendee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attendee-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.attendee-row:hover {
+  background: #f8fafc;
+}
+
+.attendee-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.attendee-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.attendee-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.attendee-email {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.attendee-checkin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.attendee-checkin-badge--in {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.attendee-checkin-badge--pending {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+/* ── Waitlist section in attendees tab ────────────────────── */
+.waitlist-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #a16207;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 20px 0 8px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Dark mode overrides ─────────────────────────────────── */
+.dark .ticket-modal { background: #1e293b; }
+.dark .ticket-modal-event-name { color: #fff; }
+.dark .ticket-qr-section { border-color: #334155; }
+.dark .ticket-qr-section::before,
+.dark .ticket-qr-section::after { background: #0f172a; border-color: #334155; }
+.dark .ticket-qr-wrapper { background: #fff; }
+.dark .ticket-code-display { background: #334155; color: #cbd5e1; }
+.dark .ticket-info-value { color: #f1f5f9; }
+.dark .ticket-info-label { color: #64748b; }
+.dark .checkin-input { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+.dark .checkin-stat { background: #0f172a; border-color: #334155; }
+.dark .checkin-stat-value { color: #f1f5f9; }
+.dark .attendee-name { color: #f1f5f9; }
+.dark .attendee-row:hover { background: #334155; }

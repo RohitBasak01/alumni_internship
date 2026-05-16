@@ -580,6 +580,11 @@ export async function setupPassword(payload) {
   return data;
 }
 
+export async function fetchNearbyAlumni(lat, lng, radius) {
+  const { data } = await api.get("/alumni/nearby", { params: { lat, lng, radius } });
+  return data;
+}
+
 export async function fetchEvents(params = {}) {
   const { data } = await api.get("/events", { params });
   return data;
@@ -620,6 +625,21 @@ export async function cancelEventRegistration(id) {
   return data;
 }
 
+export async function fetchMyEventTicket(id) {
+  const { data } = await api.get(`/events/${id}/my-ticket`);
+  return data;
+}
+
+export async function checkinEventAttendee(eventId, ticketCode) {
+  const { data } = await api.post(`/events/${eventId}/checkin`, { ticketCode });
+  return data;
+}
+
+export async function fetchEventAttendees(eventId) {
+  const { data } = await api.get(`/events/${eventId}/attendees`);
+  return data;
+}
+
 export async function fetchJobs() {
   const { data } = await api.get("/jobs");
   return data;
@@ -647,6 +667,141 @@ export async function applyToJob(jobId, payload) {
 
 export async function fetchUserApplications() {
   const { data } = await api.get("/jobs/applications/user");
+  return data;
+}
+
+// ── Referrals ───────────────────────────────────────────
+export async function submitReferral(payload) {
+  const { data } = await api.post("/referrals", payload);
+  return data;
+}
+
+export async function fetchMyReferrals() {
+  const { data } = await api.get("/referrals/my");
+  return data;
+}
+
+export async function fetchJobReferrals(jobId) {
+  const { data } = await api.get(`/referrals/job/${jobId}`);
+  return data;
+}
+
+export async function fetchAllReferrals(params = {}) {
+  const { data } = await api.get("/referrals", { params });
+  return data;
+}
+
+export async function reviewReferral(id, payload) {
+  const { data } = await api.patch(`/referrals/${id}/review`, payload);
+  return data;
+}
+
+// ── Resumes ─────────────────────────────────────────────
+export async function fetchMyResume() {
+  const { data } = await api.get("/resumes/my");
+  return data;
+}
+
+export async function updateMyResume(payload) {
+  const { data } = await api.put("/resumes/my", payload);
+  return data;
+}
+
+// ── Reunions ────────────────────────────────────────────
+export async function fetchReunions(params = {}) {
+  const { data } = await api.get("/reunions", { params });
+  return data;
+}
+
+export async function fetchReunion(id) {
+  const { data } = await api.get(`/reunions/${id}`);
+  return data;
+}
+
+export async function createReunion(payload) {
+  const { data } = await api.post("/reunions", payload);
+  return data;
+}
+
+export async function updateReunion(id, payload) {
+  const { data } = await api.patch(`/reunions/${id}`, payload);
+  return data;
+}
+
+export async function deleteReunion(id) {
+  const { data } = await api.delete(`/reunions/${id}`);
+  return data;
+}
+
+export async function rsvpReunion(id, status) {
+  const { data } = await api.post(`/reunions/${id}/rsvp`, { status });
+  return data;
+}
+
+// ── Celebrations ────────────────────────────────────────
+export async function fetchBirthdays() {
+  const { data } = await api.get("/celebrations/birthdays");
+  return data;
+}
+
+export async function fetchWorkAnniversaries() {
+  const { data } = await api.get("/celebrations/work-anniversaries");
+  return data;
+}
+
+export async function sendCelebrationWish(payload) {
+  const { data } = await api.post("/celebrations/wish", payload);
+  return data;
+}
+
+// ── Forums ──────────────────────────────────────────────
+export async function fetchForumThreads(params = {}) {
+  const { data } = await api.get("/forums", { params });
+  return data;
+}
+
+export async function fetchForumThread(id) {
+  const { data } = await api.get(`/forums/${id}`);
+  return data;
+}
+
+export async function createForumThread(payload) {
+  const { data } = await api.post("/forums", payload);
+  return data;
+}
+
+export async function deleteForumThread(id) {
+  const { data } = await api.delete(`/forums/${id}`);
+  return data;
+}
+
+export async function postForumReply(threadId, payload) {
+  const { data } = await api.post(`/forums/${threadId}/replies`, payload);
+  return data;
+}
+
+export async function upvoteForumThread(id) {
+  const { data } = await api.post(`/forums/${id}/upvote`);
+  return data;
+}
+
+export async function upvoteForumReply(id) {
+  const { data } = await api.post(`/forums/replies/${id}/upvote`);
+  return data;
+}
+
+export async function pinForumThread(id) {
+  const { data } = await api.patch(`/forums/${id}/pin`);
+  return data;
+}
+
+export async function lockForumThread(id) {
+  const { data } = await api.patch(`/forums/${id}/lock`);
+  return data;
+}
+
+export async function acceptForumReply(id) {
+  const { data } = await api.patch(`/forums/replies/${id}/accept`);
   return data;
 }
 
@@ -1097,5 +1252,29 @@ export const fetchAdminAnalytics_duplicate = async () => {
   return data.data;
 };
 
+// ─── Email Campaigns ─────────────────────────────────────────────────────────────
 
+export const fetchEmailCampaigns = async () => {
+  const { data } = await api.get("/admin/campaigns");
+  return data;
+};
 
+export const fetchEmailCampaignById = async (id) => {
+  const { data } = await api.get(`/admin/campaigns/${id}`);
+  return data;
+};
+
+export const createEmailCampaign = async (payload) => {
+  const { data } = await api.post("/admin/campaigns", payload);
+  return data;
+};
+
+export const updateEmailCampaign = async (id, payload) => {
+  const { data } = await api.patch(`/admin/campaigns/${id}`, payload);
+  return data;
+};
+
+export const sendEmailCampaign = async (id) => {
+  const { data } = await api.post(`/admin/campaigns/${id}/send`);
+  return data;
+};

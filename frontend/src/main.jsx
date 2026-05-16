@@ -10,6 +10,7 @@ import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { initializeAccessibility } from "./utils/accessibility.js";
 import { generateCSSVariables, generateDarkModeCSS } from "./design-tokens.js";
 import "./styles.css";
+import "./styles/animations.css";
 import "./styles/dark-mode.css";
 import "./styles/responsive.css";
 import "./styles/performance.css";

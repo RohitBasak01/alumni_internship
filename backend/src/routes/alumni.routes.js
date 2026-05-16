@@ -569,6 +569,43 @@ router.post(
   importAlumniCsv
 );
 
-export default router;
+// Fetch nearby alumni
+router.get(
+  "/nearby",
+  protect,
+  requireTenantAccess,
+  async (req, res, next) => {
+    try {
+      const { AlumniProfile } = getTenantModels(req);
+      const lat = parseFloat(req.query.lat);
+      const lng = parseFloat(req.query.lng);
+      const radiusKm = parseFloat(req.query.radius) || 50;
 
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ message: "Latitude and longitude are required" });
+      }
+
+      const alumni = await AlumniProfile.find({
+        instituteId: req.tenant._id,
+        coordinates: {
+          $near: {
+            $geometry: {
+              type: "Point",
+              coordinates: [lng, lat]
+            },
+            $maxDistance: radiusKm * 1000 // Convert km to meters
+          }
+        }
+      })
+      .populate("userId", "name email")
+      .lean();
+
+      res.json(alumni);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+export default router;
 

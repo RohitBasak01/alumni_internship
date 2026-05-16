@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext.jsx";
-import { applyToJob, createJob, deleteJob, fetchJobs, updateJob, fetchUserApplications } from "../lib/api.js";
+import { applyToJob, createJob, deleteJob, fetchJobs, updateJob, fetchUserApplications, submitReferral, fetchMyReferrals, fetchAllReferrals, reviewReferral } from "../lib/api.js";
 import "../styles/Jobs.css";
 
 const initialForm = { title:"",company:"",description:"",location:"",industry:"",requestedDeadline:"",applicationDeadline:"",status:"pending_approval" };
@@ -32,6 +32,39 @@ function fmtDT(v){
 }
 function logoColor(name=""){ return LOGO_COLORS[(name.charCodeAt(0)||65)%LOGO_COLORS.length]; }
 
+function ReferralRow({ item, isAdmin, onReview }) {
+  const color = logoColor(item.candidateName);
+  return (
+    <div className="jb-row">
+      <div className="jb-row-logo" style={{background:color+"18",color}}>{item.candidateName?.[0]?.toUpperCase()||"?"}</div>
+      <div className="jb-row-body">
+        <div className="jb-row-top">
+          <h3 className="jb-row-title">{item.candidateName}</h3>
+          <span className={`jb-status-pill jb-status-${item.status==="pending"?"review":item.status==="accepted"?"interview":"rejected"}`}>
+            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+          </span>
+        </div>
+        <div className="jb-row-meta">
+          <span>{item.candidateEmail}</span>
+          {item.candidatePhone && <><span>·</span><span>{item.candidatePhone}</span></>}
+          <span>·</span>
+          <span>Referred by: {item.referrerId?.name || "Unknown"}</span>
+        </div>
+        <div className="jb-row-footer">
+          <span className="jb-cat-badge">{item.jobId?.title} at {item.jobId?.company}</span>
+          <span className="jb-time">{fmtRel(item.createdAt||new Date())}</span>
+          {isAdmin && item.status === "pending" && (
+            <div className="jb-row-actions">
+              <button className="jb-view-btn" style={{color:"#10b981",borderColor:"#10b981"}} onClick={() => onReview(item._id, "accepted")}>Accept</button>
+              <button className="jb-view-btn" style={{color:"#ef4444",borderColor:"#ef4444"}} onClick={() => onReview(item._id, "rejected")}>Reject</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function JobRow({item,idx,onView,isAdmin,onEdit,onDelete,deletePending}){
   const color=logoColor(item.company);
   const isNew=(Date.now()-new Date(item.createdAt).getTime())<86400000*2;
@@ -60,6 +93,7 @@ function JobRow({item,idx,onView,isAdmin,onEdit,onDelete,deletePending}){
           <span className="jb-time">{fmtRel(item.createdAt||new Date())}</span>
           <div className="jb-row-actions">
             <button className="jb-view-btn" onClick={()=>onView(item)}>View Details</button>
+            <button className="jb-view-btn" style={{borderColor:"#10b981",color:"#10b981"}} onClick={(e)=>{e.stopPropagation(); onView(item, "refer");}}>Refer Candidate</button>
             {isAdmin&&<button className="jb-edit-btn" onClick={()=>onEdit(item)}>Edit</button>}
             {isAdmin&&<button className="jb-del-btn" disabled={deletePending} onClick={()=>onDelete(item._id)}>Delete</button>}
           </div>
@@ -123,6 +157,53 @@ function ApplyModal({job,coverLetter,setCoverLetter,resumeFile,setResumeFile,onA
   );
 }
 
+function ReferralModal({ job, onClose, onRefer, isPending, isSuccess }) {
+  const [refForm, setRefForm] = useState({ candidateName: "", candidateEmail: "", candidatePhone: "", candidateResume: "", relationship: "", referralNote: "" });
+  
+  function handleChange(e){ setRefForm(c => ({...c, [e.target.name]: e.target.value})); }
+  
+  return (
+    <div className="jb-modal-backdrop" onClick={onClose}>
+      <div className="jb-modal" onClick={e=>e.stopPropagation()}>
+        <div className="jb-modal-header">
+          <div>
+            <p className="jb-modal-kicker">Refer a Candidate</p>
+            <h3 className="jb-modal-title">{job.title}</h3>
+            <p className="jb-modal-sub">{job.company} · {job.locationLabel||job.location}</p>
+          </div>
+          <button className="jb-modal-close" onClick={onClose}><span className="material-symbols-outlined">close</span></button>
+        </div>
+        <div className="jb-modal-body">
+          {isSuccess ? (
+            <div className="jb-success-msg">✓ Referral submitted successfully! Thank you.</div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:"0.75rem",marginTop:"1rem"}}>
+              <div className="jb-composer-row">
+                <input className="jb-cinput" name="candidateName" value={refForm.candidateName} onChange={handleChange} placeholder="Candidate Name*" required />
+                <input className="jb-cinput" name="candidateEmail" value={refForm.candidateEmail} onChange={handleChange} placeholder="Candidate Email*" type="email" required />
+              </div>
+              <div className="jb-composer-row">
+                <input className="jb-cinput" name="candidatePhone" value={refForm.candidatePhone} onChange={handleChange} placeholder="Candidate Phone" />
+                <input className="jb-cinput" name="relationship" value={refForm.relationship} onChange={handleChange} placeholder="Relationship (e.g. Former Colleague)" />
+              </div>
+              <input className="jb-cinput" name="candidateResume" value={refForm.candidateResume} onChange={handleChange} placeholder="Resume/Portfolio URL" />
+              <textarea className="jb-textarea" name="referralNote" rows={3} placeholder="Why are you referring this candidate? Provide a brief note..." value={refForm.referralNote} onChange={handleChange}/>
+            </div>
+          )}
+        </div>
+        <div className="jb-modal-footer">
+          {!isSuccess && (
+            <button className="jb-apply-btn" style={{background:"#10b981",borderColor:"#10b981"}} disabled={isPending || !refForm.candidateName || !refForm.candidateEmail} onClick={() => onRefer(refForm)}>
+              {isPending ? "Submitting..." : "Submit Referral"}
+            </button>
+          )}
+          <button className="jb-close-btn" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function JobsPage(){
   const auth=useAuth();
   const queryClient=useQueryClient();
@@ -131,6 +212,7 @@ export default function JobsPage(){
   const [editingId,setEditingId]=useState(null);
   const [showComposer,setShowComposer]=useState(false);
   const [selectedJobId,setSelectedJobId]=useState(null);
+  const [modalType,setModalType]=useState("apply"); // "apply" or "refer"
   const [coverLetter,setCoverLetter]=useState("");
   const [resumeFile,setResumeFile]=useState(null);
   const [applicationSuccess,setApplicationSuccess]=useState(null);
@@ -138,8 +220,15 @@ export default function JobsPage(){
   const [page,setPage]=useState(1);
   const PAGE_SIZE=10;
 
+  const isAdmin = auth.hasPermission("manage_jobs");
+  
   const {data=[],isLoading,isError,error}=useQuery({queryKey:["jobs"],queryFn:fetchJobs});
   const {data: userApplications=[]}=useQuery({queryKey:["user-applications"],queryFn:fetchUserApplications});
+  const {data: referralsData=[]}=useQuery({
+    queryKey:["referrals"],
+    queryFn: isAdmin ? fetchAllReferrals : fetchMyReferrals
+  });
+  
   const deferredQuery=useDeferredValue(filters.query);
 
   const saveMutation=useMutation({
@@ -161,6 +250,20 @@ export default function JobsPage(){
     },
     onSuccess:()=>{queryClient.invalidateQueries({queryKey:["user-applications"]});setApplicationSuccess(true);setCoverLetter("");setResumeFile(null);setTimeout(()=>{setApplicationSuccess(null);setSelectedJobId(null);},2000);}
   });
+  
+  const referMutation=useMutation({
+    mutationFn: (payload) => submitReferral({ jobId: selectedJobId, ...payload }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey:["referrals"]});
+      setApplicationSuccess(true);
+      setTimeout(() => {setApplicationSuccess(null); setSelectedJobId(null);}, 2000);
+    }
+  });
+
+  const reviewReferralMutation = useMutation({
+    mutationFn: ({ id, status }) => reviewReferral(id, { status }),
+    onSuccess: () => queryClient.invalidateQueries({queryKey:["referrals"]})
+  });
 
   function handleChange(e){setForm(c=>({...c,[e.target.name]:e.target.value}));}
   function handleFilterChange(e){setFilters(c=>({...c,[e.target.name]:e.target.value}));}
@@ -181,7 +284,6 @@ export default function JobsPage(){
   function handleCancel(){setEditingId(null);setForm(initialForm);setShowComposer(false);}
   function clearFilters(){setFilters(initialFilters);}
 
-  const isAdmin = auth.hasPermission("manage_jobs");
   const locationOptions=[...new Set(data.map(i=>i.locationLabel).filter(Boolean))];
   const industryOptions=[...new Set(data.map(i=>i.industryLabel).filter(Boolean))];
 
@@ -313,7 +415,7 @@ export default function JobsPage(){
       <div className="jb-layout">
         <div className="jb-main-col">
           <div className="jb-tabs-row">
-            {["All Jobs","Saved Jobs","Applied Jobs","Company Following"].map(tab=>(
+            {["All Jobs","Saved Jobs","Applied Jobs","Referrals"].map(tab=>(
               <button key={tab} className={`jb-tab ${activeTab===tab?"jb-tab--active":""}`} onClick={()=>setActiveTab(tab)}>{tab}</button>
             ))}
             <div className="jb-sort-wrap" style={{marginLeft:"auto"}}>
@@ -337,18 +439,39 @@ export default function JobsPage(){
             </div>
           )}
 
-          <div className="jb-list">
-            {pagedJobs.map((item,idx)=>(
-              <JobRow key={item._id} item={item} idx={idx} isAdmin={isAdmin}
-                onView={j=>setSelectedJobId(j._id)}
-                onEdit={handleEdit}
-                onDelete={id=>deleteMutation.mutate(id)}
-                deletePending={deleteMutation.isPending}
-              />
-            ))}
-          </div>
+          {activeTab === "Referrals" ? (
+            <div className="jb-list">
+              {referralsData.length === 0 ? (
+                 <div className="jb-empty">
+                   <span className="material-symbols-outlined" style={{fontSize:44,color:"#c7d2fe"}}>group_add</span>
+                   <h3>No Referrals Found</h3>
+                   <p>{isAdmin ? "There are no candidate referrals to review." : "You haven't referred any candidates yet."}</p>
+                 </div>
+              ) : (
+                referralsData.map(ref => (
+                  <ReferralRow 
+                    key={ref._id} 
+                    item={ref} 
+                    isAdmin={isAdmin}
+                    onReview={(id, status) => reviewReferralMutation.mutate({ id, status })}
+                  />
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="jb-list">
+              {pagedJobs.map((item,idx)=>(
+                <JobRow key={item._id} item={item} idx={idx} isAdmin={isAdmin}
+                  onView={(j, type="apply")=>{setSelectedJobId(j._id); setModalType(type);}}
+                  onEdit={handleEdit}
+                  onDelete={id=>deleteMutation.mutate(id)}
+                  deletePending={deleteMutation.isPending}
+                />
+              ))}
+            </div>
+          )}
 
-          {totalPages>1&&(
+          {activeTab !== "Referrals" && totalPages>1&&(
             <div className="jb-pagination">
               <button className="jb-page-btn" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>
                 <span className="material-symbols-outlined" style={{fontSize:17}}>chevron_left</span>
@@ -426,19 +549,30 @@ export default function JobsPage(){
         </aside>
       </div>
 
-      {selectedJob&&(
+      {selectedJob&&modalType==="apply"&&(
         <ApplyModal
           job={selectedJob}
           coverLetter={coverLetter} setCoverLetter={setCoverLetter}
           resumeFile={resumeFile} setResumeFile={setResumeFile}
           onApply={()=>applyMutation.mutate({coverLetter})}
-          onClose={()=>setSelectedJobId(null)}
+          onClose={()=>{setSelectedJobId(null); setApplicationSuccess(false);}}
           isPending={applyMutation.isPending}
           isSuccess={!!applicationSuccess}
           canApply={!!selectedJob.canApply}
         />
       )}
+      {selectedJob&&modalType==="refer"&&(
+        <ReferralModal
+          job={selectedJob}
+          onClose={()=>{setSelectedJobId(null); setApplicationSuccess(false);}}
+          onRefer={(payload) => referMutation.mutate(payload)}
+          isPending={referMutation.isPending}
+          isSuccess={!!applicationSuccess}
+        />
+      )}
       {deleteMutation.isError&&<p style={{color:"#ef4444",fontSize:"0.8rem"}}>{deleteMutation.error.message}</p>}
+      {referMutation.isError&&<p style={{color:"#ef4444",fontSize:"0.8rem"}}>{referMutation.error.message}</p>}
+      {reviewReferralMutation.isError&&<p style={{color:"#ef4444",fontSize:"0.8rem"}}>{reviewReferralMutation.error.message}</p>}
     </div>
   );
 }

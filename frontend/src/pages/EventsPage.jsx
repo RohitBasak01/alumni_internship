@@ -1,13 +1,15 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { cancelEventRegistration, deleteEvent, fetchEvents, registerForEvent, updateEvent, createEventOrder, verifyEventPayment } from "../lib/api.js";
+import { cancelEventRegistration, deleteEvent, fetchEvents, registerForEvent, updateEvent, createEventOrder, verifyEventPayment, fetchMyEventTicket, checkinEventAttendee, fetchEventAttendees } from "../lib/api.js";
 import SectionCard from "../components/SectionCard.jsx";
+import { QRCodeSVG } from "qrcode.react";
 import "../styles/Events.css";
+import "../styles/EventTicket.css";
 
 /* ── Helpers ─────────────────────────────────────────────── */
-const initialForm = { title: "", description: "", eventDate: "", location: "", registrationCap: "" };
+const initialForm = { title: "", description: "", eventDate: "", location: "", registrationCap: "", isVirtual: false, meetingLink: "", meetingPassword: "", recordingLink: "" };
 const initialFilters = { query: "", type: "" };
 const TAB_ITEMS = ["All", "Reunions", "Webinars", "Hackathons", "Campus Events"];
 
@@ -59,14 +61,219 @@ function fmtMonthDay(v) {
 /* ── Detail tabs ─────────────────────────────────────────── */
 const DETAIL_TABS = ["About", "Agenda", "Speakers", "Attendees", "Photos", "Discussions"];
 
+const AVATAR_COLORS = ["#6366f1","#10b981","#0ea5e9","#f59e0b","#8b5cf6","#ec4899","#14b8a6"];
+function pickAvatarColor(name = "") { return AVATAR_COLORS[(name.charCodeAt(0) || 65) % AVATAR_COLORS.length]; }
+function nameInitials(name = "") { return name.split(" ").map(w => w[0] || "").join("").slice(0,2).toUpperCase() || "?"; }
+
+/* ── Ticket Modal ────────────────────────────────────────── */
+function TicketModal({ event, onClose }) {
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchMyEventTicket(event._id)
+      .then(data => { setTicket(data); setLoading(false); })
+      .catch(err => { setError(err.message); setLoading(false); });
+  }, [event._id]);
+
+  return (
+    <div className="ticket-modal-backdrop" onClick={onClose}>
+      <div className="ticket-modal" onClick={e => e.stopPropagation()}>
+        <div className="ticket-modal-header">
+          <button className="ticket-modal-close" onClick={onClose}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+          </button>
+          <h3 className="ticket-modal-event-name">{event.title}</h3>
+          <div className="ticket-modal-event-meta">
+            <span><span className="material-symbols-outlined" style={{ fontSize: 14 }}>calendar_today</span>{fmtDate(event.eventDate)}</span>
+            <span><span className="material-symbols-outlined" style={{ fontSize: 14 }}>location_on</span>{event.location || "TBA"}</span>
+          </div>
+        </div>
+
+        {loading && <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading ticket...</div>}
+        {error && <div style={{ padding: 40, textAlign: "center", color: "#ef4444" }}>{error}</div>}
+
+        {ticket && (
+          <>
+            <div className="ticket-qr-section">
+              <span className="ticket-qr-label">Scan for check-in</span>
+              <div className="ticket-qr-wrapper">
+                <QRCodeSVG value={ticket.ticketCode} size={180} level="H" />
+              </div>
+              <div className="ticket-code-display">{ticket.ticketCode.slice(0, 8).toUpperCase()}</div>
+            </div>
+            <div className="ticket-info-section">
+              <div className="ticket-info-grid">
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Attendee</span>
+                  <span className="ticket-info-value">{ticket.attendee?.name}</span>
+                </div>
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Ticket Type</span>
+                  <span className="ticket-info-value" style={{ textTransform: "capitalize" }}>{ticket.ticketType}</span>
+                </div>
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Status</span>
+                  {ticket.checkedInAt ? (
+                    <span className="ticket-status-badge ticket-status-badge--checkedin">
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>check_circle</span>Checked In
+                    </span>
+                  ) : (
+                    <span className="ticket-status-badge ticket-status-badge--confirmed">
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>confirmation_number</span>Confirmed
+                    </span>
+                  )}
+                </div>
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Registered</span>
+                  <span className="ticket-info-value">{new Date(ticket.registeredAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Admin Attendees Panel ───────────────────────────────── */
+function AttendeePanel({ eventId }) {
+  const [attendeesData, setAttendeesData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [checkinCode, setCheckinCode] = useState("");
+  const [checkinResult, setCheckinResult] = useState(null);
+  const [checkinError, setCheckinError] = useState(null);
+  const [checkinPending, setCheckinPending] = useState(false);
+
+  const loadAttendees = () => {
+    setLoading(true);
+    fetchEventAttendees(eventId)
+      .then(data => { setAttendeesData(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { loadAttendees(); }, [eventId]);
+
+  const handleCheckin = async () => {
+    if (!checkinCode.trim()) return;
+    setCheckinPending(true);
+    setCheckinResult(null);
+    setCheckinError(null);
+    try {
+      const result = await checkinEventAttendee(eventId, checkinCode.trim());
+      setCheckinResult(result);
+      setCheckinCode("");
+      loadAttendees();
+    } catch (err) {
+      setCheckinError(err.message);
+    } finally {
+      setCheckinPending(false);
+    }
+  };
+
+  if (loading) return <div style={{ padding: 20, color: "#94a3b8" }}>Loading attendees...</div>;
+  if (!attendeesData) return <div style={{ padding: 20, color: "#94a3b8" }}>Unable to load attendees.</div>;
+
+  return (
+    <div className="checkin-panel">
+      <div className="checkin-stats">
+        <div className="checkin-stat">
+          <span className="checkin-stat-value">{attendeesData.total}</span>
+          <span className="checkin-stat-label">Registered</span>
+        </div>
+        <div className="checkin-stat">
+          <span className="checkin-stat-value">{attendeesData.checkedIn}</span>
+          <span className="checkin-stat-label">Checked In</span>
+        </div>
+        <div className="checkin-stat">
+          <span className="checkin-stat-value">{attendeesData.waitlistCount}</span>
+          <span className="checkin-stat-label">Waitlisted</span>
+        </div>
+      </div>
+
+      <h4 style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", margin: "20px 0 10px" }}>Manual Check-in</h4>
+      <div className="checkin-input-row">
+        <input
+          className="checkin-input"
+          placeholder="Enter or paste ticket code..."
+          value={checkinCode}
+          onChange={e => setCheckinCode(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleCheckin()}
+        />
+        <button className="checkin-submit-btn" onClick={handleCheckin} disabled={checkinPending || !checkinCode.trim()}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>qr_code_scanner</span>
+          {checkinPending ? "Checking..." : "Check In"}
+        </button>
+      </div>
+
+      {checkinResult && (
+        <div className="checkin-success">
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check_circle</span>
+          <span><strong>{checkinResult.attendee?.name}</strong> checked in successfully</span>
+        </div>
+      )}
+      {checkinError && (
+        <div className="checkin-error">
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>error</span>
+          {checkinError}
+        </div>
+      )}
+
+      <h4 style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", margin: "16px 0 8px" }}>Attendees</h4>
+      <div className="attendee-list">
+        {attendeesData.attendees.map((a, i) => (
+          <div key={a.userId || i} className="attendee-row">
+            <div className="attendee-avatar" style={{ background: pickAvatarColor(a.name) }}>{nameInitials(a.name)}</div>
+            <div className="attendee-info">
+              <div className="attendee-name">{a.name}</div>
+              <div className="attendee-email">{a.email}</div>
+            </div>
+            {a.checkedInAt ? (
+              <span className="attendee-checkin-badge attendee-checkin-badge--in">
+                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>check</span>Checked In
+              </span>
+            ) : (
+              <span className="attendee-checkin-badge attendee-checkin-badge--pending">Pending</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {attendeesData.waitlist.length > 0 && (
+        <>
+          <div className="waitlist-section-title">
+            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>hourglass_top</span>
+            Waitlist ({attendeesData.waitlist.length})
+          </div>
+          <div className="attendee-list">
+            {attendeesData.waitlist.map((w, i) => (
+              <div key={w.userId || i} className="attendee-row">
+                <div className="attendee-avatar" style={{ background: "#f59e0b" }}>{nameInitials(w.name)}</div>
+                <div className="attendee-info">
+                  <div className="attendee-name">{w.name}</div>
+                  <div className="attendee-email">{w.email}</div>
+                </div>
+                <span className="ev-waitlist-badge">Waitlisted</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ── Event detail view ───────────────────────────────────── */
-function EventDetail({ event, idx, onBack, isAdmin, canDelete, onEdit, onDelete, onRegister, registrationPending }) {
+function EventDetail({ event, idx, onBack, isAdmin, canDelete, onEdit, onDelete, onRegister, registrationPending, onViewTicket }) {
   const [tab, setTab] = useState("About");
   const img = HERO_IMGS[idx % HERO_IMGS.length];
   const { month, day, year } = fmtMonthDay(event.eventDate);
   const cap = Number(event.registrationCap) || 500;
-  const reg = Array.isArray(event.registrations) ? event.registrations.length : 0;
+  const reg = event.attendeeCount || 0;
   const pct = Math.min(100, Math.round((reg / cap) * 100));
+  const capFillClass = pct >= 100 ? "ev-capacity-fill--full" : pct >= 80 ? "ev-capacity-fill--warning" : "";
   const category = deriveCategory(event);
 
   return (
@@ -83,7 +290,7 @@ function EventDetail({ event, idx, onBack, isAdmin, canDelete, onEdit, onDelete,
           <div className="ev-hero" style={{ backgroundImage: `url(${img})` }}>
             <div className="ev-hero-overlay" />
             <div className="ev-hero-top">
-              <span className="ev-type-badge">IN-PERSON EVENT</span>
+              <span className="ev-type-badge">{event.isVirtual ? "VIRTUAL EVENT" : "IN-PERSON EVENT"}</span>
               <span className="ev-featured-badge">Featured Event</span>
             </div>
             <div className="ev-hero-body">
@@ -92,13 +299,28 @@ function EventDetail({ event, idx, onBack, isAdmin, canDelete, onEdit, onDelete,
               <div className="ev-hero-meta">
                 <span><span className="material-symbols-outlined" style={{ fontSize: 15 }}>calendar_today</span>{fmtDate(event.eventDate)}</span>
                 <span><span className="material-symbols-outlined" style={{ fontSize: 15 }}>schedule</span>{fmtTime(event.eventDate)} (IST)</span>
-                <span><span className="material-symbols-outlined" style={{ fontSize: 15 }}>location_on</span>{event.location || "Campus venue"}</span>
+                <span><span className="material-symbols-outlined" style={{ fontSize: 15 }}>{event.isVirtual ? "videocam" : "location_on"}</span>{event.isVirtual ? "Virtual Event" : event.location || "Campus venue"}</span>
               </div>
               <div className="ev-hero-actions">
-                {!isAdmin && !canDelete && (
+                {!isAdmin && !canDelete && !event.isWaitlisted && (
                   <button className="ev-register-btn" disabled={registrationPending} onClick={onRegister}>
-                    {event.isRegistered ? "Cancel RSVP" : "Register Now"}
+                    {event.isRegistered ? "Cancel RSVP" : pct >= 100 ? "Join Waitlist" : "Register Now"}
                   </button>
+                )}
+                {!isAdmin && event.isRegistered && event.ticketCode && !event.isVirtual && (
+                  <button className="ev-ticket-btn" onClick={onViewTicket}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>confirmation_number</span>View Ticket
+                  </button>
+                )}
+                {event.isRegistered && event.isVirtual && event.meetingLink && (
+                  <a href={event.meetingLink} target="_blank" rel="noreferrer" className="ev-ticket-btn" style={{ background: "#2563eb", color: "#fff", border: "none", textDecoration: "none" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 15, color: "#fff" }}>video_camera_front</span>Join Meeting
+                  </a>
+                )}
+                {event.isRegistered && event.isVirtual && event.recordingLink && (
+                  <a href={event.recordingLink} target="_blank" rel="noreferrer" className="ev-interested-btn" style={{ textDecoration: "none" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>play_circle</span>View Recording
+                  </a>
                 )}
                 <button className="ev-interested-btn">
                   <span className="material-symbols-outlined" style={{ fontSize: 15 }}>star</span>Interested
@@ -109,11 +331,17 @@ function EventDetail({ event, idx, onBack, isAdmin, canDelete, onEdit, onDelete,
                 {isAdmin && <button className="ev-edit-btn" onClick={onEdit}>Edit</button>}
                 {canDelete && <button className="ev-delete-btn" onClick={onDelete}>Delete</button>}
               </div>
+              {event.isWaitlisted && (
+                <div className="ev-waitlisted-note">
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>hourglass_top</span>
+                  You're on the waitlist. We'll notify you if a spot opens up.
+                </div>
+              )}
               <div className="ev-attendees-row">
                 {[0, 1, 2, 3, 4].map(i => (
                   <div key={i} className="ev-attendee-avatar" style={{ background: ["#6366f1", "#10b981", "#0ea5e9", "#f59e0b", "#8b5cf6"][i] }}>{String.fromCharCode(65 + i)}</div>
                 ))}
-                <span className="ev-attendees-text"><strong>{reg}</strong> alumni are attending</span>
+                <span className="ev-attendees-text"><strong>{reg}</strong> alumni are attending{event.waitlistCount > 0 && <> · <strong>{event.waitlistCount}</strong> waitlisted</>}</span>
               </div>
             </div>
           </div>
@@ -163,11 +391,23 @@ function EventDetail({ event, idx, onBack, isAdmin, canDelete, onEdit, onDelete,
             </div>
           )}
 
-          {tab !== "About" && (
+          {tab === "Attendees" && isAdmin && (
+            <AttendeePanel eventId={event._id} />
+          )}
+
+          {tab !== "About" && tab !== "Attendees" && (
             <div className="ev-coming-soon">
               <span className="material-symbols-outlined" style={{ fontSize: 44, color: "#c7d2fe" }}>construction</span>
               <h3>{tab}</h3>
               <p>This section is coming soon.</p>
+            </div>
+          )}
+
+          {tab === "Attendees" && !isAdmin && (
+            <div className="ev-coming-soon">
+              <span className="material-symbols-outlined" style={{ fontSize: 44, color: "#c7d2fe" }}>groups</span>
+              <h3>Attendees</h3>
+              <p>{reg} alumni have registered for this event.</p>
             </div>
           )}
         </div>
@@ -202,22 +442,34 @@ function EventDetail({ event, idx, onBack, isAdmin, canDelete, onEdit, onDelete,
           {/* Registration */}
           <div className="ev-sidebar-card">
             <h3 className="ev-sidebar-heading">Registration</h3>
-            <div className="ev-reg-count">
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#6366f1" }}>person</span>
-              <span><strong>{reg} / {cap}</strong> Registered</span>
+            <div className="ev-capacity-section">
+              <div className="ev-capacity-header">
+                <span><strong>{reg}</strong> / {cap} registered</span>
+                <span>{pct}%</span>
+              </div>
+              <div className="ev-capacity-bar">
+                <div className={`ev-capacity-fill ${capFillClass}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+              </div>
+              {event.waitlistCount > 0 && (
+                <span className="ev-waitlist-badge">
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>hourglass_top</span>
+                  {event.waitlistCount} on waitlist
+                </span>
+              )}
             </div>
-            <div className="ev-reg-bar-bg">
-              <div className="ev-reg-bar-fill" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="ev-reg-pct">{pct}%</span>
-            {!isAdmin && !canDelete && (
+            {!isAdmin && !canDelete && !event.isWaitlisted && (
               <button className="ev-sidebar-register-btn" disabled={registrationPending} onClick={onRegister}>
-                {event.isRegistered ? "Cancel RSVP" : "Register Now"}
+                {event.isRegistered ? "Cancel RSVP" : pct >= 100 ? "Join Waitlist" : "Register Now"}
+              </button>
+            )}
+            {!isAdmin && event.isRegistered && event.ticketCode && (
+              <button className="ev-ticket-btn" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={onViewTicket}>
+                <span className="material-symbols-outlined" style={{ fontSize: 15 }}>confirmation_number</span>View My Ticket
               </button>
             )}
             <div className="ev-reg-note">
               <span className="material-symbols-outlined" style={{ fontSize: 13, color: "#f59e0b" }}>info</span>
-              Registration closes in 18 days
+              {pct >= 100 ? "Event is at full capacity" : "Registration is open"}
             </div>
           </div>
 
@@ -373,6 +625,7 @@ export default function EventsPage() {
   const [viewMode, setViewMode] = useState("grid");
   const [pendingPaymentEvent, setPendingPaymentEvent] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [ticketEvent, setTicketEvent] = useState(null);
 
   const { data = [], isLoading, isError, error } = useQuery({ queryKey: ["events"], queryFn: fetchEvents });
   const deferredQuery = useDeferredValue(filters.query);
@@ -422,7 +675,7 @@ export default function EventsPage() {
   function handleChange(e) { setForm(c => ({ ...c, [e.target.name]: e.target.value })); }
   function handleFilterChange(e) { setFilters(c => ({ ...c, [e.target.name]: e.target.value })); }
   function handleSubmit(e) { e.preventDefault(); saveMutation.mutate({ id: editingId, payload: { ...form, registrationCap: form.registrationCap === '' ? undefined : Number(form.registrationCap) } }); }
-  function handleEdit(item) { setEditingId(item._id); setShowComposer(true); setForm({ title: item.title || "", description: item.description || "", eventDate: item.eventDate ? new Date(item.eventDate).toISOString().slice(0, 16) : "", location: item.location || "", registrationCap: Number(item.registrationCap) > 0 ? String(item.registrationCap) : "" }); }
+  function handleEdit(item) { setEditingId(item._id); setShowComposer(true); setForm({ title: item.title || "", description: item.description || "", eventDate: item.eventDate ? new Date(item.eventDate).toISOString().slice(0, 16) : "", location: item.location || "", registrationCap: Number(item.registrationCap) > 0 ? String(item.registrationCap) : "", isVirtual: Boolean(item.isVirtual), meetingLink: item.meetingLink || "", meetingPassword: item.meetingPassword || "", recordingLink: item.recordingLink || "" }); }
   function handleCancel() { setEditingId(null); setForm(initialForm); setShowComposer(false); }
 
   function handleRegisterClick(event) {
@@ -530,6 +783,7 @@ export default function EventsPage() {
         onDelete={() => deleteMutation.mutate(selectedEvent._id)}
         onRegister={() => handleRegisterClick(selectedEvent)}
         registrationPending={registrationMutation.isPending}
+        onViewTicket={() => setTicketEvent(selectedEvent)}
       />
     );
   }
@@ -573,6 +827,17 @@ export default function EventsPage() {
               <input className="ev-input" name="location" value={form.location} onChange={handleChange} placeholder="Location" />
               <input className="ev-input" name="registrationCap" type="number" min="0" value={form.registrationCap} onChange={handleChange} placeholder="Capacity" />
             </div>
+            <div className="ev-composer-row" style={{ alignItems: "center", gap: "0.5rem" }}>
+              <input type="checkbox" id="isVirtual" name="isVirtual" checked={form.isVirtual} onChange={e => setForm(c => ({...c, isVirtual: e.target.checked}))} />
+              <label htmlFor="isVirtual" style={{ fontSize: "0.85rem", color: "#374151", fontWeight: 600 }}>This is a Virtual Event / Webinar</label>
+            </div>
+            {form.isVirtual && (
+              <div className="ev-composer-row">
+                <input className="ev-input" name="meetingLink" value={form.meetingLink} onChange={handleChange} placeholder="Meeting Link (Zoom, Meet, etc.)" />
+                <input className="ev-input" name="meetingPassword" value={form.meetingPassword} onChange={handleChange} placeholder="Meeting Password (optional)" />
+                <input className="ev-input" name="recordingLink" value={form.recordingLink} onChange={handleChange} placeholder="Recording Link (added later)" />
+              </div>
+            )}
             <div className="ev-composer-actions">
               <button className="ev-create-btn" type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? "Saving..." : "Update Event"}</button>
               <button className="ev-cancel-btn" type="button" onClick={handleCancel}>Cancel</button>
@@ -723,6 +988,11 @@ export default function EventsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Ticket Modal */}
+      {ticketEvent && (
+        <TicketModal event={ticketEvent} onClose={() => setTicketEvent(null)} />
       )}
     </div>
   );

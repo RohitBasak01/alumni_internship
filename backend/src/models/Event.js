@@ -32,6 +32,22 @@ const eventSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    isVirtual: {
+      type: Boolean,
+      default: false
+    },
+    meetingLink: {
+      type: String,
+      trim: true
+    },
+    meetingPassword: {
+      type: String,
+      trim: true
+    },
+    recordingLink: {
+      type: String,
+      trim: true
+    },
     registrationCap: {
       type: Number,
       min: 0,
@@ -64,6 +80,37 @@ const eventSchema = new mongoose.Schema(
         },
         orderId: {
           type: String
+        },
+        ticketCode: {
+          type: String,
+          unique: true,
+          sparse: true
+        },
+        checkedInAt: {
+          type: Date,
+          default: null
+        },
+        ticketType: {
+          type: String,
+          default: "general"
+        },
+        status: {
+          type: String,
+          enum: ["confirmed", "waitlisted", "cancelled"],
+          default: "confirmed"
+        }
+      }
+    ],
+    waitlist: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true
+        },
+        addedAt: {
+          type: Date,
+          default: Date.now
         }
       }
     ],
