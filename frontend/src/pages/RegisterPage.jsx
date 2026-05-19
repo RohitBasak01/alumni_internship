@@ -254,6 +254,34 @@ function RegisterPage() {
     }));
   }
 
+  function handleCustomDataChange(key, value) {
+    setForm((current) => ({
+      ...current,
+      customData: {
+        ...(current.customData || {}),
+        [key]: value
+      }
+    }));
+  }
+
+  function getFieldConfig(key, defaultVisibility = "optional") {
+    const fields = selectedInstitute?.profileFields || [];
+    const f = fields.find(field => field.fieldKey === key);
+    if (!f) {
+      return {
+        required: defaultVisibility === "required",
+        hidden: defaultVisibility === "hidden",
+        label: ""
+      };
+    }
+    const regVis = f.showInRegistration || f.visibility;
+    return {
+      required: regVis === "required",
+      hidden: regVis === "hidden",
+      label: f.label
+    };
+  }
+
   function goToStepTwo(event) {
     event.preventDefault();
     setStep(2);
@@ -281,7 +309,8 @@ function RegisterPage() {
       occupation: form.occupation,
       company: form.company,
       designation: form.designation,
-      termsAccepted: form.termsAccepted
+      termsAccepted: form.termsAccepted,
+      customData: form.customData || {}
     });
   }
 
@@ -446,70 +475,95 @@ function RegisterPage() {
                     <input disabled={activeProviderIsConnectedSocial} name="lastName" onChange={handleChange} placeholder="Last Name" required value={form.lastName} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
                   </div>
                   
-                  <div className="sm:col-span-2 space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Date of Birth</label>
-                    <input name="dateOfBirth" onChange={handleChange} required type="date" value={form.dateOfBirth} max={new Date().toISOString().split("T")[0]} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-slate-700" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Mobile Number</label>
-                    <input name="mobileNumber" onChange={handleChange} placeholder="Phone" required value={form.mobileNumber} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
-                  </div>
-                  <div className="sm:col-span-2 space-y-3">
-                    <div className="flex items-center justify-between ml-1">
-                      <label className="text-sm font-bold text-slate-700">Location</label>
-                      <button
-                        type="button"
-                        onClick={handleAutoDetectLocation}
-                        disabled={isDetectingLocation}
-                        className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">
-                          {isDetectingLocation ? "sync" : "my_location"}
-                        </span>
-                        {isDetectingLocation ? "Detecting..." : "Auto-detect"}
-                      </button>
+                  {!dobConfig.hidden && (
+                    <div className="sm:col-span-2 space-y-2">
+                      <label className="text-sm font-bold text-slate-700 ml-1">{dobConfig.label || "Date of Birth"}</label>
+                      <input name="dateOfBirth" onChange={handleChange} required={dobConfig.required} type="date" value={form.dateOfBirth} max={new Date().toISOString().split("T")[0]} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-slate-700" />
                     </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 ml-1">Country</span>
-                        <select
-                          name="currentCountry"
-                          onChange={handleChange}
-                          required
-                          value={form.currentCountry}
-                          className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all"
-                        >
-                          <option value="">Select Country</option>
-                          {countries.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 ml-1">City</span>
-                        {cities.length > 0 ? (
-                          <select
-                            name="currentCity"
-                            onChange={handleChange}
-                            required
-                            value={form.currentCity}
-                            className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all"
+                  )}
+
+                  {!mobileConfig.hidden && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 ml-1">{mobileConfig.label || "Mobile Number"}</label>
+                      <input name="mobileNumber" onChange={handleChange} placeholder="Phone" required={mobileConfig.required} value={form.mobileNumber} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
+                    </div>
+                  )}
+
+                  {!genderConfig.hidden && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 ml-1">{genderConfig.label || "Gender"}</label>
+                      <select name="gender" onChange={handleChange} required={genderConfig.required} value={form.gender} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-slate-700">
+                        <option value="prefer_not_to_disclose">Prefer not to disclose</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {(!countryConfig.hidden || !cityConfig.hidden) && (
+                    <div className="sm:col-span-2 space-y-3">
+                      <div className="flex items-center justify-between ml-1">
+                        <label className="text-sm font-bold text-slate-700">Location</label>
+                        {(!countryConfig.hidden || !cityConfig.hidden) && (
+                          <button
+                            type="button"
+                            onClick={handleAutoDetectLocation}
+                            disabled={isDetectingLocation}
+                            className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
                           >
-                            <option value="">Select City</option>
-                            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                        ) : (
-                          <input
-                            name="currentCity"
-                            onChange={handleChange}
-                            placeholder="Type city name"
-                            required
-                            value={form.currentCity}
-                            className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400"
-                          />
+                            <span className="material-symbols-outlined text-[16px]">
+                              {isDetectingLocation ? "sync" : "my_location"}
+                            </span>
+                            {isDetectingLocation ? "Detecting..." : "Auto-detect"}
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        {!countryConfig.hidden && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 ml-1">{countryConfig.label || "Country"}</span>
+                            <select
+                              name="currentCountry"
+                              onChange={handleChange}
+                              required={countryConfig.required}
+                              value={form.currentCountry}
+                              className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all"
+                            >
+                              <option value="">Select Country</option>
+                              {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {!cityConfig.hidden && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 ml-1">{cityConfig.label || "City"}</span>
+                            {cities.length > 0 ? (
+                              <select
+                                name="currentCity"
+                                onChange={handleChange}
+                                required={cityConfig.required}
+                                value={form.currentCity}
+                                className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all"
+                              >
+                                <option value="">Select City</option>
+                                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            ) : (
+                              <input
+                                name="currentCity"
+                                onChange={handleChange}
+                                placeholder="Type city name"
+                                required={cityConfig.required}
+                                value={form.currentCity}
+                                className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400"
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="flex gap-4 pt-6">
@@ -535,59 +589,128 @@ function RegisterPage() {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">{tenantDisplay.yearLabel}</label>
-                    <input name="batch" onChange={handleChange} placeholder="YYYY" required type="number" value={form.batch} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">{tenantDisplay.educationLabel}</label>
-                    {selectedInstitute?.departments?.length > 0 ? (
-                      <select name="department" onChange={handleChange} required value={form.department} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all">
-                        <option value="">Select {tenantDisplay.educationLabel}</option>
-                        {selectedInstitute.departments.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    ) : (
-                      <input name="department" onChange={handleChange} placeholder="e.g. Engineering" required value={form.department} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
-                    )}
-                  </div>
-
-                  {!isSchool && (
+                  {!batchConfig.hidden && (
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Stream</label>
+                      <label className="text-sm font-bold text-slate-700 ml-1">{batchConfig.label || tenantDisplay.yearLabel}</label>
+                      <input name="batch" onChange={handleChange} placeholder="YYYY" required={batchConfig.required} type="number" value={form.batch} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
+                    </div>
+                  )}
+
+                  {!deptConfig.hidden && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 ml-1">{deptConfig.label || tenantDisplay.educationLabel}</label>
+                      {selectedInstitute?.departments?.length > 0 ? (
+                        <select name="department" onChange={handleChange} required={deptConfig.required} value={form.department} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all">
+                          <option value="">Select {deptConfig.label || tenantDisplay.educationLabel}</option>
+                          {selectedInstitute.departments.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      ) : (
+                        <input name="department" onChange={handleChange} placeholder="e.g. Engineering" required={deptConfig.required} value={form.department} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
+                      )}
+                    </div>
+                  )}
+
+                  {!sectionConfig.hidden && !isSchool && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 ml-1">{sectionConfig.label || "Stream"}</label>
                       {selectedDepartmentStreams.length > 0 ? (
-                        <select name="section" onChange={handleChange} required value={form.section} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all">
-                          <option value="">Select Stream</option>
+                        <select name="section" onChange={handleChange} required={sectionConfig.required} value={form.section} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all">
+                          <option value="">Select {sectionConfig.label || "Stream"}</option>
                           {selectedDepartmentStreams.map((stream) => <option key={stream} value={stream}>{stream}</option>)}
                         </select>
                       ) : (
-                        <input name="section" onChange={handleChange} placeholder="Stream / Section" required value={form.section} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
+                        <input name="section" onChange={handleChange} placeholder="Stream / Section" required={sectionConfig.required} value={form.section} className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400" />
                       )}
                     </div>
                   )}
 
                   {isSchool ? (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Section</label>
-                        <input name="section" onChange={handleChange} placeholder="A / B / C" value={form.section} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Current Occupation</label>
-                        <input name="occupation" onChange={handleChange} placeholder="Your role" value={form.occupation} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
+                      {!sectionConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700 ml-1">{sectionConfig.label || "Section"}</label>
+                          <input name="section" onChange={handleChange} placeholder="A / B / C" required={sectionConfig.required} value={form.section} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
+                      {!occupationConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700 ml-1">{occupationConfig.label || "Current Occupation"}</label>
+                          <input name="occupation" onChange={handleChange} placeholder="Your role" required={occupationConfig.required} value={form.occupation} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Company</label>
-                        <input name="company" onChange={handleChange} placeholder="Current place of work" value={form.company} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Designation</label>
-                        <input name="designation" onChange={handleChange} placeholder="Job Title" value={form.designation} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
+                      {!companyConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700 ml-1">{companyConfig.label || "Company"}</label>
+                          <input name="company" onChange={handleChange} placeholder="Current place of work" required={companyConfig.required} value={form.company} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
+                      {!designationConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700 ml-1">{designationConfig.label || "Designation"}</label>
+                          <input name="designation" onChange={handleChange} placeholder="Job Title" required={designationConfig.required} value={form.designation} className="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
                     </>
                   )}
+
+                  {/* Render Custom Fields dynamically */}
+                  {(selectedInstitute?.profileFields || []).filter(f => !f.isStandard).map(field => {
+                    const regVis = field.showInRegistration || field.visibility;
+                    if (regVis === "hidden") return null;
+                    const value = form.customData?.[field.fieldKey] || "";
+                    const isRequired = regVis === "required";
+                    return (
+                      <div key={field.fieldKey} className="sm:col-span-2 space-y-2">
+                        <label className="text-sm font-bold text-slate-700 ml-1">
+                          {field.label} {isRequired && <span className="text-red-500">*</span>}
+                        </label>
+                        {field.inputType === "select" ? (
+                           <select
+                             name={field.fieldKey}
+                             onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                             required={isRequired}
+                             value={value}
+                             className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-slate-700"
+                           >
+                             <option value="">Select {field.label}</option>
+                             {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                           </select>
+                        ) : field.inputType === "date" ? (
+                           <input
+                             type="date"
+                             name={field.fieldKey}
+                             onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                             required={isRequired}
+                             value={value}
+                             className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-slate-700"
+                           />
+                        ) : field.inputType === "number" ? (
+                           <input
+                             type="number"
+                             name={field.fieldKey}
+                             onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                             required={isRequired}
+                             value={value}
+                             placeholder={field.label}
+                             className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400"
+                           />
+                        ) : (
+                           <input
+                             type="text"
+                             name={field.fieldKey}
+                             onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                             required={isRequired}
+                             value={value}
+                             placeholder={field.label}
+                             className="w-full px-4 py-4 bg-white/50 border border-slate-200 rounded-[1.25rem] outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all placeholder:text-slate-400"
+                           />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <label className="flex items-start gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 cursor-pointer group">

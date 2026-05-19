@@ -66,6 +66,26 @@ export function getDefaultBranding(institutionType = "college") {
   };
 }
 
+export function getDefaultProfileFields(institutionType = "college") {
+  const commonFields = [
+    { fieldKey: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Non-binary", "Prefer not to say"], visibility: "required", showInRegistration: "required", showInProfile: true, isStandard: true },
+    { fieldKey: "dateOfBirth", label: "Date of Birth", type: "date", options: [], visibility: "required", showInRegistration: "required", showInProfile: true, isStandard: true },
+    { fieldKey: "mobileNumber", label: "Mobile Number", type: "text", options: [], visibility: "required", showInRegistration: "required", showInProfile: true, isStandard: true },
+    { fieldKey: "currentCountry", label: "Current Country", type: "text", options: [], visibility: "required", showInRegistration: "required", showInProfile: true, isStandard: true },
+    { fieldKey: "currentCity", label: "Current City", type: "text", options: [], visibility: "required", showInRegistration: "required", showInProfile: true, isStandard: true },
+    { fieldKey: "batch", label: institutionType === "school" ? "Leaving Year" : "Batch/Graduation Year", type: "number", options: [], visibility: "required", showInRegistration: "required", showInProfile: true, isStandard: true },
+    { fieldKey: "department", label: institutionType === "school" ? "Last Class Attended" : "Department/Branch", type: "text", options: [], visibility: "required", showInRegistration: "required", showInProfile: true, isStandard: true },
+    { fieldKey: "section", label: "Section/Stream", type: "text", options: [], visibility: "optional", showInRegistration: "optional", showInProfile: true, isStandard: true },
+    { fieldKey: "currentEducation", label: "Current Education", type: "text", options: [], visibility: "optional", showInRegistration: "optional", showInProfile: true, isStandard: true },
+    { fieldKey: "currentInstitution", label: "Current Institution", type: "text", options: [], visibility: "optional", showInRegistration: "optional", showInProfile: true, isStandard: true },
+    { fieldKey: "occupation", label: "Occupation", type: "text", options: [], visibility: "optional", showInRegistration: "optional", showInProfile: true, isStandard: true },
+    { fieldKey: "company", label: "Company/Organization", type: "text", options: [], visibility: "optional", showInRegistration: "optional", showInProfile: true, isStandard: true },
+    { fieldKey: "designation", label: "Designation/Job Title", type: "text", options: [], visibility: "optional", showInRegistration: "optional", showInProfile: true, isStandard: true }
+  ];
+
+  return commonFields;
+}
+
 export function buildTenantConfigSnapshot(institute) {
   if (!institute) {
     return null;
@@ -75,6 +95,7 @@ export function buildTenantConfigSnapshot(institute) {
   const communityDefaults = getDefaultCommunityLabels(institutionType);
   const featureDefaults = getDefaultFeatureFlags(institutionType);
   const brandingDefaults = getDefaultBranding(institutionType);
+  const profileFieldDefaults = getDefaultProfileFields(institutionType);
 
   return {
     institutionType,
@@ -91,8 +112,12 @@ export function buildTenantConfigSnapshot(institute) {
       ...brandingDefaults,
       ...(institute.branding || {})
     },
+    profileFields: institute.profileFields && institute.profileFields.length > 0 
+      ? institute.profileFields 
+      : profileFieldDefaults,
     departments: Array.isArray(institute.departments) ? institute.departments : [],
     departmentStreams: institute.departmentStreams && typeof institute.departmentStreams === "object" ? institute.departmentStreams : {},
     streams: Array.isArray(institute.streams) ? institute.streams : []
   };
 }
+

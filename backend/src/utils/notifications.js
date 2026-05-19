@@ -1,3 +1,22 @@
+let socialEventEmitter = null;
+
+export function setNotificationEventEmitter(emitter) {
+  socialEventEmitter = typeof emitter === "function" ? emitter : null;
+}
+
+function emitNotificationEvent(notification) {
+  if (!socialEventEmitter || !notification) {
+    return;
+  }
+
+  socialEventEmitter({
+    type: "notification",
+    notificationId: notification._id?.toString?.() || notification._id,
+    userId: notification.userId?.toString?.() || notification.userId,
+    category: notification.category
+  });
+}
+
 export async function createNotification(tenantModels, payload) {
   const { Notification } = tenantModels;
 
@@ -5,7 +24,7 @@ export async function createNotification(tenantModels, payload) {
     return null;
   }
 
-  return Notification.create({
+  const notification = await Notification.create({
     instituteId: payload.instituteId,
     userId: payload.userId,
     actorUserId: payload.actorUserId || null,
@@ -20,6 +39,9 @@ export async function createNotification(tenantModels, payload) {
     createdAt: payload.createdAt,
     updatedAt: payload.updatedAt
   });
+
+  emitNotificationEvent(notification);
+  return notification;
 }
 
 export async function createNotificationsForUsers(tenantModels, payload) {
@@ -30,7 +52,7 @@ export async function createNotificationsForUsers(tenantModels, payload) {
     return [];
   }
 
-  return Notification.insertMany(
+  const notifications = await Notification.insertMany(
     userIds.map((userId) => ({
       instituteId: payload.instituteId,
       userId,
@@ -47,6 +69,9 @@ export async function createNotificationsForUsers(tenantModels, payload) {
       updatedAt: payload.updatedAt
     }))
   );
+
+  notifications.forEach(emitNotificationEvent);
+  return notifications;
 }
 
 export async function listActiveAlumniUserIds(tenantModels, instituteId, excludeUserIds = []) {

@@ -85,6 +85,35 @@ const userSchema = new mongoose.Schema(
       type: [oauthAccountSchema],
       default: []
     },
+    notificationPreferences: {
+      emailDigest: {
+        type: String,
+        enum: ["realtime", "daily", "weekly", "off"],
+        default: "daily"
+      },
+      categories: {
+        connections: {
+          type: Boolean,
+          default: true
+        },
+        jobs: {
+          type: Boolean,
+          default: true
+        },
+        events: {
+          type: Boolean,
+          default: true
+        },
+        system: {
+          type: Boolean,
+          default: true
+        }
+      }
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
     e2eePublicKey: {
       type: String,
       trim: true,

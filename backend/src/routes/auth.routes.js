@@ -171,34 +171,6 @@ function validateAlumniRegistrationBody(body) {
     issues.push("Last name is required");
   }
 
-  if (!isNonEmptyString(body.gender)) {
-    issues.push("Gender is required");
-  }
-
-  if (!isNonEmptyString(body.dateOfBirth)) {
-    issues.push("Date of birth is required");
-  }
-
-  if (!isNonEmptyString(body.mobileNumber)) {
-    issues.push("Mobile number is required");
-  }
-
-  if (!isNonEmptyString(body.currentCountry)) {
-    issues.push("Current country is required");
-  }
-
-  if (!isNonEmptyString(body.currentCity)) {
-    issues.push("Current city is required");
-  }
-
-  if (!isPositiveYear(body.batch)) {
-    issues.push("Batch or leaving year must be a valid year");
-  }
-
-  if (!isNonEmptyString(body.department)) {
-    issues.push("Department or class is required");
-  }
-
   if (body.termsAccepted !== true) {
     issues.push("You must accept the terms to continue");
   }
@@ -669,6 +641,30 @@ router.post("/alumni-registration", validateBody(validateAlumniRegistrationBody)
       throw error;
     }
 
+    const profileFields = institute.profileFields || [];
+    const missingFields = [];
+    
+    for (const field of profileFields) {
+      const regVis = field.showInRegistration || field.visibility;
+      if (regVis === "required") {
+        if (field.isStandard) {
+           if (!req.body[field.fieldKey] || String(req.body[field.fieldKey]).trim() === "") {
+             missingFields.push(field.label);
+           }
+        } else {
+           if (!req.body.customData || !req.body.customData[field.fieldKey] || String(req.body.customData[field.fieldKey]).trim() === "") {
+             missingFields.push(field.label);
+           }
+        }
+      }
+    }
+
+    if (missingFields.length > 0) {
+      const error = new Error(`Missing required fields: ${missingFields.join(", ")}`);
+      error.statusCode = 400;
+      throw error;
+    }
+
     const tenantContext = {};
     await attachTenantDatabaseContext(tenantContext, institute);
     const { User: TenantUser, AlumniProfile: TenantAlumniProfile } = getTenantModels(tenantContext);
@@ -734,23 +730,24 @@ router.post("/alumni-registration", validateBody(validateAlumniRegistrationBody)
     await TenantAlumniProfile.create({
       instituteId: institute._id,
       userId: user._id,
-      gender: req.body.gender.trim(),
-      dateOfBirth: new Date(req.body.dateOfBirth),
-      mobileNumber: req.body.mobileNumber.trim(),
+      gender: req.body.gender?.trim?.() || "",
+      dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : null,
+      mobileNumber: req.body.mobileNumber?.trim?.() || "",
       authProvider: req.body.authProvider,
-      batch: institute.institutionType === "school" ? null : Number(req.body.batch),
-      department: institute.institutionType === "school" ? "" : req.body.department.trim(),
-      leavingYear: institute.institutionType === "school" ? Number(req.body.batch) : null,
-      lastClassAttended: institute.institutionType === "school" ? req.body.department.trim() : "",
+      batch: institute.institutionType === "school" ? null : Number(req.body.batch || 0),
+      department: institute.institutionType === "school" ? "" : req.body.department?.trim?.() || "",
+      leavingYear: institute.institutionType === "school" ? Number(req.body.batch || 0) : null,
+      lastClassAttended: institute.institutionType === "school" ? req.body.department?.trim?.() || "" : "",
       section: req.body.section?.trim?.() || "",
       currentEducation: req.body.currentEducation?.trim?.() || "",
       currentInstitution: req.body.currentInstitution?.trim?.() || "",
       occupation: req.body.occupation?.trim?.() || "",
       company: req.body.company?.trim?.() || "",
       designation: req.body.designation?.trim?.() || "",
-      country: req.body.currentCountry.trim(),
-      city: req.body.currentCity.trim(),
-      location: `${req.body.currentCity.trim()}, ${req.body.currentCountry.trim()}`,
+      country: req.body.currentCountry?.trim?.() || "",
+      city: req.body.currentCity?.trim?.() || "",
+      location: `${req.body.currentCity?.trim?.() || ""} ${req.body.currentCountry?.trim?.() || ""}`.trim(),
+      customData: req.body.customData || {},
       bio: "",
       skills: [],
       registrationReviewStatus,

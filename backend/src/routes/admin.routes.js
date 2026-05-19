@@ -59,6 +59,20 @@ function validateSubscriptionBody(body) {
   return issues;
 }
 
+function validateHierarchyBody(body) {
+  const issues = [];
+
+  if (!["standalone", "group_lead", "group_member"].includes(body.hierarchyType)) {
+    issues.push("Hierarchy type must be standalone, group_lead, or group_member");
+  }
+
+  if (body.hierarchyType === "group_member" && !isObjectIdLike(body.parentInstituteId)) {
+    issues.push("A valid lead institute is required for group members");
+  }
+
+  return issues;
+}
+
 function validateCheckoutBody(body) {
   const issues = [];
 
@@ -98,6 +112,24 @@ function issueInviteToken(user) {
   };
 }
 
+function buildHierarchyCapabilities(bodyCapabilities = {}, currentCapabilities = {}) {
+  const defaultCapabilities = {
+    billing: true,
+    admins: true,
+    branding: true,
+    reporting: true,
+    contentModeration: true
+  };
+  const incoming = bodyCapabilities && typeof bodyCapabilities === "object" ? bodyCapabilities : {};
+
+  return Object.fromEntries(
+    Object.entries(defaultCapabilities).map(([key, defaultValue]) => [
+      key,
+      incoming[key] !== undefined ? Boolean(incoming[key]) : Boolean(currentCapabilities?.[key] ?? defaultValue)
+    ])
+  );
+}
+
 async function buildInstituteDetail(instituteId) {
   const institute = await Institute.findById(instituteId);
 
@@ -111,6 +143,14 @@ async function buildInstituteDetail(instituteId) {
     includeAdmins: true,
     includeRecentActivity: true
   });
+  const [parentInstitute, childInstitutes] = await Promise.all([
+    institute.parentInstituteId
+      ? Institute.findById(institute.parentInstituteId).select("name subdomain domain status subscriptionPlan hierarchyType")
+      : Promise.resolve(null),
+    Institute.find({ parentInstituteId: institute._id })
+      .select("name subdomain domain status subscriptionPlan subscriptionStatus hierarchyType")
+      .sort({ name: 1 })
+  ]);
 
   return {
     institute: {
@@ -140,6 +180,31 @@ async function buildInstituteDetail(instituteId) {
       hasPendingAdminSetup: support.hasPendingAdminSetup,
       inactiveAdminCount: support.inactiveAdminCount,
       pendingFriendships: metrics.pendingFriendships
+    },
+    hierarchy: {
+      type: institute.hierarchyType || "standalone",
+      capabilities: buildHierarchyCapabilities({}, institute.hierarchyCapabilities || {}),
+      parent: parentInstitute
+        ? {
+            _id: parentInstitute._id,
+            name: parentInstitute.name,
+            subdomain: parentInstitute.subdomain,
+            domain: parentInstitute.domain,
+            status: parentInstitute.status,
+            subscriptionPlan: parentInstitute.subscriptionPlan,
+            hierarchyType: parentInstitute.hierarchyType || "standalone"
+          }
+        : null,
+      children: childInstitutes.map((child) => ({
+        _id: child._id,
+        name: child.name,
+        subdomain: child.subdomain,
+        domain: child.domain,
+        status: child.status,
+        subscriptionPlan: child.subscriptionPlan,
+        subscriptionStatus: child.subscriptionStatus,
+        hierarchyType: child.hierarchyType || "group_member"
+      }))
     },
     recentActivity
   };
@@ -533,6 +598,89 @@ router.patch(
           subscriptionStatus: institute.subscriptionStatus,
           renewalDate: institute.subscriptionRenewsAt?.toISOString?.() || null,
           amount: Number(req.body.amount || 0)
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/institutes/:id/hierarchy",
+  protect,
+  authorize("super_admin"),
+  validateParams(validateInstituteId),
+  validateBody(validateHierarchyBody),
+  async (req, res, next) => {
+    try {
+      const institute = await Institute.findById(req.params.id);
+
+      if (!institute) {
+        const error = new Error("Institute not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const hierarchyType = req.body.hierarchyType;
+      let parentInstitute = null;
+
+      if (hierarchyType === "group_member") {
+        if (String(req.body.parentInstituteId) === institute._id.toString()) {
+          const error = new Error("An institute cannot manage itself");
+          error.statusCode = 400;
+          throw error;
+        }
+
+        parentInstitute = await Institute.findById(req.body.parentInstituteId);
+
+        if (!parentInstitute) {
+          const error = new Error("Lead institute not found");
+          error.statusCode = 404;
+          throw error;
+        }
+
+        if (parentInstitute.parentInstituteId?.toString?.() === institute._id.toString()) {
+          const error = new Error("Circular institute hierarchy is not allowed");
+          error.statusCode = 409;
+          throw error;
+        }
+
+        parentInstitute.hierarchyType = "group_lead";
+        parentInstitute.parentInstituteId = null;
+        await parentInstitute.save();
+      }
+
+      if (hierarchyType === "standalone") {
+        const childCount = await Institute.countDocuments({ parentInstituteId: institute._id });
+
+        if (childCount > 0) {
+          const error = new Error("Move or detach member institutes before making this lead standalone");
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
+      institute.hierarchyType = hierarchyType;
+      institute.parentInstituteId = hierarchyType === "group_member" ? parentInstitute._id : null;
+      institute.hierarchyCapabilities = buildHierarchyCapabilities(
+        req.body.hierarchyCapabilities,
+        institute.hierarchyCapabilities || {}
+      );
+
+      await institute.save();
+
+      res.json(await buildInstituteDetail(institute._id));
+
+      await logAuditEvent(req, {
+        action: "institute.hierarchy_updated",
+        targetType: "Institute",
+        targetId: institute._id.toString(),
+        instituteId: institute._id,
+        metadata: {
+          hierarchyType: institute.hierarchyType,
+          parentInstituteId: institute.parentInstituteId?.toString?.() || null,
+          updatedBy: req.user.email
         }
       });
     } catch (error) {

@@ -18,8 +18,10 @@ import {
   fetchSupportOverview,
   resendInstituteAdminInvite,
   suspendInstitute,
+  updateInstituteHierarchy,
   updateInstituteSubscription
 } from "../lib/api.js";
+import "../styles/LegacyWorkspace.css";
 
 const initialSubscriptionForm = {
   subscriptionPlan: "basic",
@@ -28,6 +30,18 @@ const initialSubscriptionForm = {
   amount: "",
   currency: "INR",
   notes: ""
+};
+
+const initialHierarchyForm = {
+  hierarchyType: "standalone",
+  parentInstituteId: "",
+  hierarchyCapabilities: {
+    billing: true,
+    admins: true,
+    branding: true,
+    reporting: true,
+    contentModeration: true
+  }
 };
 
 function SuperAdminPage() {
@@ -40,6 +54,7 @@ function SuperAdminPage() {
     limit: 20
   });
   const [subscriptionForm, setSubscriptionForm] = useState(initialSubscriptionForm);
+  const [hierarchyForm, setHierarchyForm] = useState(initialHierarchyForm);
 
   const institutesQuery = useQuery({
     queryKey: ["institutes"],
@@ -98,6 +113,14 @@ function SuperAdminPage() {
       ...current,
       instituteId: institute._id
     }));
+    setHierarchyForm({
+      hierarchyType: institute.hierarchyType || "standalone",
+      parentInstituteId: institute.parentInstituteId || instituteDetailQuery.data?.hierarchy?.parent?._id || "",
+      hierarchyCapabilities: {
+        ...initialHierarchyForm.hierarchyCapabilities,
+        ...(institute.hierarchyCapabilities || instituteDetailQuery.data?.hierarchy?.capabilities || {})
+      }
+    });
   }, [instituteDetailQuery.data]);
 
   const selectedInstitute = useMemo(
@@ -135,6 +158,14 @@ function SuperAdminPage() {
   const resendInviteMutation = useMutation({
     mutationFn: resendInstituteAdminInvite,
     onSuccess: refreshAdminQueries
+  });
+
+  const updateHierarchyMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateInstituteHierarchy(id, payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["admin-institute-detail", selectedInstituteId], data);
+      refreshAdminQueries();
+    }
   });
 
   const paymentCheckoutMutation = useMutation({
@@ -176,6 +207,40 @@ function SuperAdminPage() {
     });
   }
 
+  function handleHierarchyChange(event) {
+    const { checked, name, type, value } = event.target;
+
+    if (name.startsWith("capability.")) {
+      const capability = name.replace("capability.", "");
+      setHierarchyForm((current) => ({
+        ...current,
+        hierarchyCapabilities: {
+          ...current.hierarchyCapabilities,
+          [capability]: checked
+        }
+      }));
+      return;
+    }
+
+    setHierarchyForm((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value
+    }));
+  }
+
+  function handleHierarchySubmit(event) {
+    event.preventDefault();
+
+    if (!selectedInstituteId) {
+      return;
+    }
+
+    updateHierarchyMutation.mutate({
+      id: selectedInstituteId,
+      payload: hierarchyForm
+    });
+  }
+
   function renderSection() {
     if (activeSection === "institutes") {
       return (
@@ -189,9 +254,13 @@ function SuperAdminPage() {
           }}
           resendInviteMutation={resendInviteMutation}
           selectedInstituteId={selectedInstituteId}
+          hierarchyForm={hierarchyForm}
           subscriptionForm={subscriptionForm}
           suspendMutation={suspendMutation}
+          updateHierarchyMutation={updateHierarchyMutation}
           updateSubscriptionMutation={updateSubscriptionMutation}
+          onHierarchyChange={handleHierarchyChange}
+          onHierarchySubmit={handleHierarchySubmit}
           onSubscriptionChange={handleSubscriptionChange}
           onSubscriptionSubmit={handleSubscriptionSubmit}
         />

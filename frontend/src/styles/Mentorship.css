@@ -7,6 +7,28 @@
   padding: 2rem 1.5rem;
 }
 
+.mt-page-container--narrow {
+  max-width: 1000px;
+}
+
+.mt-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.mt-page-header h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 2rem;
+}
+
+.mt-muted {
+  color: #64748b;
+}
+
 /* Hero */
 .mt-hero {
   display: flex;
@@ -55,6 +77,38 @@
 .mt-hero-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mt-hero-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.mt-hero-btn--ghost {
+  border: 1px solid white;
+  background: transparent;
+  color: white;
+}
+
+.mt-search-block {
+  margin-bottom: 2rem;
+}
+
+.mt-empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.mt-empty-state--card {
+  border-radius: 12px;
+  background: white;
+  padding: 4rem;
+}
+
+.mt-empty-state .material-symbols-outlined {
+  color: #cbd5e1;
+  font-size: 3rem;
 }
 
 /* Directory Grid */
@@ -161,6 +215,10 @@
   margin-bottom: 1rem;
 }
 
+.mt-availability .material-symbols-outlined {
+  font-size: 1.2rem;
+}
+
 .mt-btn {
   width: 100%;
   background: #e0f2fe;
@@ -175,6 +233,11 @@
 
 .mt-btn:hover {
   background: #bae6fd;
+}
+
+.mt-btn--auto {
+  width: auto;
+  text-decoration: none;
 }
 
 /* Dashboard Tabs */
@@ -218,6 +281,10 @@
   align-items: center;
 }
 
+.mt-session-main {
+  flex: 1;
+}
+
 .mt-session-details h4 {
   margin: 0 0 0.5rem;
   font-size: 1.1rem;
@@ -242,11 +309,71 @@
   border-left: 3px solid #cbd5e1;
 }
 
+.mt-agenda strong {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.mt-session-status {
+  border-radius: 999px;
+  background: #e2e8f0;
+  padding: 0.25rem 0.6rem;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mt-session-status--confirmed {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.mt-session-status--pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.mt-session-status--declined,
+.mt-session-status--cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.mt-session-person {
+  color: #334155;
+  font-weight: 600;
+}
+
+.mt-session-schedule {
+  margin-top: 1rem;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.mt-session-schedule strong,
+.mt-confirmed-row strong {
+  color: #0f172a;
+}
+
+.mt-confirmed-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mt-time-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
 .mt-session-actions {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   min-width: 200px;
+  margin-left: 2rem;
 }
 
 .mt-btn-solid {
@@ -270,6 +397,23 @@
   cursor: pointer;
 }
 
+.mt-link-btn {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  background: #e0f2fe;
+  padding: 0.4rem 0.8rem;
+  color: #0284c7;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mt-waiting-note {
+  color: #f59e0b;
+  text-align: center;
+  font-style: italic;
+}
+
 /* Modals */
 .mt-modal-overlay {
   position: fixed;
@@ -290,6 +434,46 @@
   padding: 2rem;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+.mt-modal-title {
+  margin: 0 0 1.5rem;
+}
+
+.mt-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.mt-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.mt-form-label span {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.mt-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.mt-modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.mt-modal-actions > * {
+  flex: 1;
 }
 
 .mt-input {

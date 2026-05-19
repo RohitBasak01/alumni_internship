@@ -6,6 +6,15 @@ export const demoInstitutes = [
     domain: "alumni.spit.ac.in",
     institutionType: "college",
     educationLevel: "higher_ed",
+    hierarchyType: "group_lead",
+    parentInstituteId: null,
+    hierarchyCapabilities: {
+      billing: true,
+      admins: true,
+      branding: true,
+      reporting: true,
+      contentModeration: true
+    },
     communityLabels: {
       memberPlural: "Alumni",
       memberSingular: "Alumnus/Alumna",
@@ -49,6 +58,15 @@ export const demoInstitutes = [
     domain: "alumni.greenwoodschool.edu",
     institutionType: "school",
     educationLevel: "k12",
+    hierarchyType: "group_member",
+    parentInstituteId: "65f000000000000000000001",
+    hierarchyCapabilities: {
+      billing: true,
+      admins: true,
+      branding: false,
+      reporting: true,
+      contentModeration: true
+    },
     communityLabels: {
       memberPlural: "Former Students",
       memberSingular: "Former Student",

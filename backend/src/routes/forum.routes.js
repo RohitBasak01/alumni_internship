@@ -29,25 +29,64 @@ router.get(
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
       const skip = (page - 1) * limit;
+      const sortMode = String(req.query.sort || "latest");
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+      if (sortMode === "unanswered") {
+        filter.replyCount = 0;
+      }
+
+      const sortMap = {
+        latest: { isPinned: -1, createdAt: -1 },
+        upvoted: { isPinned: -1, upvoteCount: -1, createdAt: -1 },
+        replied: { isPinned: -1, replyCount: -1, createdAt: -1 },
+        unanswered: { isPinned: -1, createdAt: -1 }
+      };
+      const sort = sortMap[sortMode] || sortMap.latest;
 
       const [threads, total] = await Promise.all([
-        ForumThread.find(filter)
-          .populate("authorId", "name email")
-          .sort({ isPinned: -1, createdAt: -1 })
-          .skip(skip)
-          .limit(limit)
-          .lean(),
+        ForumThread.aggregate([
+          { $match: filter },
+          {
+            $addFields: {
+              upvoteCount: { $size: { $ifNull: ["$upvotes", []] } },
+              isTrending: {
+                $and: [
+                  { $gte: ["$updatedAt", twoDaysAgo] },
+                  {
+                    $gte: [
+                      {
+                        $add: [
+                          { $size: { $ifNull: ["$upvotes", []] } },
+                          { $ifNull: ["$replyCount", 0] },
+                          { $ifNull: ["$viewCount", 0] }
+                        ]
+                      },
+                      5
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          { $sort: sort },
+          { $skip: skip },
+          { $limit: limit }
+        ]),
         ForumThread.countDocuments(filter)
       ]);
+
+      await ForumThread.populate(threads, { path: "authorId", select: "name email" });
 
       const uid = req.user._id.toString();
       const formatted = threads.map(t => ({
         ...t,
-        upvoteCount: t.upvotes?.length || 0,
+        upvoteCount: t.upvoteCount || t.upvotes?.length || 0,
         hasUpvoted: (t.upvotes || []).some(u => u.toString() === uid)
       }));
 
-      res.json({ threads: formatted, total, page, pages: Math.ceil(total / limit) });
+      res.json({ threads: formatted, total, page, limit, pages: Math.ceil(total / limit) });
     } catch (error) {
       next(error);
     }

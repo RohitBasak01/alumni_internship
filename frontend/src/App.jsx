@@ -57,6 +57,7 @@ const MentorsDirectoryPage = lazy(() => import("./pages/MentorsDirectoryPage.jsx
 const MentorOptInPage = lazy(() => import("./pages/MentorOptInPage.jsx"));
 const MentorshipDashboard = lazy(() => import("./pages/MentorshipDashboard.jsx"));
 const EmailCampaignPage = lazy(() => import("./pages/EmailCampaignPage.jsx"));
+const AdminInsightPage = lazy(() => import("./pages/AdminInsightPage.jsx"));
 
 /**
  * RootPage — serves the platform landing page for the main domain
@@ -145,6 +146,14 @@ function App() {
               element={
                 <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
                   <EmailCampaignPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="insights"
+              element={
+                <ProtectedRoute allow={(user) => user?.role === "institute_admin"}>
+                  <AdminInsightPage />
                 </ProtectedRoute>
               }
             />

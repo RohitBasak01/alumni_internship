@@ -6,6 +6,7 @@ import {
   fetchEvents,
   fetchJobs,
   fetchFeed,
+  fetchManagedInstitutions,
   fetchNotificationSummary,
   fetchAlumniApprovalTurnaroundKpi,
   fetchAlumniPosts,
@@ -51,6 +52,11 @@ export function useDashboardLogic() {
   const jobsQuery = useQuery({ queryKey: ["jobs"], queryFn: fetchJobs });
   const feedQuery = useQuery({ queryKey: ["feed"], queryFn: fetchFeed });
   const notificationsQuery = useQuery({ queryKey: ["notification-summary"], queryFn: fetchNotificationSummary });
+  const managedInstitutionsQuery = useQuery({
+    queryKey: ["managed-institutions"],
+    queryFn: fetchManagedInstitutions,
+    enabled: !isAlumni
+  });
   
   const approvalTurnaroundQuery = useQuery({
     queryKey: ["alumni-approval-turnaround-kpi"],
@@ -219,6 +225,7 @@ export function useDashboardLogic() {
       alumni: alumniQuery,
       posts: postsQuery,
       notifications: notificationsQuery,
+      managedInstitutions: managedInstitutionsQuery,
       approval: approvalTurnaroundQuery,
       announcements: announcementsQuery,
       events: eventsQuery,

@@ -147,6 +147,19 @@ function validateInstituteSettingsBody(body) {
     issues.push("Streams must be an array of strings");
   }
 
+  if (body.profileFields !== undefined) {
+    if (!Array.isArray(body.profileFields)) {
+      issues.push("profileFields must be an array");
+    } else {
+      for (const field of body.profileFields) {
+        if (!field.fieldKey || !field.label) {
+          issues.push("Each profile field must have a fieldKey and a label");
+          break;
+        }
+      }
+    }
+  }
+
   return issues;
 }
 
@@ -201,6 +214,7 @@ function buildInstituteSettingsPayload(institute) {
       ...brandingDefaults,
       ...(institute.branding || {})
     },
+    profileFields: institute.profileFields || [],
     departments: institute.departments || [],
     departmentStreams: institute.departmentStreams || {},
     streams: institute.streams || []
@@ -622,6 +636,10 @@ router.patch(
           : {}),
         ...(autoApproveDomains !== null ? { autoApproveEmailDomains: autoApproveDomains } : {})
       };
+
+      if (req.body.profileFields !== undefined) {
+        institute.profileFields = req.body.profileFields;
+      }
 
       await institute.save();
 

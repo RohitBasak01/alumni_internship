@@ -355,6 +355,13 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
     }
   }
 
+  if (req.body.customData !== undefined && typeof req.body.customData === "object") {
+    profile.customData = {
+      ...(profile.customData ? Object.fromEntries(profile.customData) : {}),
+      ...req.body.customData
+    };
+  }
+
   await user.save();
   await profile.save();
 

@@ -9,7 +9,8 @@ const initialFormState = {
   name:"",website:"",email:"",bio:"",slug:"",tagline:"",
   primaryColor:"#4F46E5",secondaryColor:"#10B981",accentColor:"#F59E0B",
   logoUrl:"",enableJobs:true,enableEvents:true,allowStudentRegistrations:false,
-  autoApproveAlumni:false,autoApproveEmailDomainsText:"",departmentsText:"",departmentStreamsText:""
+  autoApproveAlumni:false,autoApproveEmailDomainsText:"",departmentsText:"",departmentStreamsText:"",
+  profileFields: []
 };
 function normalizeAutoApproveDomainsInput(value){
   return [...new Set(String(value||"").split(/[,\n]/).map(i=>i.trim().toLowerCase().replace(/^@/,"")).filter(Boolean))];
@@ -50,7 +51,8 @@ function mapSettingsToForm(s){
     autoApproveAlumni:Boolean(s?.featureFlags?.autoApproveAlumni),
     autoApproveEmailDomainsText:Array.isArray(s?.featureFlags?.autoApproveEmailDomains)?s.featureFlags.autoApproveEmailDomains.join("\n"):"",
     departmentsText:Array.isArray(s?.departments)?s.departments.join("\n"):"",
-    departmentStreamsText:formatDepartmentStreamsInput(s?.departmentStreams||{})
+    departmentStreamsText:formatDepartmentStreamsInput(s?.departmentStreams||{}),
+    profileFields: Array.isArray(s?.profileFields) ? s.profileFields : []
   };
 }
 function buildUpdatePayload(form){
@@ -61,7 +63,8 @@ function buildUpdatePayload(form){
     featureFlags:{enableJobs:form.enableJobs,enableEvents:form.enableEvents,allowStudentRegistrations:form.allowStudentRegistrations,autoApproveAlumni:form.autoApproveAlumni,autoApproveEmailDomains:normalizeAutoApproveDomainsInput(form.autoApproveEmailDomainsText)},
     departments:normalizeDepartmentsInput(form.departmentsText),
     departmentStreams,
-    streams:[...new Set(Object.values(departmentStreams).flat())]
+    streams:[...new Set(Object.values(departmentStreams).flat())],
+    profileFields: form.profileFields
   };
 }
 
@@ -116,6 +119,264 @@ function ListTags({value,onChange,placeholder,addLabel}){
   );
 }
 
+/* ── Profile & Registration Fields Manager ───────────────── */
+function ProfileFieldsManager({ form, setForm }) {
+  const fields = form.profileFields || [];
+  const [newField, setNewField] = useState({
+    fieldKey: "",
+    label: "",
+    inputType: "text",
+    showInRegistration: "optional",
+    showInProfile: true,
+    isStandard: false,
+    options: ""
+  });
+  const [error, setError] = useState("");
+
+  const handleAddField = () => {
+    const key = newField.fieldKey.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const label = newField.label.trim();
+    if (!key || !label) {
+      setError("Field key and label are required");
+      return;
+    }
+    if (fields.some(f => f.fieldKey === key)) {
+      setError("A field with this key already exists");
+      return;
+    }
+
+    const fieldToAdd = {
+      fieldKey: key,
+      label,
+      inputType: newField.inputType,
+      visibility: newField.showInRegistration,
+      showInRegistration: newField.showInRegistration,
+      showInProfile: newField.showInProfile,
+      isStandard: false,
+      options: newField.inputType === "select" ? newField.options.split(",").map(o => o.trim()).filter(Boolean) : []
+    };
+
+    setForm(c => ({
+      ...c,
+      profileFields: [...fields, fieldToAdd]
+    }));
+
+    setNewField({
+      fieldKey: "",
+      label: "",
+      inputType: "text",
+      showInRegistration: "optional",
+      showInProfile: true,
+      isStandard: false,
+      options: ""
+    });
+    setError("");
+  };
+
+  const handleUpdateRegistrationVisibility = (fieldKey, showInRegistration) => {
+    setForm(c => ({
+      ...c,
+      profileFields: fields.map(f => f.fieldKey === fieldKey ? { ...f, showInRegistration, visibility: showInRegistration } : f)
+    }));
+  };
+
+  const handleUpdateProfileVisibility = (fieldKey, showInProfile) => {
+    setForm(c => ({
+      ...c,
+      profileFields: fields.map(f => f.fieldKey === fieldKey ? { ...f, showInProfile } : f)
+    }));
+  };
+
+  const handleDeleteField = (fieldKey) => {
+    setForm(c => ({
+      ...c,
+      profileFields: fields.filter(f => f.fieldKey !== fieldKey)
+    }));
+  };
+
+  return (
+    <div className="st-fields-manager">
+      <div className="st-panel">
+        <div className="st-panel-header">
+          <div>
+            <h2 className="st-panel-title">Registration & Profile Fields</h2>
+            <p className="st-panel-sub">Configure which fields are displayed to users during registration and on their profiles.</p>
+          </div>
+        </div>
+
+        <div className="st-fields-list" style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+          {fields.map(field => (
+            <div key={field.fieldKey} className="st-field-row" style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "1rem",
+              background: "#1e293b",
+              borderRadius: "8px",
+              border: "1px solid #334155"
+            }}>
+              <div>
+                <div style={{ fontWeight: "600", color: "#f8fafc" }}>
+                  {field.label} {field.isStandard && <span style={{ fontSize: "0.75rem", color: "#6366f1", marginLeft: "0.5rem" }}>(System Field)</span>}
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                  Key: <code>{field.fieldKey}</code> • Type: {field.inputType}
+                </div>
+                {field.options && field.options.length > 0 && (
+                  <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "0.25rem" }}>
+                    Options: {field.options.join(", ")}
+                  </div>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" }}>Registration</label>
+                  <select
+                    value={field.showInRegistration || field.visibility}
+                    onChange={(e) => handleUpdateRegistrationVisibility(field.fieldKey, e.target.value)}
+                    className="st-input"
+                    style={{ width: "auto", minWidth: "125px", height: "38px", padding: "4px 8px" }}
+                  >
+                    <option value="required">Required</option>
+                    <option value="optional">Optional</option>
+                    <option value="hidden">Hidden</option>
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" }}>Profile</label>
+                  <select
+                    value={field.showInProfile !== undefined ? (field.showInProfile ? "visible" : "hidden") : (field.visibility === "hidden" ? "hidden" : "visible")}
+                    onChange={(e) => handleUpdateProfileVisibility(field.fieldKey, e.target.value === "visible")}
+                    className="st-input"
+                    style={{ width: "auto", minWidth: "125px", height: "38px", padding: "4px 8px" }}
+                  >
+                    <option value="visible">Visible</option>
+                    <option value="hidden">Hidden</option>
+                  </select>
+                </div>
+
+                {!field.isStandard && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteField(field.fieldKey)}
+                    className="st-edit-btn"
+                    style={{ color: "#ef4444", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", cursor: "pointer", height: "38px", marginTop: "1.1rem" }}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="st-panel" style={{ marginTop: "1.5rem" }}>
+        <div className="st-panel-header">
+          <div>
+            <h2 className="st-panel-title">Add Custom Profile Field</h2>
+            <p className="st-panel-sub">Create a new field for user-specific institutional data.</p>
+          </div>
+        </div>
+
+        <div className="st-info-grid" style={{ marginTop: "1rem" }}>
+          <div className="st-info-block">
+            <label className="st-label">Field Label (e.g. Roll Number)</label>
+            <input
+              type="text"
+              className="st-input"
+              value={newField.label}
+              onChange={(e) => setNewField(c => ({ ...c, label: e.target.value }))}
+              placeholder="e.g. Student ID"
+            />
+          </div>
+
+          <div className="st-info-block">
+            <label className="st-label">Field Key (unique, lowercase, no spaces)</label>
+            <input
+              type="text"
+              className="st-input"
+              value={newField.fieldKey}
+              onChange={(e) => setNewField(c => ({ ...c, fieldKey: e.target.value }))}
+              placeholder="e.g. student_id"
+            />
+          </div>
+
+          <div className="st-info-block">
+            <label className="st-label">Input Type</label>
+            <select
+              value={newField.inputType}
+              onChange={(e) => setNewField(c => ({ ...c, inputType: e.target.value }))}
+              className="st-input"
+            >
+              <option value="text">Text Input</option>
+              <option value="number">Number Input</option>
+              <option value="date">Date Picker</option>
+              <option value="select">Dropdown Menu</option>
+            </select>
+          </div>
+
+          <div className="st-info-block">
+            <label className="st-label">Show in Registration</label>
+            <select
+              value={newField.showInRegistration}
+              onChange={(e) => setNewField(c => ({ ...c, showInRegistration: e.target.value }))}
+              className="st-input"
+            >
+              <option value="optional">Optional</option>
+              <option value="required">Required</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
+
+          <div className="st-info-block">
+            <label className="st-label">Show in Profile</label>
+            <select
+              value={newField.showInProfile ? "visible" : "hidden"}
+              onChange={(e) => setNewField(c => ({ ...c, showInProfile: e.target.value === "visible" }))}
+              className="st-input"
+            >
+              <option value="visible">Visible</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
+
+          {newField.inputType === "select" && (
+            <div className="st-info-block st-info-block--full">
+              <label className="st-label">Dropdown Options (comma-separated)</label>
+              <input
+                type="text"
+                className="st-input"
+                value={newField.options}
+                onChange={(e) => setNewField(c => ({ ...c, options: e.target.value }))}
+                placeholder="Option 1, Option 2, Option 3"
+              />
+            </div>
+          )}
+
+          {error && (
+            <div className="st-info-block st-info-block--full" style={{ color: "#ef4444", fontSize: "0.85rem" }}>
+              {error}
+            </div>
+          )}
+
+          <div className="st-info-block st-info-block--full" style={{ marginTop: "1rem" }}>
+            <button
+              type="button"
+              onClick={handleAddField}
+              className="st-save-btn"
+              style={{ width: "auto", cursor: "pointer" }}
+            >
+              Add Field
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Sidebar nav ───────────────────────────────────────── */
 const SIDEBAR_ITEMS=[
   {key:"general",   icon:"info",           label:"General Information"},
@@ -123,7 +384,7 @@ const SIDEBAR_ITEMS=[
   {key:"social",    icon:"link",           label:"Social Links"},
   {key:"contact",   icon:"call",           label:"Contact Information"},
 ];
-const TOP_TABS=["General Information","Branding","Portal Configuration","Integrations","Email Templates","Security"];
+const TOP_TABS=["General Information","Branding","Portal Configuration","Registration & Profile Fields","Integrations","Email Templates","Security"];
 
 /* ══════════════════════════════════════════════════════════
    Main Page
@@ -192,136 +453,140 @@ export default function InstitutionSettingsPage(){
       </div>
 
       {/* Layout */}
-      <div className="st-layout">
+      <div className={`st-layout ${activeTab !== "General Information" ? "st-layout--single" : ""}`}>
         {/* Left sidebar nav */}
-        <aside className="st-sidebar-nav">
-          {SIDEBAR_ITEMS.map(item=>(
-            <button key={item.key} className={`st-side-item ${sidebarKey===item.key?"st-side-item--active":""}`} onClick={()=>setSidebarKey(item.key)}>
-              <span className="material-symbols-outlined" style={{fontSize:17}}>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </aside>
+        {activeTab === "General Information" && (
+          <aside className="st-sidebar-nav">
+            {SIDEBAR_ITEMS.map(item=>(
+              <button key={item.key} className={`st-side-item ${sidebarKey===item.key?"st-side-item--active":""}`} onClick={()=>setSidebarKey(item.key)}>
+                <span className="material-symbols-outlined" style={{fontSize:17}}>{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </aside>
+        )}
 
         {/* Right content */}
         <div className="st-content">
 
-          {/* ── General Information panel ── */}
-          <div className="st-panel">
-            <div className="st-panel-header">
-              <div>
-                <h2 className="st-panel-title">General Information</h2>
-                <p className="st-panel-sub">Core details about your institution.</p>
-              </div>
-              <button className="st-edit-btn" onClick={()=>setEditingGeneral(e=>!e)}>
-                <span className="material-symbols-outlined" style={{fontSize:15}}>edit</span>
-                {editingGeneral?"Cancel":"Edit"}
-              </button>
-            </div>
-
-            <div className="st-info-grid">
-              <div className="st-info-block">
-                <div className="st-info-label">Institution Name</div>
-                {editingGeneral
-                  ?<input className="st-input" name="name" value={form.name} onChange={handleChange}/>
-                  :<div className="st-info-val">{form.name||"SPIT Demo Institute"}</div>
-                }
-              </div>
-              <div className="st-info-block">
-                <div className="st-info-label">Website</div>
-                {editingGeneral
-                  ?<input className="st-input" name="website" value={form.website} onChange={handleChange}/>
-                  :<div className="st-info-val">{form.website||"https://www.spit.edu"}</div>
-                }
-              </div>
-              <div className="st-info-block">
-                <div className="st-info-label">Contact Email</div>
-                {editingGeneral
-                  ?<input className="st-input" name="email" value={form.email} onChange={handleChange}/>
-                  :<div className="st-info-val">{form.email||"admin@spit.edu"}</div>
-                }
-              </div>
-              <div className="st-info-block">
-                <div className="st-info-label">Established Year</div>
-                <div className="st-info-val">1962</div>
-              </div>
-              <div className="st-info-block st-info-block--full">
-                <div className="st-info-label">About / Bio</div>
-                {editingGeneral
-                  ?<textarea className="st-input" name="bio" value={form.bio} onChange={handleChange} rows={3}/>
-                  :<div className="st-info-val">{form.bio||"SPIT is a premier technical institute committed to academic excellence, innovation, and holistic development of students."}</div>
-                }
-              </div>
-              <div className="st-info-block">
-                <div className="st-info-label">Institution Type</div>
-                <div className="st-info-val">Engineering Institute</div>
-              </div>
-
-              {/* Logo */}
-              <div className="st-logo-wrap">
-                <div className="st-logo-preview">
-                  {form.logoUrl
-                    ?<img src={form.logoUrl} alt="Logo" className="st-logo-img"/>
-                    :<div className="st-logo-placeholder">
-                      <span className="material-symbols-outlined" style={{fontSize:38,color:"#6366f1"}}>school</span>
-                    </div>
-                  }
-                </div>
-                {editingGeneral&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:".35rem"}}>
-                    <label className="st-label">Logo URL</label>
-                    <input className="st-input" name="logoUrl" value={form.logoUrl} onChange={handleChange} placeholder="https://..."/>
+          {activeTab === "General Information" && (
+            <>
+              {/* ── General Information panel ── */}
+              <div className="st-panel">
+                <div className="st-panel-header">
+                  <div>
+                    <h2 className="st-panel-title">General Information</h2>
+                    <p className="st-panel-sub">Core details about your institution.</p>
                   </div>
-                )}
-                <button className="st-change-logo-btn">
-                  <span className="material-symbols-outlined" style={{fontSize:14}}>cloud_upload</span>
-                  Change Logo
-                </button>
-              </div>
-            </div>
-          </div>
+                  <button className="st-edit-btn" onClick={()=>setEditingGeneral(e=>!e)}>
+                    <span className="material-symbols-outlined" style={{fontSize:15}}>edit</span>
+                    {editingGeneral?"Cancel":"Edit"}
+                  </button>
+                </div>
 
-          {/* ── Departments panel ── */}
-          <div className="st-panel">
-            <div className="st-panel-header">
-              <div>
-                <h2 className="st-panel-title">Academic Departments / Branches</h2>
-                <p className="st-panel-sub">Departments displayed during alumni registration.</p>
-              </div>
-              <button className="st-manage-btn">
-                <span className="material-symbols-outlined" style={{fontSize:15}}>settings</span>
-                Manage Departments
-              </button>
-            </div>
-            <ListTags
-              value={form.departmentsText}
-              onChange={v=>setForm(c=>({...c,departmentsText:v}))}
-              placeholder="Department name..."
-              addLabel="+ Add Department"
-            />
-          </div>
+                <div className="st-info-grid">
+                  <div className="st-info-block">
+                    <div className="st-info-label">Institution Name</div>
+                    {editingGeneral
+                      ?<input className="st-input" name="name" value={form.name} onChange={handleChange}/>
+                      :<div className="st-info-val">{form.name||"SPIT Demo Institute"}</div>
+                    }
+                  </div>
+                  <div className="st-info-block">
+                    <div className="st-info-label">Website</div>
+                    {editingGeneral
+                      ?<input className="st-input" name="website" value={form.website} onChange={handleChange}/>
+                      :<div className="st-info-val">{form.website||"https://www.spit.edu"}</div>
+                    }
+                  </div>
+                  <div className="st-info-block">
+                    <div className="st-info-label">Contact Email</div>
+                    {editingGeneral
+                      ?<input className="st-input" name="email" value={form.email} onChange={handleChange}/>
+                      :<div className="st-info-val">{form.email||"admin@spit.edu"}</div>
+                    }
+                  </div>
+                  <div className="st-info-block">
+                    <div className="st-info-label">Established Year</div>
+                    <div className="st-info-val">1962</div>
+                  </div>
+                  <div className="st-info-block st-info-block--full">
+                    <div className="st-info-label">About / Bio</div>
+                    {editingGeneral
+                      ?<textarea className="st-input" name="bio" value={form.bio} onChange={handleChange} rows={3}/>
+                      :<div className="st-info-val">{form.bio||"SPIT is a premier technical institute committed to academic excellence, innovation, and holistic development of students."}</div>
+                    }
+                  </div>
+                  <div className="st-info-block">
+                    <div className="st-info-label">Institution Type</div>
+                    <div className="st-info-val">Engineering Institute</div>
+                  </div>
 
-            <div className="st-panel">
-              <div className="st-panel-header">
-                <div>
-                  <h2 className="st-panel-title">Department Streams</h2>
-                  <p className="st-panel-sub">Map each department to the streams alumni can select during registration.</p>
+                  {/* Logo */}
+                  <div className="st-logo-wrap">
+                    <div className="st-logo-preview">
+                      {form.logoUrl
+                        ?<img src={form.logoUrl} alt="Logo" className="st-logo-img"/>
+                        :<div className="st-logo-placeholder">
+                          <span className="material-symbols-outlined" style={{fontSize:38,color:"#6366f1"}}>school</span>
+                        </div>
+                      }
+                    </div>
+                    {editingGeneral&&(
+                      <div style={{display:"flex",flexDirection:"column",gap:".35rem"}}>
+                        <label className="st-label">Logo URL</label>
+                        <input className="st-input" name="logoUrl" value={form.logoUrl} onChange={handleChange} placeholder="https://..."/>
+                      </div>
+                    )}
+                    <button className="st-change-logo-btn">
+                      <span className="material-symbols-outlined" style={{fontSize:14}}>cloud_upload</span>
+                      Change Logo
+                    </button>
+                  </div>
                 </div>
               </div>
-              <textarea
-                className="st-input"
-                name="departmentStreamsText"
-                value={form.departmentStreamsText}
-                onChange={handleChange}
-                rows={8}
-                placeholder={"B.Tech: CSE, IT, AIDS\nM.Tech: VLSI, CDS"}
-                style={{width:"100%", boxSizing:"border-box", lineHeight:1.5}}
-              />
-            </div>
 
-          {/* ── Branding + Portal side-by-side ── */}
-          <div className="st-two-col">
-            {/* Branding */}
+              {/* ── Departments panel ── */}
+              <div className="st-panel">
+                <div className="st-panel-header">
+                  <div>
+                    <h2 className="st-panel-title">Academic Departments / Branches</h2>
+                    <p className="st-panel-sub">Departments displayed during alumni registration.</p>
+                  </div>
+                  <button className="st-manage-btn">
+                    <span className="material-symbols-outlined" style={{fontSize:15}}>settings</span>
+                    Manage Departments
+                  </button>
+                </div>
+                <ListTags
+                  value={form.departmentsText}
+                  onChange={v=>setForm(c=>({...c,departmentsText:v}))}
+                  placeholder="Department name..."
+                  addLabel="+ Add Department"
+                />
+              </div>
+
+              <div className="st-panel">
+                <div className="st-panel-header">
+                  <div>
+                    <h2 className="st-panel-title">Department Streams</h2>
+                    <p className="st-panel-sub">Map each department to the streams alumni can select during registration.</p>
+                  </div>
+                </div>
+                <textarea
+                  className="st-input"
+                  name="departmentStreamsText"
+                  value={form.departmentStreamsText}
+                  onChange={handleChange}
+                  rows={8}
+                  placeholder={"B.Tech: CSE, IT, AIDS\nM.Tech: VLSI, CDS"}
+                  style={{width:"100%", boxSizing:"border-box", lineHeight:1.5}}
+                />
+              </div>
+            </>
+          )}
+
+          {activeTab === "Branding" && (
             <div className="st-panel">
               <div className="st-panel-header">
                 <div>
@@ -333,7 +598,7 @@ export default function InstitutionSettingsPage(){
                   {editingBranding?"Cancel":"Edit"}
                 </button>
               </div>
-              <div className="st-branding-grid">
+              <div className="st-branding-grid" style={{ marginTop: "1rem" }}>
                 {[{k:"primaryColor",l:"Primary Color"},{k:"secondaryColor",l:"Secondary Color"},{k:"accentColor",l:"Accent Color"}].map(({k,l})=>(
                   <div key={k} className="st-color-block">
                     <div className="st-color-label">{l}</div>
@@ -347,7 +612,7 @@ export default function InstitutionSettingsPage(){
                   </div>
                 ))}
               </div>
-              <div className="st-branding-extra">
+              <div className="st-branding-extra" style={{ marginTop: "1.5rem" }}>
                 <div className="st-info-block">
                   <div className="st-info-label">Portal Tagline</div>
                   {editingBranding
@@ -355,7 +620,7 @@ export default function InstitutionSettingsPage(){
                     :<div className="st-info-val">{form.tagline||"Build lifelong alumni relationships."}</div>
                   }
                 </div>
-                <div className="st-info-block">
+                <div className="st-info-block" style={{ marginTop: "1rem" }}>
                   <div className="st-info-label">Portal Slug</div>
                   <div className="st-slug-row">
                     <span className="st-info-val">{form.slug||"spit"}</span>
@@ -364,8 +629,9 @@ export default function InstitutionSettingsPage(){
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Portal Configuration */}
+          {activeTab === "Portal Configuration" && (
             <div className="st-panel">
               <div className="st-panel-header">
                 <div>
@@ -377,17 +643,17 @@ export default function InstitutionSettingsPage(){
                   {editingPortal?"Cancel":"Edit"}
                 </button>
               </div>
-              <div className="st-toggle-list">
+              <div className="st-toggle-list" style={{ marginTop: "1rem" }}>
                 {[
                   {name:"enableJobs",             label:"Enable Jobs Board",             sub:"Allow alumni to post and browse job opportunities."},
                   {name:"enableEvents",            label:"Enable Events",                  sub:"Manage reunions, workshops, and seminars."},
                   {name:"allowStudentRegistrations",label:"Allow Student Registrations",   sub:"Permit currently enrolled students to join the portal."},
                   {name:"autoApproveAlumni",       label:"Auto-approve Alumni",            sub:"Automatically approve registrations matching verified email domains."},
                 ].map(t=>(
-                  <div key={t.name} className="st-toggle-row">
+                  <div key={t.name} className="st-toggle-row" style={{ display: "flex", justifyContent: "space-between", padding: "1rem 0", borderBottom: "1px solid #334155" }}>
                     <div>
-                      <div className="st-toggle-label">{t.label}</div>
-                      <div className="st-toggle-sub">{t.sub}</div>
+                      <div className="st-toggle-label" style={{ fontWeight: "600" }}>{t.label}</div>
+                      <div className="st-toggle-sub" style={{ fontSize: "0.8rem", color: "#94a3b8" }}>{t.sub}</div>
                     </div>
                     <Toggle
                       checked={!!form[t.name]}
@@ -396,9 +662,9 @@ export default function InstitutionSettingsPage(){
                   </div>
                 ))}
 
-                <div className="st-toggle-row st-toggle-row--domains">
-                  <div className="st-toggle-label">Auto-approve Email Domains</div>
-                  <div className="st-domains-row">
+                <div className="st-toggle-row st-toggle-row--domains" style={{ padding: "1rem 0" }}>
+                  <div className="st-toggle-label" style={{ fontWeight: "600" }}>Auto-approve Email Domains</div>
+                  <div className="st-domains-row" style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.5rem" }}>
                     {domains.length>0
                       ?<span className="st-domain-val">{domains.join(", ")}</span>
                       :<span style={{color:"#94a3b8",fontSize:".75rem"}}>No domains set</span>
@@ -415,7 +681,25 @@ export default function InstitutionSettingsPage(){
                 </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === "Registration & Profile Fields" && (
+            <ProfileFieldsManager form={form} setForm={setForm} />
+          )}
+
+          {["Integrations", "Email Templates", "Security"].includes(activeTab) && (
+            <div className="st-panel">
+              <div className="st-panel-header">
+                <div>
+                  <h2 className="st-panel-title">{activeTab}</h2>
+                  <p className="st-panel-sub">Settings under {activeTab} tab.</p>
+                </div>
+              </div>
+              <p style={{ color: "#94a3b8", fontSize: "0.85rem", padding: "1rem 0" }}>
+                Configure {activeTab.toLowerCase()} settings for your institution portal. This panel is currently a placeholder.
+              </p>
+            </div>
+          )}
 
         </div>
       </div>

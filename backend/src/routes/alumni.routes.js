@@ -143,6 +143,21 @@ function validateMentorshipLikeBody(body) {
   return hasMinLength(body.message || body.bio || "", 0) ? [] : [];
 }
 
+function validateNotificationPreferencesBody(body) {
+  const issues = [];
+  const digestValues = ["realtime", "daily", "weekly", "off"];
+
+  if (!digestValues.includes(body.emailDigest)) {
+    issues.push("Email digest must be realtime, daily, weekly, or off");
+  }
+
+  if (!body.categories || typeof body.categories !== "object" || Array.isArray(body.categories)) {
+    issues.push("Notification categories are required");
+  }
+
+  return issues;
+}
+
 function getTenantProfileMode(req) {
   return buildTenantConfigSnapshot(req.tenant)?.institutionType === "school" ? "school" : "college";
 }
@@ -174,6 +189,44 @@ import {
 router.get("/", protect, requireTenantAccess, validateQuery(validateAlumniQuery), getAlumni);
 router.get("/me", protect, requireTenantAccess, getMyProfile);
 router.patch("/me", protect, authorize("alumni"), requireTenantAccess, validateBody(validateMentorshipLikeBody), updateMyProfile);
+router.patch(
+  "/me/notification-preferences",
+  protect,
+  authorize("alumni"),
+  requireTenantAccess,
+  validateBody(validateNotificationPreferencesBody),
+  async (req, res, next) => {
+    try {
+      const { User: TenantUser } = getTenantModels(req);
+      const user = await TenantUser.findById(req.user._id);
+
+      if (!user) {
+        const error = new Error("User not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      user.notificationPreferences = {
+        emailDigest: req.body.emailDigest,
+        categories: {
+          connections: Boolean(req.body.categories.connections),
+          jobs: Boolean(req.body.categories.jobs),
+          events: Boolean(req.body.categories.events),
+          system: Boolean(req.body.categories.system)
+        }
+      };
+
+      await user.save();
+
+      res.json({
+        message: "Notification preferences updated",
+        notificationPreferences: user.notificationPreferences
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 router.post("/invite", protect, authorize("institute_admin"), requireTenantAccess, validateBody(validateInviteBody), inviteAlumni);
 router.get("/export/csv", protect, authorizeWithDelegation("export_csv"), requireTenantAccess, exportAlumniCsv);
 

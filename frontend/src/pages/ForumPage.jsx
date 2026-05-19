@@ -1,6 +1,7 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useConfirm } from "../components/ConfirmDialog.jsx";
 import { formatRelativeTime } from "../utils/formatters.js";
 import {
   fetchForumThreads, fetchForumThread, createForumThread, deleteForumThread,
@@ -11,8 +12,62 @@ import "../styles/Forum.css";
 
 /* ── Helpers ──────────────────────────────────────────── */
 const CATEGORIES = ["general", "career", "technical", "campus", "other"];
+const SORT_OPTIONS = [
+  { value: "latest", label: "Latest" },
+  { value: "upvoted", label: "Most Upvoted" },
+  { value: "replied", label: "Most Replied" },
+  { value: "unanswered", label: "Unanswered" },
+];
 
 const initialForm = { title: "", body: "", category: "general", tags: "" };
+
+function getInitials(name = "") {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "?";
+}
+
+function stripMarkdown(value = "") {
+  return value
+    .replace(/`{1,3}[^`]*`{1,3}/g, " ")
+    .replace(/[#*_>~[\]()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncate(value = "", max = 150) {
+  const clean = stripMarkdown(value);
+  return clean.length > max ? `${clean.slice(0, max).trim()}...` : clean;
+}
+
+function renderInline(text) {
+  return text.split(/(`[^`]+`)/g).map((part, index) => {
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={`${part}-${index}`}>{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+}
+
+function MarkdownContent({ text }) {
+  const lines = String(text || "").split(/\r?\n/);
+  return (
+    <div className="fm-markdown">
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <br key={index} />;
+        if (trimmed.startsWith("### ")) return <h4 key={index}>{renderInline(trimmed.slice(4))}</h4>;
+        if (trimmed.startsWith("## ")) return <h3 key={index}>{renderInline(trimmed.slice(3))}</h3>;
+        if (trimmed.startsWith("# ")) return <h2 key={index}>{renderInline(trimmed.slice(2))}</h2>;
+        if (trimmed.startsWith("- ")) return <p key={index} className="fm-markdown-bullet">{renderInline(trimmed.slice(2))}</p>;
+        return <p key={index}>{renderInline(trimmed)}</p>;
+      })}
+    </div>
+  );
+}
 
 /* ── Create Thread Modal ─────────────────────────────── */
 function ThreadModal({ onClose, onSubmit, isPending }) {
@@ -152,11 +207,14 @@ function ThreadDetail({ threadId, onBack, isAdmin, currentUser }) {
               {thread.isLocked && <span className="fm-lock-badge">Locked</span>}
             </div>
             <div className="fm-detail-meta" style={{ borderTop: "none", paddingTop: 0, paddingBottom: "1rem" }}>
-              <span><span className="material-symbols-outlined">person</span> {thread.authorId?.name || "Unknown"}</span>
+              <span className="fm-author-chip">
+                <span className="fm-avatar">{getInitials(thread.authorId?.name)}</span>
+                {thread.authorId?.name || "Unknown"}
+              </span>
               <span><span className="material-symbols-outlined">schedule</span> {formatRelativeTime(thread.createdAt)}</span>
               <span className="fm-cat-badge">{thread.category}</span>
             </div>
-            <div className="fm-detail-body">{thread.body}</div>
+            <MarkdownContent text={thread.body} />
             
             {thread.tags?.length > 0 && (
               <div style={{ display: "flex", gap: "0.4rem", marginTop: "1rem" }}>
@@ -202,12 +260,13 @@ function ThreadDetail({ threadId, onBack, isAdmin, currentUser }) {
           </div>
           <div className="fm-reply-body">
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span className="fm-avatar fm-avatar--sm">{getInitials(reply.authorId?.name)}</span>
               <span className="fm-reply-author">{reply.authorId?.name || "Unknown"}</span>
               {reply.authorId?._id === thread.authorId?._id && <span className="fm-tag" style={{ background: "#fef3c7", color: "#92400e" }}>OP</span>}
               <span className="fm-reply-time">{formatRelativeTime(reply.createdAt)}</span>
               {reply.isAccepted && <span className="fm-accepted-badge" style={{ marginLeft: "auto" }}>Best Answer</span>}
             </div>
-            <div className="fm-reply-text">{reply.body}</div>
+            <MarkdownContent text={reply.body} />
             
             <div className="fm-reply-actions">
               {(isAuthor || isAdmin) && (
@@ -261,6 +320,7 @@ function ThreadDetail({ threadId, onBack, isAdmin, currentUser }) {
 /* ── Main Page ───────────────────────────────────────── */
 export default function ForumPage() {
   const auth = useAuth();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const isAdmin = auth.user?.role === "institute_admin";
 
@@ -270,12 +330,22 @@ export default function ForumPage() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sort, setSort] = useState("latest");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [categoryFilter, deferredSearch, sort]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["forumThreads", categoryFilter, deferredSearch],
+    queryKey: ["forumThreads", categoryFilter, deferredSearch, sort, page],
     queryFn: () => fetchForumThreads({
       category: categoryFilter !== "all" ? categoryFilter : undefined,
-      search: deferredSearch || undefined
+      search: deferredSearch || undefined,
+      sort,
+      page,
+      limit
     })
   });
 
@@ -297,6 +367,17 @@ export default function ForumPage() {
     mutationFn: id => deleteForumThread(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["forumThreads"] })
   });
+
+  async function handleDeleteThread(threadId) {
+    const confirmed = await confirm({
+      title: "Delete discussion?",
+      message: "This removes the discussion from the forum for everyone.",
+      confirmLabel: "Delete",
+      cancelLabel: "Keep",
+      destructive: true,
+    });
+    if (confirmed) deleteMut.mutate(threadId);
+  }
 
   if (activeThreadId) {
     return (
@@ -341,6 +422,14 @@ export default function ForumPage() {
                 placeholder="Search discussions, tags..." 
               />
             </div>
+            <label className="fm-sort-control">
+              <span>Sort</span>
+              <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
             <div className="fm-cat-pills">
               <button 
                 className={`fm-cat-pill ${categoryFilter === "all" ? "active" : ""}`}
@@ -383,11 +472,15 @@ export default function ForumPage() {
                   <h3 className="fm-thread-title">{t.title}</h3>
                   {t.isPinned && <span className="fm-pin-badge">Pinned</span>}
                   {t.isLocked && <span className="fm-lock-badge">Locked</span>}
+                  {t.isTrending && <span className="fm-trending-badge">Trending</span>}
                 </div>
-                <p className="fm-thread-excerpt">{t.body}</p>
+                <p className="fm-thread-excerpt">{truncate(t.body)}</p>
                 <div className="fm-thread-meta">
                   <span className="fm-cat-badge">{t.category}</span>
-                  <span><span className="material-symbols-outlined">person</span> {t.authorId?.name || "Unknown"}</span>
+                  <span className="fm-author-chip">
+                    <span className="fm-avatar fm-avatar--sm">{getInitials(t.authorId?.name)}</span>
+                    {t.authorId?.name || "Unknown"}
+                  </span>
                   <span><span className="material-symbols-outlined">schedule</span> {formatRelativeTime(t.createdAt)}</span>
                   <span><span className="material-symbols-outlined">chat_bubble</span> {t.replyCount} Replies</span>
                   <span><span className="material-symbols-outlined">visibility</span> {t.viewCount} Views</span>
@@ -396,13 +489,25 @@ export default function ForumPage() {
                     <button 
                       className="fm-btn-ghost" 
                       style={{ marginLeft: "auto", padding: "0.1rem", fontSize: "0.75rem" }}
-                      onClick={e => { e.stopPropagation(); if(window.confirm("Delete thread?")) deleteMut.mutate(t._id); }}
+                      onClick={e => { e.stopPropagation(); handleDeleteThread(t._id); }}
                     >Delete</button>
                   )}
                 </div>
               </div>
             </div>
           ))}
+
+          {!isLoading && data?.pages > 1 && (
+            <div className="fm-pagination">
+              <button className="fm-btn fm-btn-secondary" type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
+                Previous
+              </button>
+              <span>Page {data.page} of {data.pages}</span>
+              <button className="fm-btn fm-btn-secondary" type="button" onClick={() => setPage((current) => Math.min(data.pages, current + 1))} disabled={page >= data.pages}>
+                Next
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}

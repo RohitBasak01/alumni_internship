@@ -20,6 +20,7 @@ import {
 
 import { GroupPortal } from "../components/groups/GroupPortal.jsx";
 import "../styles/Groups.css";
+import "../styles/GroupPortalLegacy.css";
 
 
 const initialForm = {

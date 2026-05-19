@@ -10,6 +10,7 @@ import { parseAllowedOrigins } from "./utils/runtimeConfig.js";
 import logger, { logError, logSocket } from "./utils/logger.js";
 import { initSentry, captureError } from "./utils/sentry.js";
 import { startMetricsCollection } from "./utils/metrics.js";
+import { setNotificationEventEmitter } from "./utils/notifications.js";
 
 dotenv.config({ override: true });
 
@@ -130,6 +131,7 @@ app.locals.emitSocialEvent = (payload) => {
     io.emit("social:message", eventPayload);
   }
 };
+setNotificationEventEmitter(app.locals.emitSocialEvent);
 
 io.on("connection", (socket) => {
   const userId = socket.user?.userId || socket.user?.id || socket.user?._id;

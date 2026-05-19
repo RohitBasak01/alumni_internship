@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchMySessions, respondToSession, cancelSession } from "../lib/api.js";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cancelSession, fetchMySessions, respondToSession } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useConfirm } from "../components/ConfirmDialog.jsx";
+import { useToast } from "../components/Toast.jsx";
 import "../styles/Mentorship.css";
 
 export default function MentorshipDashboard() {
   const queryClient = useQueryClient();
   const auth = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState("upcoming");
-
-  // Mentor Acceptance Modal State
   const [sessionToAccept, setSessionToAccept] = useState(null);
   const [selectedTime, setSelectedTime] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
@@ -18,39 +20,47 @@ export default function MentorshipDashboard() {
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["mentorship-sessions"],
-    queryFn: () => fetchMySessions(),
+    queryFn: () => fetchMySessions()
   });
 
   const respondMutation = useMutation({
     mutationFn: ({ id, payload }) => respondToSession(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries(["mentorship-sessions"]);
+      queryClient.invalidateQueries({ queryKey: ["mentorship-sessions"] });
       closeModal();
+      toast.success("Mentorship session updated.");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update mentorship session.");
     }
   });
 
   const cancelMutation = useMutation({
     mutationFn: cancelSession,
     onSuccess: () => {
-      queryClient.invalidateQueries(["mentorship-sessions"]);
+      queryClient.invalidateQueries({ queryKey: ["mentorship-sessions"] });
+      toast.success("Mentorship session cancelled.");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to cancel mentorship session.");
     }
   });
 
-  const openAcceptModal = (session) => {
+  function openAcceptModal(session) {
     setSessionToAccept(session);
     setSelectedTime(session.proposedTimes[0]);
     setMeetingLink("");
     setGenerateJitsi(true);
-  };
+  }
 
-  const closeModal = () => {
+  function closeModal() {
     setSessionToAccept(null);
-  };
+  }
 
-  const handleAcceptSubmit = (e) => {
-    e.preventDefault();
+  function handleAcceptSubmit(event) {
+    event.preventDefault();
     if (!generateJitsi && !meetingLink.trim()) {
-      alert("Please provide a meeting link or select the auto-generate option.");
+      toast.warning("Please provide a meeting link or select the auto-generate option.");
       return;
     }
 
@@ -63,167 +73,178 @@ export default function MentorshipDashboard() {
         generateJitsi
       }
     });
-  };
+  }
 
-  const handleDecline = (id) => {
-    if (confirm("Are you sure you want to decline this request?")) {
+  async function handleDecline(id) {
+    const confirmed = await confirm({
+      title: "Decline mentorship request?",
+      message: "This will notify the mentee that you cannot take this session.",
+      confirmLabel: "Decline",
+      destructive: true
+    });
+    if (confirmed) {
       respondMutation.mutate({ id, payload: { action: "decline" } });
     }
-  };
+  }
 
-  const handleCancel = (id) => {
-    if (confirm("Are you sure you want to cancel this confirmed session?")) {
+  async function handleCancel(id) {
+    const confirmed = await confirm({
+      title: "Cancel confirmed session?",
+      message: "This will cancel the scheduled mentorship session for both participants.",
+      confirmLabel: "Cancel session",
+      destructive: true
+    });
+    if (confirmed) {
       cancelMutation.mutate(id);
     }
-  };
+  }
 
-  if (isLoading) return <div style={{ padding: "4rem", textAlign: "center" }}>Loading...</div>;
+  if (isLoading) {
+    return <div className="mt-empty-state">Loading...</div>;
+  }
 
-  const upcoming = sessions.filter(s => s.status === "confirmed");
-  const pending = sessions.filter(s => s.status === "pending");
-  const history = sessions.filter(s => ["completed", "cancelled", "declined"].includes(s.status));
+  const upcoming = sessions.filter((session) => session.status === "confirmed");
+  const pending = sessions.filter((session) => session.status === "pending");
+  const history = sessions.filter((session) => ["completed", "cancelled", "declined"].includes(session.status));
 
-  const renderSessionCard = (session, isPending = false) => {
+  function renderSessionCard(session, isPending = false) {
     const isMentor = session.mentorId._id === auth.user._id;
     const otherPerson = isMentor ? session.menteeId : session.mentorId;
 
     return (
-      <div key={session._id} className="mt-session-card">
-        <div style={{ flex: 1 }}>
+      <div className="mt-session-card" key={session._id}>
+        <div className="mt-session-main">
           <div className="mt-session-meta">
-            <span className={`fr-badge ${session.status === 'confirmed' ? 'completed' : ''}`} style={{ background: session.status === 'pending' ? '#f59e0b' : session.status === 'declined' || session.status === 'cancelled' ? '#ef4444' : '' }}>
-              {session.status}
-            </span>
+            <span className={`mt-session-status mt-session-status--${session.status}`}>{session.status}</span>
             <span>•</span>
-            <span style={{ fontWeight: 600, color: "#334155" }}>
+            <span className="mt-session-person">
               {isMentor ? "You are mentoring" : "Mentored by"} {otherPerson?.name || "Unknown"}
             </span>
           </div>
-          
+
           <div className="mt-agenda">
-            <strong style={{ display: "block", marginBottom: "0.5rem" }}>Agenda:</strong>
+            <strong>Agenda:</strong>
             {session.agenda}
           </div>
 
-          <div style={{ marginTop: "1rem", fontSize: "0.9rem", color: "#475569" }}>
+          <div className="mt-session-schedule">
             {session.status === "confirmed" ? (
-              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                <div><strong style={{ color: "#0f172a" }}>Confirmed Time:</strong> {session.confirmedTime}</div>
-                {session.meetingLink && (
-                  <a href={session.meetingLink} target="_blank" rel="noopener noreferrer" className="mt-btn" style={{ padding: "0.4rem 0.8rem", width: "auto" }}>
+              <div className="mt-confirmed-row">
+                <div>
+                  <strong>Confirmed Time:</strong> {session.confirmedTime}
+                </div>
+                {session.meetingLink ? (
+                  <a className="mt-link-btn" href={session.meetingLink} rel="noopener noreferrer" target="_blank">
                     Join Meeting
                   </a>
-                )}
+                ) : null}
               </div>
             ) : (
               <div>
-                <strong style={{ color: "#0f172a" }}>Proposed Times:</strong>
-                <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem" }}>
-                  {session.proposedTimes.map((t, i) => <li key={i}>{t}</li>)}
+                <strong>Proposed Times:</strong>
+                <ul className="mt-time-list">
+                  {session.proposedTimes.map((time, index) => (
+                    <li key={`${time}-${index}`}>{time}</li>
+                  ))}
                 </ul>
               </div>
             )}
           </div>
         </div>
 
-        <div className="mt-session-actions" style={{ marginLeft: "2rem" }}>
-          {isPending && isMentor && (
+        <div className="mt-session-actions">
+          {isPending && isMentor ? (
             <>
-              <button className="mt-btn-solid" onClick={() => openAcceptModal(session)}>Accept</button>
-              <button className="mt-btn-outline" onClick={() => handleDecline(session._id)}>Decline</button>
+              <button className="mt-btn-solid" onClick={() => openAcceptModal(session)} type="button">
+                Accept
+              </button>
+              <button className="mt-btn-outline" onClick={() => handleDecline(session._id)} type="button">
+                Decline
+              </button>
             </>
-          )}
-          {isPending && !isMentor && (
-            <div style={{ color: "#f59e0b", textAlign: "center", fontStyle: "italic" }}>Waiting for mentor</div>
-          )}
-          {session.status === "confirmed" && (
-            <button className="mt-btn-outline" onClick={() => handleCancel(session._id)}>Cancel Session</button>
-          )}
+          ) : null}
+          {isPending && !isMentor ? <div className="mt-waiting-note">Waiting for mentor</div> : null}
+          {session.status === "confirmed" ? (
+            <button className="mt-btn-outline" onClick={() => handleCancel(session._id)} type="button">
+              Cancel Session
+            </button>
+          ) : null}
         </div>
       </div>
     );
-  };
+  }
 
   return (
-    <div className="mt-page-container" style={{ maxWidth: "1000px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-        <h1 style={{ fontSize: "2rem", color: "#0f172a", margin: 0 }}>Mentorship Sessions</h1>
-        <Link to="/portal/mentors" className="mt-btn" style={{ width: "auto", textDecoration: "none" }}>
+    <div className="mt-page-container mt-page-container--narrow">
+      <div className="mt-page-header">
+        <h1>Mentorship Sessions</h1>
+        <Link className="mt-btn mt-btn--auto" to="/portal/mentors">
           Find a Mentor
         </Link>
       </div>
 
       <div className="mt-tabs">
-        <button className={`mt-tab ${activeTab === "upcoming" ? "active" : ""}`} onClick={() => setActiveTab("upcoming")}>
+        <button className={`mt-tab ${activeTab === "upcoming" ? "active" : ""}`} onClick={() => setActiveTab("upcoming")} type="button">
           Upcoming ({upcoming.length})
         </button>
-        <button className={`mt-tab ${activeTab === "pending" ? "active" : ""}`} onClick={() => setActiveTab("pending")}>
+        <button className={`mt-tab ${activeTab === "pending" ? "active" : ""}`} onClick={() => setActiveTab("pending")} type="button">
           Requests ({pending.length})
         </button>
-        <button className={`mt-tab ${activeTab === "history" ? "active" : ""}`} onClick={() => setActiveTab("history")}>
+        <button className={`mt-tab ${activeTab === "history" ? "active" : ""}`} onClick={() => setActiveTab("history")} type="button">
           History
         </button>
       </div>
 
       <div className="mt-session-list">
-        {activeTab === "upcoming" && (
-          upcoming.length === 0 ? <p style={{ color: "#64748b" }}>No upcoming sessions.</p> : upcoming.map(s => renderSessionCard(s))
-        )}
-        {activeTab === "pending" && (
-          pending.length === 0 ? <p style={{ color: "#64748b" }}>No pending requests.</p> : pending.map(s => renderSessionCard(s, true))
-        )}
-        {activeTab === "history" && (
-          history.length === 0 ? <p style={{ color: "#64748b" }}>No past sessions.</p> : history.map(s => renderSessionCard(s))
-        )}
+        {activeTab === "upcoming" ? (upcoming.length ? upcoming.map((session) => renderSessionCard(session)) : <p className="mt-muted">No upcoming sessions.</p>) : null}
+        {activeTab === "pending" ? (pending.length ? pending.map((session) => renderSessionCard(session, true)) : <p className="mt-muted">No pending requests.</p>) : null}
+        {activeTab === "history" ? (history.length ? history.map((session) => renderSessionCard(session)) : <p className="mt-muted">No past sessions.</p>) : null}
       </div>
 
-      {sessionToAccept && (
+      {sessionToAccept ? (
         <div className="mt-modal-overlay">
           <div className="mt-modal">
-            <h2 style={{ margin: "0 0 1.5rem" }}>Accept Mentorship Request</h2>
+            <h2 className="mt-modal-title">Accept Mentorship Request</h2>
             <form onSubmit={handleAcceptSubmit}>
-              
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Select a Time Slot</label>
-                <select className="mt-input" value={selectedTime} onChange={e => setSelectedTime(e.target.value)} required>
-                  <option value="" disabled>Select one of the proposed times...</option>
-                  {sessionToAccept.proposedTimes.map((t, i) => (
-                    <option key={i} value={t}>{t}</option>
+              <div className="mt-form-group">
+                <label className="mt-form-label">Select a Time Slot</label>
+                <select className="mt-input" onChange={(event) => setSelectedTime(event.target.value)} required value={selectedTime}>
+                  <option disabled value="">Select one of the proposed times...</option>
+                  {sessionToAccept.proposedTimes.map((time, index) => (
+                    <option key={`${time}-${index}`} value={time}>{time}</option>
                   ))}
                 </select>
               </div>
 
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>Meeting Link</label>
-                
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", fontSize: "0.95rem" }}>
-                  <input type="checkbox" checked={generateJitsi} onChange={e => setGenerateJitsi(e.target.checked)} />
+              <div className="mt-form-group">
+                <label className="mt-form-label">Meeting Link</label>
+                <label className="mt-checkbox-row">
+                  <input checked={generateJitsi} onChange={(event) => setGenerateJitsi(event.target.checked)} type="checkbox" />
                   Automatically generate a Jitsi Meet link
                 </label>
 
-                {!generateJitsi && (
-                  <input 
-                    type="url" 
-                    className="mt-input" 
-                    placeholder="https://zoom.us/j/..." 
-                    value={meetingLink}
-                    onChange={e => setMeetingLink(e.target.value)}
+                {!generateJitsi ? (
+                  <input
+                    className="mt-input"
+                    onChange={(event) => setMeetingLink(event.target.value)}
+                    placeholder="https://zoom.us/j/..."
                     required={!generateJitsi}
+                    type="url"
+                    value={meetingLink}
                   />
-                )}
+                ) : null}
               </div>
 
-              <div style={{ display: "flex", gap: "1rem", marginTop: "2rem" }}>
-                <button type="button" className="mt-btn-outline" style={{ flex: 1 }} onClick={closeModal}>Cancel</button>
-                <button type="submit" className="mt-btn-solid" style={{ flex: 1 }} disabled={respondMutation.isPending}>
+              <div className="mt-modal-actions">
+                <button className="mt-btn-outline" onClick={closeModal} type="button">Cancel</button>
+                <button className="mt-btn-solid" disabled={respondMutation.isPending} type="submit">
                   {respondMutation.isPending ? "Accepting..." : "Confirm Session"}
                 </button>
               </div>
-
             </form>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

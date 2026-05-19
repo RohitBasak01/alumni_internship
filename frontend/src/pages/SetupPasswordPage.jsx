@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchInviteDetails, setupPassword } from "../lib/api.js";
+import "../styles/Auth.css";
 
 function SetupPasswordPage() {
   const auth = useAuth();

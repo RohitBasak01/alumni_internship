@@ -6,6 +6,7 @@ import { exportAlumniCsv, fetchBusinessListings, grantDelegation, revokeDelegati
 import { DELEGATION_SCOPES, DELEGATION_SCOPE_LABELS, DELEGATION_SCOPE_ICONS } from "../lib/delegationScopes.js";
 import "../styles/AlumniDirectory.css";
 import "../styles/ManageAdmins.css";
+import "../styles/AlumniFilters.css";
 
 /* ── Helpers ──────────────────────────────────────────────── */
 function getDirectoryConfig(tenant) {

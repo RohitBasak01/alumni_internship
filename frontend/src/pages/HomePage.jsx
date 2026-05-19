@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTenantContext } from "../hooks/useTenantContext.js";
+import "../styles/HomePage.css";
 
 /**
  * HomePage — redesigned platform landing page matching the AlumNet hero design.

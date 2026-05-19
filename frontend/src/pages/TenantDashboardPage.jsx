@@ -356,6 +356,7 @@ function AdminDashboard({ logic }) {
   const events    = queries.events.data    || [];
   const jobs      = queries.jobs.data      || [];
   const announce  = queries.announcements.data || [];
+  const managedInstitutions = queries.managedInstitutions.data?.managedInstitutions || [];
   
   const dashboardRef = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -545,6 +546,31 @@ function AdminDashboard({ logic }) {
 
          {/* ── Right: Feed & Management ── */}
          <aside className="adm-side-col">
+            {managedInstitutions.length ? (
+              <div className="adm-card">
+                 <div className="adm-card-header">
+                    <h3>Managed Institutions</h3>
+                    <span className="view-link">{managedInstitutions.length} active</span>
+                 </div>
+                 <div className="adm-reg-list">
+                    {managedInstitutions.slice(0, 4).map((institution) => (
+                      <div key={institution._id} className="adm-reg-row">
+                         <div className="reg-avatar" style={{background: "#0ea5e9"}}>
+                            {institution.name.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
+                         </div>
+                         <div className="reg-info">
+                            <strong>{institution.name}</strong>
+                            <p>
+                              {(institution.metrics?.alumniProfilesCount || 0).toLocaleString()} members · {institution.status}
+                            </p>
+                         </div>
+                         <span className="reg-tag">{institution.subscriptionPlan}</span>
+                      </div>
+                    ))}
+                 </div>
+              </div>
+            ) : null}
+
             <div className="adm-card">
                <div className="adm-card-header">
                   <h3>Recent Registrations</h3>

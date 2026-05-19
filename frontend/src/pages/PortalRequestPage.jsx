@@ -3,6 +3,8 @@ import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { fetchPortalOnboardingDraft, savePortalOnboardingDraft, submitPortalOnboarding } from "../lib/api.js";
+import "../styles/Auth.css";
+import "../styles/LegacyWorkspace.css";
 
 const initialState = {
   name: "",
@@ -477,3 +479,4 @@ function PortalRequestPage() {
 }
 
 export default PortalRequestPage;
+

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import html2pdf from "html2pdf.js";
 import { fetchMyResume, updateMyResume } from "../lib/api.js";
 import "../styles/ResumeBuilder.css";
 
@@ -8,9 +9,29 @@ const defaultExperience = { title: "", company: "", location: "", startDate: "",
 const defaultEducation = { institution: "", degree: "", fieldOfStudy: "", startDate: "", endDate: "", grade: "" };
 const defaultProject = { name: "", description: "", link: "", technologies: [] };
 
+function calculateAtsScore(resume) {
+  const checks = [
+    Boolean(resume?.personalInfo?.fullName),
+    Boolean(resume?.personalInfo?.email),
+    Boolean(resume?.summary && resume.summary.length >= 40),
+    Boolean(resume?.skills?.length >= 5),
+    Boolean(resume?.experience?.some((item) => item.title && item.company)),
+    Boolean(resume?.education?.some((item) => item.degree && item.institution)),
+    Boolean(resume?.experience?.every((item) => item.description && item.description.length >= 30)),
+    Boolean(resume?.projects?.length || resume?.experience?.length >= 2),
+  ];
+  const passed = checks.filter(Boolean).length;
+  return Math.round((passed / checks.length) * 100);
+}
+
+function formatSavedAt(date) {
+  if (!date) return "Not saved yet";
+  return `Last saved at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export default function ResumeBuilderPage() {
-  const queryClient = useQueryClient();
   const printRef = useRef(null);
+  const autoSaveTimer = useRef(null);
 
   const { data: resumeData, isLoading } = useQuery({
     queryKey: ["my-resume"],
@@ -19,25 +40,41 @@ export default function ResumeBuilderPage() {
 
   const [activeTab, setActiveTab] = useState("personal");
   const [formData, setFormData] = useState(null);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const [dragState, setDragState] = useState(null);
 
   useEffect(() => {
     if (resumeData) {
       setFormData(resumeData);
+      setLastSavedAt(resumeData.updatedAt ? new Date(resumeData.updatedAt) : null);
+      setHasUserEdited(false);
     }
   }, [resumeData]);
 
   const saveMutation = useMutation({
     mutationFn: updateMyResume,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-resume"] });
+    onSuccess: (savedResume) => {
+      setLastSavedAt(savedResume.updatedAt ? new Date(savedResume.updatedAt) : new Date());
+      setHasUserEdited(false);
     }
   });
+
+  useEffect(() => {
+    if (!formData || !hasUserEdited) return undefined;
+    window.clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = window.setTimeout(() => {
+      saveMutation.mutate(formData);
+    }, 2000);
+    return () => window.clearTimeout(autoSaveTimer.current);
+  }, [formData, hasUserEdited]);
 
   if (isLoading || !formData) {
     return <div className="resume-builder-root" style={{ padding: "2rem", color: "#64748b" }}>Loading resume data...</div>;
   }
 
   const handlePersonalChange = (e) => {
+    setHasUserEdited(true);
     setFormData(prev => ({
       ...prev,
       personalInfo: { ...prev.personalInfo, [e.target.name]: e.target.value }
@@ -45,6 +82,7 @@ export default function ResumeBuilderPage() {
   };
 
   const handleArrayChange = (type, index, field, value) => {
+    setHasUserEdited(true);
     setFormData(prev => {
       const arr = [...prev[type]];
       arr[index] = { ...arr[index], [field]: value };
@@ -53,6 +91,7 @@ export default function ResumeBuilderPage() {
   };
 
   const handleAddArrayItem = (type, defaultItem) => {
+    setHasUserEdited(true);
     setFormData(prev => ({
       ...prev,
       [type]: [...prev[type], defaultItem]
@@ -60,6 +99,7 @@ export default function ResumeBuilderPage() {
   };
 
   const handleRemoveArrayItem = (type, index) => {
+    setHasUserEdited(true);
     setFormData(prev => {
       const arr = [...prev[type]];
       arr.splice(index, 1);
@@ -68,18 +108,49 @@ export default function ResumeBuilderPage() {
   };
 
   const handleSkillsChange = (e) => {
+    setHasUserEdited(true);
     const val = e.target.value;
     const skillsArray = val.split(",").map(s => s.trim()).filter(Boolean);
     setFormData(prev => ({ ...prev, skills: skillsArray }));
   };
 
   const handleSave = () => {
+    window.clearTimeout(autoSaveTimer.current);
     saveMutation.mutate(formData);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPdf = () => {
+    if (!printRef.current) return;
+    html2pdf()
+      .set({
+        margin: 0,
+        filename: `${formData.personalInfo?.fullName || "resume"}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
+      })
+      .from(printRef.current)
+      .save();
   };
+
+  const handleDragStart = (type, index) => {
+    setDragState({ type, index });
+  };
+
+  const handleDrop = (type, index) => {
+    if (!dragState || dragState.type !== type || dragState.index === index) return;
+    setHasUserEdited(true);
+    setFormData(prev => {
+      const arr = [...prev[type]];
+      const [moved] = arr.splice(dragState.index, 1);
+      arr.splice(index, 0, moved);
+      return { ...prev, [type]: arr };
+    });
+    setDragState(null);
+  };
+
+  const atsScore = calculateAtsScore(formData);
+  const saveStatus = saveMutation.isPending ? "Saving..." : formatSavedAt(lastSavedAt);
 
   return (
     <div className="resume-builder-root">
@@ -89,8 +160,9 @@ export default function ResumeBuilderPage() {
           <p className="resume-sub">Create and customize your professional resume.</p>
         </div>
         <div className="resume-header-actions">
-          <button className="resume-btn resume-btn-secondary" onClick={handlePrint}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>print</span> Print / Export PDF
+          <div className="resume-save-status">{saveStatus}</div>
+          <button className="resume-btn resume-btn-secondary" onClick={handleDownloadPdf}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span> Download PDF
           </button>
           <button className="resume-btn resume-btn-primary" onClick={handleSave} disabled={saveMutation.isPending}>
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>save</span> 
@@ -149,7 +221,7 @@ export default function ResumeBuilderPage() {
                 <h3 className="resume-section-title">Professional Summary</h3>
                 <div className="resume-form-group full">
                   <label className="resume-label">Summary</label>
-                  <textarea className="resume-input resume-textarea" value={formData.summary || ""} onChange={e => setFormData(prev => ({ ...prev, summary: e.target.value }))} placeholder="Brief overview of your professional background and goals..." />
+                  <textarea className="resume-input resume-textarea" value={formData.summary || ""} onChange={e => { setHasUserEdited(true); setFormData(prev => ({ ...prev, summary: e.target.value })); }} placeholder="Brief overview of your professional background and goals..." />
                 </div>
               </div>
             )}
@@ -158,9 +230,20 @@ export default function ResumeBuilderPage() {
               <div>
                 <h3 className="resume-section-title">Work Experience</h3>
                 {formData.experience?.map((exp, idx) => (
-                  <div key={idx} className="resume-item-card">
+                  <div
+                    key={idx}
+                    className="resume-item-card"
+                    draggable
+                    onDragStart={() => handleDragStart("experience", idx)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handleDrop("experience", idx)}
+                    onDragEnd={() => setDragState(null)}
+                  >
                     <div className="resume-item-header">
-                      <h4 className="resume-item-title">{exp.title || "New Experience"}</h4>
+                      <div className="resume-item-title-wrap">
+                        <span className="material-symbols-outlined resume-drag-handle">drag_indicator</span>
+                        <h4 className="resume-item-title">{exp.title || "New Experience"}</h4>
+                      </div>
                       <button className="resume-item-remove" onClick={() => handleRemoveArrayItem("experience", idx)}><span className="material-symbols-outlined">delete</span></button>
                     </div>
                     <div className="resume-form-grid">
@@ -201,9 +284,20 @@ export default function ResumeBuilderPage() {
               <div>
                 <h3 className="resume-section-title">Education</h3>
                 {formData.education?.map((edu, idx) => (
-                  <div key={idx} className="resume-item-card">
+                  <div
+                    key={idx}
+                    className="resume-item-card"
+                    draggable
+                    onDragStart={() => handleDragStart("education", idx)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handleDrop("education", idx)}
+                    onDragEnd={() => setDragState(null)}
+                  >
                     <div className="resume-item-header">
-                      <h4 className="resume-item-title">{edu.degree ? `${edu.degree} at ${edu.institution}` : "New Education"}</h4>
+                      <div className="resume-item-title-wrap">
+                        <span className="material-symbols-outlined resume-drag-handle">drag_indicator</span>
+                        <h4 className="resume-item-title">{edu.degree ? `${edu.degree} at ${edu.institution}` : "New Education"}</h4>
+                      </div>
                       <button className="resume-item-remove" onClick={() => handleRemoveArrayItem("education", idx)}><span className="material-symbols-outlined">delete</span></button>
                     </div>
                     <div className="resume-form-grid">
@@ -254,9 +348,20 @@ export default function ResumeBuilderPage() {
               <div>
                 <h3 className="resume-section-title">Projects</h3>
                 {formData.projects?.map((proj, idx) => (
-                  <div key={idx} className="resume-item-card">
+                  <div
+                    key={idx}
+                    className="resume-item-card"
+                    draggable
+                    onDragStart={() => handleDragStart("projects", idx)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handleDrop("projects", idx)}
+                    onDragEnd={() => setDragState(null)}
+                  >
                     <div className="resume-item-header">
-                      <h4 className="resume-item-title">{proj.name || "New Project"}</h4>
+                      <div className="resume-item-title-wrap">
+                        <span className="material-symbols-outlined resume-drag-handle">drag_indicator</span>
+                        <h4 className="resume-item-title">{proj.name || "New Project"}</h4>
+                      </div>
                       <button className="resume-item-remove" onClick={() => handleRemoveArrayItem("projects", idx)}><span className="material-symbols-outlined">delete</span></button>
                     </div>
                     <div className="resume-form-grid">
@@ -293,10 +398,17 @@ export default function ResumeBuilderPage() {
             <div className="resume-preview-title">
               <span className="material-symbols-outlined" style={{fontSize:18}}>visibility</span> Live Preview
             </div>
-            <div>
-              <select className="resume-theme-select" value={formData.theme || "modern"} onChange={(e) => setFormData(prev => ({...prev, theme: e.target.value}))}>
+            <div className="resume-preview-tools">
+              <div className="resume-ats">
+                <span>ATS {atsScore}%</span>
+                <div><i style={{ width: `${atsScore}%` }} /></div>
+              </div>
+              <select className="resume-theme-select" value={formData.theme || "modern"} onChange={(e) => { setHasUserEdited(true); setFormData(prev => ({...prev, theme: e.target.value})); }}>
                 <option value="modern">Modern Theme</option>
                 <option value="minimal">Minimal Theme</option>
+                <option value="professional">Professional Theme</option>
+                <option value="creative">Creative Theme</option>
+                <option value="executive">Executive Theme</option>
               </select>
             </div>
           </div>

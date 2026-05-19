@@ -49,12 +49,17 @@ function SuperAdminInstituteWorkspace({
   onSelectInstitute,
   resendInviteMutation,
   selectedInstituteId,
+  hierarchyForm,
   subscriptionForm,
   suspendMutation,
+  updateHierarchyMutation,
   updateSubscriptionMutation,
+  onHierarchyChange,
+  onHierarchySubmit,
   onSubscriptionChange,
   onSubscriptionSubmit
 }) {
+  const [hierarchyFilter, setHierarchyFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,8 +71,9 @@ function SuperAdminInstituteWorkspace({
     const active = institutions.filter((item) => item.status === "active").length;
     const pending = institutions.filter((item) => item.status === "pending").length;
     const suspended = institutions.filter((item) => item.status === "suspended").length;
+    const groupLeads = institutions.filter((item) => item.hierarchyType === "group_lead").length;
 
-    return { total, active, pending, suspended };
+    return { total, active, pending, suspended, groupLeads };
   }, [institutions]);
 
   const filteredInstitutions = useMemo(
@@ -76,9 +82,10 @@ function SuperAdminInstituteWorkspace({
         const matchesPlan =
           planFilter === "all" ? true : (institute.subscriptionPlan || "basic") === planFilter;
         const matchesStatus = statusFilter === "all" ? true : institute.status === statusFilter;
-        return matchesPlan && matchesStatus;
+        const matchesHierarchy = hierarchyFilter === "all" ? true : (institute.hierarchyType || "standalone") === hierarchyFilter;
+        return matchesPlan && matchesStatus && matchesHierarchy;
       }),
-    [institutions, planFilter, statusFilter]
+    [hierarchyFilter, institutions, planFilter, statusFilter]
   );
 
   const pageSize = 10;
@@ -108,6 +115,23 @@ function SuperAdminInstituteWorkspace({
   function handleStatusFilterChange(value) {
     setStatusFilter(value);
     setCurrentPage(1);
+  }
+
+  function handleHierarchyFilterChange(value) {
+    setHierarchyFilter(value);
+    setCurrentPage(1);
+  }
+
+  function hierarchyLabel(type) {
+    if (type === "group_lead") return "Group Lead";
+    if (type === "group_member") return "Member";
+    return "Standalone";
+  }
+
+  function hierarchyBadgeClass(type) {
+    if (type === "group_lead") return "bg-indigo-100 text-indigo-700";
+    if (type === "group_member") return "bg-cyan-100 text-cyan-700";
+    return "bg-slate-100 text-slate-600";
   }
 
   function statusDotClass(status) {
@@ -242,8 +266,8 @@ function SuperAdminInstituteWorkspace({
             <span className="material-symbols-outlined rounded-lg bg-red-100 p-2 text-red-600">block</span>
             <span className="text-sm font-medium text-slate-500">Stable</span>
           </div>
-          <p className="text-sm font-medium uppercase tracking-wider text-slate-500">Suspended</p>
-          <h3 className="mt-1 text-2xl font-bold">{metrics.suspended.toLocaleString()}</h3>
+          <p className="text-sm font-medium uppercase tracking-wider text-slate-500">Group Leads</p>
+          <h3 className="mt-1 text-2xl font-bold">{metrics.groupLeads.toLocaleString()}</h3>
         </article>
       </div>
 
@@ -270,6 +294,16 @@ function SuperAdminInstituteWorkspace({
               <option value="pending">Pending</option>
               <option value="suspended">Suspended</option>
             </select>
+            <select
+              className="cursor-pointer appearance-none rounded-lg border-none bg-[#f6f6f8] px-4 py-2 pr-10 text-sm focus:ring-2 focus:ring-[#1152d4]"
+              onChange={(event) => handleHierarchyFilterChange(event.target.value)}
+              value={hierarchyFilter}
+            >
+              <option value="all">All Hierarchies</option>
+              <option value="standalone">Standalone</option>
+              <option value="group_lead">Group Lead</option>
+              <option value="group_member">Group Member</option>
+            </select>
           </div>
           <div className="flex-1" />
           <p className="text-xs font-medium text-slate-500">
@@ -286,6 +320,7 @@ function SuperAdminInstituteWorkspace({
               <tr className="border-b border-[#1152d4]/10 bg-[#1152d4]/5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                 <th className="px-6 py-4">Institution Name</th>
                 <th className="px-6 py-4">Admin Email</th>
+                <th className="px-6 py-4">Hierarchy</th>
                 <th className="px-6 py-4">Total Users</th>
                 <th className="px-6 py-4">Subscription</th>
                 <th className="px-6 py-4">Status</th>
@@ -317,6 +352,17 @@ function SuperAdminInstituteWorkspace({
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-700">{institute.primaryContactEmail || "Not available"}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${hierarchyBadgeClass(institute.hierarchyType)}`}>
+                      {hierarchyLabel(institute.hierarchyType)}
+                    </span>
+                    {institute.parentInstituteName ? (
+                      <p className="mt-1 text-xs text-slate-500">Lead: {institute.parentInstituteName}</p>
+                    ) : null}
+                    {institute.managedInstituteCount ? (
+                      <p className="mt-1 text-xs text-slate-500">{institute.managedInstituteCount} managed</p>
+                    ) : null}
+                  </td>
                   <td className="px-6 py-4 text-sm font-medium text-slate-800">{inferTotalUsers(institute).toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
@@ -371,7 +417,7 @@ function SuperAdminInstituteWorkspace({
               ))}
               {!paginatedInstitutions.length && !institutesQuery.isLoading ? (
                 <tr>
-                  <td className="px-6 py-8 text-center text-sm text-slate-500" colSpan={6}>
+                  <td className="px-6 py-8 text-center text-sm text-slate-500" colSpan={7}>
                     No institutions found for the selected filters.
                   </td>
                 </tr>
@@ -432,6 +478,81 @@ function SuperAdminInstituteWorkspace({
 
         {instituteDetailQuery.data ? (
           <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="rounded-xl border border-[#1152d4]/10 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Hierarchy</p>
+              <form className="mt-3 space-y-3" onSubmit={onHierarchySubmit}>
+                <select
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                  name="hierarchyType"
+                  onChange={onHierarchyChange}
+                  value={hierarchyForm.hierarchyType}
+                >
+                  <option value="standalone">Standalone institution</option>
+                  <option value="group_lead">Lead institute of a group</option>
+                  <option value="group_member">Member institute managed by a lead</option>
+                </select>
+                {hierarchyForm.hierarchyType === "group_member" ? (
+                  <select
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                    name="parentInstituteId"
+                    onChange={onHierarchyChange}
+                    value={hierarchyForm.parentInstituteId}
+                  >
+                    <option value="">Select lead institute</option>
+                    {institutions
+                      .filter((item) => item._id !== selectedInstituteId)
+                      .map((item) => (
+                        <option key={item._id} value={item._id}>
+                          {item.name}
+                        </option>
+                      ))}
+                  </select>
+                ) : null}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {[
+                    ["billing", "Billing"],
+                    ["admins", "Admins"],
+                    ["branding", "Branding"],
+                    ["reporting", "Reporting"],
+                    ["contentModeration", "Moderation"]
+                  ].map(([key, label]) => (
+                    <label className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-slate-700" key={key}>
+                      <input
+                        checked={Boolean(hierarchyForm.hierarchyCapabilities?.[key])}
+                        name={`capability.${key}`}
+                        onChange={onHierarchyChange}
+                        type="checkbox"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  className="w-full rounded-lg bg-[#1152d4] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0f48ba]"
+                  disabled={updateHierarchyMutation.isPending}
+                  type="submit"
+                >
+                  {updateHierarchyMutation.isPending ? "Saving..." : "Save Hierarchy"}
+                </button>
+              </form>
+              {updateHierarchyMutation.isError ? <p className="mt-2 text-sm font-semibold text-rose-600">{updateHierarchyMutation.error.message}</p> : null}
+              {instituteDetailQuery.data.hierarchy?.parent ? (
+                <p className="mt-3 text-sm text-slate-600">
+                  Managed by <strong>{instituteDetailQuery.data.hierarchy.parent.name}</strong>
+                </p>
+              ) : null}
+              {instituteDetailQuery.data.hierarchy?.children?.length ? (
+                <div className="mt-3 space-y-2">
+                  {instituteDetailQuery.data.hierarchy.children.map((child) => (
+                    <article className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700" key={child._id}>
+                      <strong>{child.name}</strong>
+                      <span className="ml-2 text-xs text-slate-500">{child.status} | {child.subscriptionPlan}</span>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
             <div className="rounded-xl border border-[#1152d4]/10 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Subscription</p>
               <form className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" onSubmit={onSubscriptionSubmit}>

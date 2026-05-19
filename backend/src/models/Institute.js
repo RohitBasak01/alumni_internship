@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { getDefaultProfileFields } from "../utils/tenantConfig.js";
 
 const communityLabelsSchema = new mongoose.Schema(
   {
@@ -100,6 +101,22 @@ const brandingSchema = new mongoose.Schema(
   }
 );
 
+const profileFieldSchema = new mongoose.Schema(
+  {
+    fieldKey: { type: String, required: true },
+    label: { type: String, required: true },
+    type: { type: String, enum: ["text", "textarea", "select", "date", "number"], default: "text" },
+    options: { type: [String], default: [] },
+    visibility: { type: String, enum: ["required", "optional", "hidden"], default: "required" },
+    showInRegistration: { type: String, enum: ["required", "optional", "hidden"], default: "optional" },
+    showInProfile: { type: Boolean, default: true },
+    isStandard: { type: Boolean, default: false }
+  },
+  {
+    _id: false
+  }
+);
+
 const instituteSchema = new mongoose.Schema(
   {
     name: {
@@ -160,6 +177,10 @@ const instituteSchema = new mongoose.Schema(
         accentColor: "#eef3ff",
         logoUrl: ""
       })
+    },
+    profileFields: {
+      type: [profileFieldSchema],
+      default: () => getDefaultProfileFields("college")
     },
     website: {
       type: String,

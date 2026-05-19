@@ -539,7 +539,17 @@ router.post("/institutes/onboarding/submit", (req, res) => {
 });
 
 router.get("/institutes", requireMockAuth, requireRole("super_admin"), (req, res) => {
-  res.json(getStore(req).institutes);
+  const store = getStore(req);
+  const instituteNameById = new Map(store.institutes.map((item) => [item._id, item.name]));
+
+  res.json(
+    store.institutes.map((item) => ({
+      ...item,
+      hierarchyType: item.hierarchyType || "standalone",
+      parentInstituteName: item.parentInstituteId ? instituteNameById.get(item.parentInstituteId) || "" : "",
+      managedInstituteCount: store.institutes.filter((child) => child.parentInstituteId === item._id).length
+    }))
+  );
 });
 
 router.patch("/institutes/:id/approve", requireMockAuth, requireRole("super_admin"), (req, res) => {
@@ -597,6 +607,66 @@ router.get("/admin/analytics", requireMockAuth, requireRole("super_admin"), (req
   });
 });
 
+router.get("/analytics/admin", requireMockAuth, requireRole("institute_admin"), (req, res) => {
+  const store = getStore(req);
+  const institute = getInstitute(req);
+  const instituteId = institute?._id;
+  const alumni = store.users.filter((item) => item.instituteId === instituteId && item.role === "alumni");
+  const profiles = store.profiles.filter((item) => item.instituteId === instituteId);
+  const events = store.events.filter((item) => item.instituteId === instituteId);
+  const jobs = store.jobs.filter((item) => item.instituteId === instituteId);
+  const messagesSent = store.friendships.reduce((sum, item) => sum + (item.messages?.length || 0), 0);
+  const distributionMap = new Map();
+
+  profiles.forEach((profile) => {
+    const key = `${profile.department || "Unspecified"}|${profile.batch || "Unspecified"}`;
+    distributionMap.set(key, (distributionMap.get(key) || 0) + 1);
+  });
+
+  res.json({
+    success: true,
+    data: {
+      metrics: {
+        totalAlumni: alumni.length,
+        newAlumni: alumni.length,
+        totalDonations: 0,
+        donationCount: 0,
+        avgDonation: 0,
+        activeJobs: jobs.filter((item) => ["active", "published"].includes(item.status)).length,
+        totalSessions: 0,
+        activeUsers: alumni.filter((item) => item.isActive).length,
+        eventAttendanceRate: 0,
+        messagesSent,
+        forumEngagement: 0
+      },
+      deltas: {
+        totalAlumni: 12,
+        totalDonations: 0,
+        activeJobs: 8,
+        totalSessions: 0,
+        activeUsers: 10,
+        eventAttendanceRate: 0,
+        messagesSent: 15,
+        forumEngagement: 0
+      },
+      trends: {
+        donations: [{ name: "This period", amount: 0 }],
+        registrations: [{ name: "This period", count: alumni.length }]
+      },
+      distribution: Array.from(distributionMap.entries()).map(([key, value]) => {
+        const [name, batch] = key.split("|");
+        return { name, batch, value };
+      }),
+      topCampaigns: [],
+      range: {
+        startDate: req.query.startDate || new Date().toISOString(),
+        endDate: req.query.endDate || new Date().toISOString()
+      },
+      eventCount: events.length
+    }
+  });
+});
+
 router.get("/admin/support-overview", requireMockAuth, requireRole("super_admin"), (_req, res) => {
   const store = getStore(_req);
   res.json({
@@ -614,15 +684,21 @@ router.get("/admin/audit-logs", requireMockAuth, requireRole("super_admin"), (re
 });
 
 router.get("/admin/institutes/:id", requireMockAuth, requireRole("super_admin"), (req, res) => {
-  const institute = getStore(req).institutes.find((item) => item._id === req.params.id);
+  const store = getStore(req);
+  const institute = store.institutes.find((item) => item._id === req.params.id);
 
   if (!institute) {
     return res.status(404).json({ message: "Institute not found", requestId: req.requestId });
   }
 
+  const parent = institute.parentInstituteId
+    ? store.institutes.find((item) => item._id === institute.parentInstituteId)
+    : null;
+  const children = store.institutes.filter((item) => item.parentInstituteId === institute._id);
+
   res.json({
     institute,
-    admins: getStore(req).users
+    admins: store.users
       .filter((item) => item.role === "institute_admin" && item.instituteId === institute._id)
       .map((item) => ({
         _id: item._id,
@@ -647,6 +723,31 @@ router.get("/admin/institutes/:id", requireMockAuth, requireRole("super_admin"),
       hasPendingAdminSetup: false,
       inactiveAdminCount: 0,
       pendingfriendships: 0
+    },
+    hierarchy: {
+      type: institute.hierarchyType || "standalone",
+      capabilities: institute.hierarchyCapabilities || {},
+      parent: parent
+        ? {
+            _id: parent._id,
+            name: parent.name,
+            subdomain: parent.subdomain,
+            domain: parent.domain,
+            status: parent.status,
+            subscriptionPlan: parent.subscriptionPlan,
+            hierarchyType: parent.hierarchyType || "standalone"
+          }
+        : null,
+      children: children.map((child) => ({
+        _id: child._id,
+        name: child.name,
+        subdomain: child.subdomain,
+        domain: child.domain,
+        status: child.status,
+        subscriptionPlan: child.subscriptionPlan,
+        subscriptionStatus: child.subscriptionStatus,
+        hierarchyType: child.hierarchyType || "group_member"
+      }))
     },
     recentActivity: []
   });
@@ -679,6 +780,93 @@ router.patch("/admin/institutes/:id/subscription", requireMockAuth, requireRole(
       hasPendingAdminSetup: false,
       inactiveAdminCount: 0,
       pendingfriendships: 0
+    },
+    recentActivity: []
+  });
+});
+
+router.patch("/admin/institutes/:id/hierarchy", requireMockAuth, requireRole("super_admin"), (req, res) => {
+  const store = getStore(req);
+  const institute = store.institutes.find((item) => item._id === req.params.id);
+
+  if (!institute) {
+    return res.status(404).json({ message: "Institute not found", requestId: req.requestId });
+  }
+
+  if (req.body?.hierarchyType === "group_member") {
+    const parent = store.institutes.find((item) => item._id === req.body.parentInstituteId);
+
+    if (!parent || parent._id === institute._id) {
+      return res.status(400).json({ message: "A valid lead institute is required", requestId: req.requestId });
+    }
+
+    parent.hierarchyType = "group_lead";
+    parent.parentInstituteId = null;
+    institute.parentInstituteId = parent._id;
+  } else {
+    institute.parentInstituteId = null;
+  }
+
+  institute.hierarchyType = req.body?.hierarchyType || "standalone";
+  institute.hierarchyCapabilities = req.body?.hierarchyCapabilities || institute.hierarchyCapabilities || {};
+
+  const parent = institute.parentInstituteId
+    ? store.institutes.find((item) => item._id === institute.parentInstituteId)
+    : null;
+  const children = store.institutes.filter((item) => item.parentInstituteId === institute._id);
+
+  return res.json({
+    institute,
+    admins: store.users
+      .filter((item) => item.role === "institute_admin" && item.instituteId === institute._id)
+      .map((item) => ({
+        _id: item._id,
+        name: item.name,
+        email: item.email,
+        isActive: item.isActive,
+        passwordSetupCompleted: item.passwordSetupCompleted,
+        inviteExpiresAt: null,
+        onboardingStatus: item.passwordSetupCompleted ? "ready" : "pending_setup",
+        createdAt: institute.createdAt
+      })),
+    metrics: {
+      adminsCount: 1,
+      alumniProfilesCount: store.profiles.length,
+      activeAlumniUsersCount: store.users.filter((item) => item.role === "alumni" && item.isActive).length,
+      eventsCount: store.events.length,
+      jobsCount: store.jobs.length,
+      announcementsCount: store.announcements.length,
+      pendingfriendships: 0
+    },
+    support: {
+      hasPendingAdminSetup: false,
+      inactiveAdminCount: 0,
+      pendingfriendships: 0
+    },
+    hierarchy: {
+      type: institute.hierarchyType || "standalone",
+      capabilities: institute.hierarchyCapabilities || {},
+      parent: parent
+        ? {
+            _id: parent._id,
+            name: parent.name,
+            subdomain: parent.subdomain,
+            domain: parent.domain,
+            status: parent.status,
+            subscriptionPlan: parent.subscriptionPlan,
+            hierarchyType: parent.hierarchyType || "standalone"
+          }
+        : null,
+      children: children.map((child) => ({
+        _id: child._id,
+        name: child.name,
+        subdomain: child.subdomain,
+        domain: child.domain,
+        status: child.status,
+        subscriptionPlan: child.subscriptionPlan,
+        subscriptionStatus: child.subscriptionStatus,
+        hierarchyType: child.hierarchyType || "group_member"
+      }))
     },
     recentActivity: []
   });

@@ -1,116 +1,244 @@
-/* ── Analytics.css ───────────────────────────────────────── */
-
 .ana-container {
-  padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  padding: 2rem;
 }
 
-.ana-header {
-  margin-bottom: 2.5rem;
-}
-
-.ana-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 0.5rem;
-  letter-spacing: -0.02em;
-}
-
-.ana-subtitle {
-  color: #64748b;
-  font-size: 1.1rem;
-}
-
-/* KPI Cards Grid */
-.ana-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2.5rem;
-}
-
-.ana-kpi-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.ana-kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-.ana-kpi-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+.ana-loading {
+  min-height: 60vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
 }
 
-.ana-kpi-info h3 {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.ana-spinner {
+  width: 24px;
+  height: 24px;
+}
+
+.ana-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ana-title {
+  margin: 0 0 0.4rem;
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.ana-subtitle {
+  margin: 0;
   color: #64748b;
+  font-size: 1rem;
+}
+
+.ana-export-btn,
+.ana-preset {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ana-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+}
+
+.ana-export-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.ana-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.ana-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ana-preset {
+  padding: 0.55rem 0.8rem;
+}
+
+.ana-preset--active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+.ana-date-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.ana-date-fields label {
+  display: grid;
+  gap: 0.3rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ana-date-fields input {
+  min-height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  color: #0f172a;
+}
+
+.ana-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ana-kpi-card,
+.ana-chart-card,
+.ana-table-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ana-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.ana-kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex: 0 0 auto;
+}
+
+.ana-kpi-icon--blue { background: #2563eb; }
+.ana-kpi-icon--emerald { background: #059669; }
+.ana-kpi-icon--amber { background: #d97706; }
+.ana-kpi-icon--violet { background: #7c3aed; }
+.ana-kpi-icon--cyan { background: #0891b2; }
+.ana-kpi-icon--rose { background: #e11d48; }
+.ana-kpi-icon--green { background: #16a34a; }
+.ana-kpi-icon--slate { background: #475569; }
+
+.ana-kpi-info h3 {
   margin: 0 0 0.25rem;
-  font-weight: 600;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .ana-kpi-value {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #0f172a;
   margin: 0;
+  color: #0f172a;
+  font-size: 1.35rem;
+  font-weight: 800;
 }
 
-/* Charts Grid */
+.ana-delta {
+  display: inline-flex;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ana-delta--positive { color: #047857; }
+.ana-delta--negative { color: #b91c1c; }
+.ana-delta--neutral { color: #64748b; }
+
 .ana-charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 2rem;
-  margin-bottom: 2.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .ana-chart-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 24px;
-  padding: 2rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 1.25rem;
+}
+
+.ana-chart-card:nth-child(3) {
+  grid-column: span 2;
 }
 
 .ana-chart-header {
-  margin-bottom: 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 1rem;
 }
 
 .ana-chart-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
   margin: 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 800;
 }
 
-/* Table Card */
+.ana-chart-box {
+  width: 100%;
+  height: 300px;
+}
+
+.ana-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.ana-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ana-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
 .ana-table-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 24px;
-  padding: 2rem;
-  margin-top: 2rem;
+  padding: 1.25rem;
+}
+
+.ana-table-wrap {
+  overflow-x: auto;
 }
 
 .ana-table {
@@ -121,29 +249,68 @@
 
 .ana-table th {
   text-align: left;
-  padding: 1rem;
+  padding: 0.85rem;
   color: #64748b;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .ana-table td {
-  padding: 1.25rem 1rem;
+  padding: 1rem 0.85rem;
   border-bottom: 1px solid #f1f5f9;
   color: #334155;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-/* Colors */
-.bg-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-.bg-emerald { background: linear-gradient(135deg, #10b981, #059669); }
-.bg-amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.bg-purple { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+.ana-money {
+  color: #047857;
+}
 
-@media (max-width: 768px) {
+.ana-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 180px;
+}
+
+.ana-progress > div {
+  flex: 1;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ana-progress span {
+  display: block;
+  height: 100%;
+  background: #10b981;
+}
+
+.ana-progress strong {
+  min-width: 42px;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .ana-container {
+    padding: 1rem;
+  }
+
+  .ana-header,
+  .ana-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .ana-charts-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ana-chart-card:nth-child(3) {
+    grid-column: auto;
   }
 }

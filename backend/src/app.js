@@ -49,6 +49,7 @@ import reunionRoutes from "./routes/reunion.routes.js";
 import celebrationsRoutes from "./routes/celebrations.routes.js";
 import forumRoutes from "./routes/forum.routes.js";
 import campaignRoutes from "./routes/campaign.routes.js";
+import searchRoutes from "./routes/search.routes.js";
 
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const uploadsRoot = path.join(backendRoot, "uploads");
@@ -236,6 +237,7 @@ app.use("/api/resumes", resumeRoutes);
 app.use("/api/reunions", reunionRoutes);
 app.use("/api/celebrations", celebrationsRoutes);
 app.use("/api/forums", forumRoutes);
+app.use("/api/search", searchRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

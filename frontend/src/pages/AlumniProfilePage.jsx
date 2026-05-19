@@ -135,6 +135,7 @@ function buildForm(profile) {
     profileVisibility: profile.profileVisibility || "institute_only",
     showEmail: profile.showEmail ?? false,
     allowMentorRequests: profile.allowMentorRequests ?? true,
+    customData: profile.customData ? (profile.customData instanceof Map ? Object.fromEntries(profile.customData) : profile.customData) : {}
   };
 }
 
@@ -153,6 +154,14 @@ function AlumniProfilePage() {
   const [skillInput, setSkillInput] = useState("");
   const [activeSection, setActiveSection] = useState(profileSections[0].id);
   const isAlumni = auth.user?.role === "alumni";
+
+  const companyConfig = getFieldConfig("company", "optional");
+  const designationConfig = getFieldConfig("designation", "optional");
+  const eduConfig = getFieldConfig("currentEducation", "optional");
+  const instConfig = getFieldConfig("currentInstitution", "optional");
+  const countryConfig = getFieldConfig("country", "optional");
+  const cityConfig = getFieldConfig("city", "optional");
+  const customFields = (tenant?.profileFields || []).filter(f => !f.isStandard);
 
   const profileQuery = useQuery({
     queryKey: ["my-alumni-profile"],
@@ -242,6 +251,35 @@ function AlumniProfilePage() {
     setForm(c => ({ ...c, [name]: type === "checkbox" ? checked : value }));
   }
 
+  function handleCustomDataChange(key, value) {
+    setForm((current) => ({
+      ...current,
+      customData: {
+        ...(current.customData || {}),
+        [key]: value
+      }
+    }));
+  }
+
+  function getFieldConfig(key, defaultVisibility = "optional") {
+    const fields = tenant?.profileFields || [];
+    const f = fields.find(field => field.fieldKey === key);
+    if (!f) {
+      return {
+        required: defaultVisibility === "required",
+        hidden: defaultVisibility === "hidden",
+        label: ""
+      };
+    }
+    const isProfileHidden = f.showInProfile !== undefined ? !f.showInProfile : f.visibility === "hidden";
+    const isProfileRequired = f.showInRegistration === "required" || f.visibility === "required";
+    return {
+      required: isProfileRequired,
+      hidden: isProfileHidden,
+      label: f.label
+    };
+  }
+
   function handleSkillAdd(event) {
     event.preventDefault();
     const nextSkill = skillInput.trim();
@@ -256,7 +294,7 @@ function AlumniProfilePage() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    updateMutation.mutate({ ...form, location: buildLocationValue(form.country, form.state, form.city), skills });
+    updateMutation.mutate({ ...form, location: buildLocationValue(form.country, form.state, form.city), skills, customData: form.customData || {} });
   }
 
   function jumpToSection(sectionId) {
@@ -381,40 +419,115 @@ function AlumniProfilePage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   {isSchool ? (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Current Education</label>
-                        <input name="currentEducation" onChange={handleChange} value={form.currentEducation} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Current Institution</label>
-                        <input name="currentInstitution" onChange={handleChange} value={form.currentInstitution} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
+                      {!eduConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">{eduConfig.label || "Current Education"}</label>
+                          <input name="currentEducation" onChange={handleChange} value={form.currentEducation} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
+                      {!instConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">{instConfig.label || "Current Institution"}</label>
+                          <input name="currentInstitution" onChange={handleChange} value={form.currentInstitution} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Company / Organization</label>
-                        <input name="company" onChange={handleChange} value={form.company} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Job Title / Designation</label>
-                        <input name="designation" onChange={handleChange} value={form.designation} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                      </div>
+                      {!companyConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">{companyConfig.label || "Company / Organization"}</label>
+                          <input name="company" onChange={handleChange} value={form.company} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
+                      {!designationConfig.hidden && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">{designationConfig.label || "Job Title / Designation"}</label>
+                          <input name="designation" onChange={handleChange} value={form.designation} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                        </div>
+                      )}
                     </>
                   )}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Country</label>
-                    <select name="country" onChange={handleChange} value={form.country} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all">
-                      <option value="">Select Country</option>
-                      {(countriesQuery.data || []).map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Location (City)</label>
-                    <input name="city" onChange={handleChange} value={form.city} placeholder="e.g. New York" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
-                  </div>
+                  {!countryConfig.hidden && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">{countryConfig.label || "Country"}</label>
+                      <select name="country" onChange={handleChange} value={form.country} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all">
+                        <option value="">Select Country</option>
+                        {(countriesQuery.data || []).map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {!cityConfig.hidden && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">{cityConfig.label || "Location (City)"}</label>
+                      <input name="city" onChange={handleChange} value={form.city} placeholder="e.g. New York" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                    </div>
+                  )}
                 </div>
               </section>
+
+              {customFields.some(f => f.showInProfile !== undefined ? f.showInProfile : f.visibility !== "hidden") && (
+                <section id="custom-fields" className="premium-card p-8">
+                  <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-brand-600">badge</span>
+                    Institutional Information
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {customFields.map(field => {
+                      const isVisible = field.showInProfile !== undefined ? field.showInProfile : field.visibility !== "hidden";
+                      if (!isVisible) return null;
+                      const value = form.customData?.[field.fieldKey] || "";
+                      const isRequired = field.showInRegistration === "required" || field.visibility === "required";
+                      return (
+                        <div key={field.fieldKey} className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">
+                            {field.label} {isRequired && <span className="text-red-500">*</span>}
+                          </label>
+                          {field.inputType === "select" ? (
+                            <select
+                              name={field.fieldKey}
+                              onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                              required={isRequired}
+                              value={value}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all text-slate-700"
+                            >
+                              <option value="">Select {field.label}</option>
+                              {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : field.inputType === "date" ? (
+                            <input
+                              type="date"
+                              name={field.fieldKey}
+                              onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                              required={isRequired}
+                              value={value}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all text-slate-700"
+                            />
+                          ) : field.inputType === "number" ? (
+                            <input
+                              type="number"
+                              name={field.fieldKey}
+                              onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                              required={isRequired}
+                              value={value}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              name={field.fieldKey}
+                              onChange={(e) => handleCustomDataChange(field.fieldKey, e.target.value)}
+                              required={isRequired}
+                              value={value}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
 
               <section id="education" className="premium-card p-8 opacity-75 grayscale-[0.5]">
                 <div className="flex justify-between items-start mb-6">
@@ -547,27 +660,65 @@ function AlumniProfilePage() {
           <section className="premium-card p-8">
             <h3 className="text-xl font-bold text-slate-900 mb-6 tracking-tight">Identity & Career</h3>
             <div className="grid md:grid-cols-2 gap-8">
-              <div className="flex gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined">work</span>
+              {!isSchool && (!companyConfig.hidden || !designationConfig.hidden) && (
+                <div className="flex gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined">work</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Current Role</p>
+                    <p className="font-bold text-slate-900">{profileRole}</p>
+                    <p className="text-sm text-slate-500 font-semibold">{profileCompany}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Current Role</p>
-                  <p className="font-bold text-slate-900">{profileRole}</p>
-                  <p className="text-sm text-slate-500 font-semibold">{profileCompany}</p>
+              )}
+              {isSchool && (!eduConfig.hidden || !instConfig.hidden) && (
+                <div className="flex gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined">school</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Education</p>
+                    <p className="font-bold text-slate-900">{currentEducation || "Student"}</p>
+                    <p className="text-sm text-slate-500 font-semibold">{currentInstitution || auth.user?.institute?.name}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined">location_on</span>
+              )}
+              {(!countryConfig.hidden || !cityConfig.hidden) && (
+                <div className="flex gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined">location_on</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Base Location</p>
+                    <p className="font-bold text-slate-900">{profileLocation}</p>
+                    <p className="text-sm text-slate-500 font-semibold">{profileIndustry}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Base Location</p>
-                  <p className="font-bold text-slate-900">{profileLocation}</p>
-                  <p className="text-sm text-slate-500 font-semibold">{profileIndustry}</p>
-                </div>
-              </div>
+              )}
             </div>
+
+            {/* View Mode Custom Fields display */}
+            {customFields.some(f => f.showInProfile !== undefined ? f.showInProfile : f.visibility !== "hidden") && (
+              <div className="mt-8 pt-8 border-t border-slate-100 grid md:grid-cols-2 gap-6">
+                {customFields.map(field => {
+                  const isVisible = field.showInProfile !== undefined ? field.showInProfile : field.visibility !== "hidden";
+                  if (!isVisible) return null;
+                  const value = form.customData?.[field.fieldKey] || "Not provided";
+                  return (
+                    <div key={field.fieldKey} className="flex gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined">badge</span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{field.label}</p>
+                        <p className="font-bold text-slate-900">{value}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </div>
 

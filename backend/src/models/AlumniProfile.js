@@ -204,6 +204,11 @@ const alumniProfileSchema = new mongoose.Schema(
       default: "",
       enum: ["high_school", "bachelors", "masters", "phd", "postdoc", "diploma", "certification", ""],
     },
+    customData: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
   },
   {
     timestamps: true,

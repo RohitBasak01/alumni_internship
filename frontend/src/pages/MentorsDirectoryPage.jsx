@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMentors, requestMentorshipSession } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../components/Toast.jsx";
 import "../styles/Mentorship.css";
 
 export default function MentorsDirectoryPage() {
   const queryClient = useQueryClient();
   const auth = useAuth();
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMentor, setSelectedMentor] = useState(null);
   
@@ -24,10 +26,11 @@ export default function MentorsDirectoryPage() {
     mutationFn: requestMentorshipSession,
     onSuccess: () => {
       closeModal();
-      alert("Session requested successfully! You can track it in your Mentorship Dashboard.");
+      queryClient.invalidateQueries({ queryKey: ["mentorship-sessions"] });
+      toast.success("Session requested successfully. You can track it in your Mentorship Dashboard.");
     },
     onError: (err) => {
-      alert(err.response?.data?.message || "Failed to request session.");
+      toast.error(err.response?.data?.message || "Failed to request session.");
     }
   });
 
@@ -38,7 +41,7 @@ export default function MentorsDirectoryPage() {
 
   const openModal = (mentor) => {
     if (mentor.userId._id === auth.user?._id) {
-      alert("You cannot request a session with yourself.");
+      toast.warning("You cannot request a session with yourself.");
       return;
     }
     setSelectedMentor(mentor);
@@ -52,7 +55,7 @@ export default function MentorsDirectoryPage() {
     e.preventDefault();
     const validTimes = proposedTimes.filter(t => t.trim() !== "");
     if (validTimes.length === 0) {
-      alert("Please propose at least one date/time slot.");
+      toast.warning("Please propose at least one date/time slot.");
       return;
     }
     requestMutation.mutate({
@@ -69,8 +72,8 @@ export default function MentorsDirectoryPage() {
           <h1 className="mt-hero-title">Find a Mentor</h1>
           <p className="mt-hero-subtitle">Connect with experienced alumni who can guide you through your career journey, review your resume, or provide industry insights.</p>
         </div>
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <Link to="/portal/mentorship-sessions" className="mt-hero-btn" style={{ background: "transparent", color: "white", border: "1px solid white" }}>
+        <div className="mt-hero-actions">
+          <Link to="/portal/mentorship-sessions" className="mt-hero-btn mt-hero-btn--ghost">
             My Sessions
           </Link>
           <Link to="/portal/mentors/join" className="mt-hero-btn">
@@ -79,7 +82,7 @@ export default function MentorsDirectoryPage() {
         </div>
       </div>
 
-      <div style={{ marginBottom: "2rem" }}>
+      <div className="mt-search-block">
         <input 
           type="text" 
           className="mt-input" 
@@ -90,10 +93,10 @@ export default function MentorsDirectoryPage() {
       </div>
 
       {isLoading ? (
-        <div style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>Loading mentors...</div>
+        <div className="mt-empty-state">Loading mentors...</div>
       ) : filteredMentors.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "4rem", color: "#64748b", background: "white", borderRadius: "12px" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "3rem", color: "#cbd5e1" }}>search_off</span>
+        <div className="mt-empty-state mt-empty-state--card">
+          <span className="material-symbols-outlined">search_off</span>
           <h3>No mentors found</h3>
         </div>
       ) : (
@@ -121,7 +124,7 @@ export default function MentorsDirectoryPage() {
               <p className="mt-bio">{mentor.bio}</p>
 
               <div className="mt-availability">
-                <span className="material-symbols-outlined" style={{ fontSize: "1.2rem" }}>event_available</span>
+                <span className="material-symbols-outlined">event_available</span>
                 {mentor.availabilityText}
               </div>
 
@@ -134,10 +137,10 @@ export default function MentorsDirectoryPage() {
       {selectedMentor && (
         <div className="mt-modal-overlay">
           <div className="mt-modal">
-            <h2 style={{ margin: "0 0 1.5rem" }}>Request Session with {selectedMentor.userId.name}</h2>
+            <h2 className="mt-modal-title">Request Session with {selectedMentor.userId.name}</h2>
             <form onSubmit={handleSubmitRequest}>
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>What do you want to discuss? (Agenda)</label>
+              <div className="mt-form-group">
+                <label className="mt-form-label">What do you want to discuss? (Agenda)</label>
                 <textarea 
                   required
                   className="mt-input" 
@@ -148,31 +151,30 @@ export default function MentorsDirectoryPage() {
                 />
               </div>
 
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>
+              <div className="mt-form-group">
+                <label className="mt-form-label">
                   Propose 3 Dates & Times <br/>
-                  <span style={{ fontWeight: "normal", color: "#64748b" }}>Mentor's Availability: {selectedMentor.availabilityText}</span>
+                  <span>Mentor's Availability: {selectedMentor.availabilityText}</span>
                 </label>
                 {proposedTimes.map((time, idx) => (
                   <input 
                     key={idx}
-                    type="text" 
+                    type="datetime-local" 
                     className="mt-input" 
-                    placeholder={`Option ${idx + 1} (e.g., Nov 12 at 3:00 PM EST)`}
                     value={time}
                     onChange={e => {
                       const newTimes = [...proposedTimes];
                       newTimes[idx] = e.target.value;
                       setProposedTimes(newTimes);
                     }}
-                    required={idx === 0} // First one is required
+                    required={idx === 0}
                   />
                 ))}
               </div>
 
-              <div style={{ display: "flex", gap: "1rem" }}>
-                <button type="button" className="mt-btn-outline" style={{ flex: 1 }} onClick={closeModal}>Cancel</button>
-                <button type="submit" className="mt-btn-solid" style={{ flex: 1 }} disabled={requestMutation.isPending}>
+              <div className="mt-modal-actions">
+                <button type="button" className="mt-btn-outline" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="mt-btn-solid" disabled={requestMutation.isPending}>
                   {requestMutation.isPending ? "Sending..." : "Send Request"}
                 </button>
               </div>

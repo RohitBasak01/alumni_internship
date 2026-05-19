@@ -435,9 +435,24 @@ export async function updateMyInstituteSettings(payload) {
   return data;
 }
 
+export async function fetchManagedInstitutions() {
+  const { data } = await api.get("/institutes/me/managed-institutions");
+  return data;
+}
+
+export async function searchPortal(params = {}) {
+  const { data } = await api.get("/search", { params });
+  return data;
+}
+
 export async function fetchAdminAnalytics() {
   const { data } = await api.get("/admin/analytics");
   return data;
+}
+
+export async function fetchInstituteAdminAnalytics(params = {}) {
+  const { data } = await api.get("/analytics/admin", { params });
+  return data.data;
 }
 
 export async function fetchAuditLogs() {
@@ -462,6 +477,11 @@ export async function fetchInstituteDetail(id) {
 
 export async function updateInstituteSubscription(id, payload) {
   const { data } = await api.patch(`/admin/institutes/${id}/subscription`, payload);
+  return data;
+}
+
+export async function updateInstituteHierarchy(id, payload) {
+  const { data } = await api.patch(`/admin/institutes/${id}/hierarchy`, payload);
   return data;
 }
 
@@ -567,6 +587,26 @@ export async function fetchMyAlumniProfile() {
 
 export async function updateMyAlumniProfile(payload) {
   const { data } = await api.patch("/alumni/me", payload);
+  return data;
+}
+
+export async function changePassword(payload) {
+  const { data } = await api.patch("/auth/change-password", payload);
+  return data;
+}
+
+export async function updateSecurityPreferences(payload) {
+  const { data } = await api.patch("/auth/security-preferences", payload);
+  return data;
+}
+
+export async function updateNotificationPreferences(payload) {
+  const { data } = await api.patch("/alumni/me/notification-preferences", payload);
+  return data;
+}
+
+export async function deactivateAccount() {
+  const { data } = await api.post("/auth/deactivate");
   return data;
 }
 
@@ -1246,11 +1286,6 @@ export const fetchIdCardPayload = async () => {
 };
 
 // ─── Analytics ─────────────────────────────────────────────────────────────
-
-export const fetchAdminAnalytics_duplicate = async () => {
-  const { data } = await api.get("/analytics/admin");
-  return data.data;
-};
 
 // ─── Email Campaigns ─────────────────────────────────────────────────────────────
 
