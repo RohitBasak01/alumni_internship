@@ -192,7 +192,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="requests" element={<ConnectionsPage />} />
+            <Route path="messages" element={<ConnectionsPage />} />
             <Route path="*" element={<Navigate replace to="/portal" />} />
           </Route>
           <Route path="*" element={<Navigate replace to="/" />} />
