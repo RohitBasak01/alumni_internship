@@ -10,7 +10,7 @@ const initialFormState = {
   primaryColor:"#4F46E5",secondaryColor:"#10B981",accentColor:"#F59E0B",
   logoUrl:"",enableJobs:true,enableEvents:true,allowStudentRegistrations:false,
   autoApproveAlumni:false,autoApproveEmailDomainsText:"",departmentsText:"",departmentStreamsText:"",
-  profileFields: []
+  profileFields: [], leadershipMessages: [], quickLinks: [], socialLinks: {facebook:"",twitter:"",linkedin:"",youtube:"",instagram:""}, heroImageUrl: "", manualUpdates: []
 };
 function normalizeAutoApproveDomainsInput(value){
   return [...new Set(String(value||"").split(/[,\n]/).map(i=>i.trim().toLowerCase().replace(/^@/,"")).filter(Boolean))];
@@ -52,19 +52,28 @@ function mapSettingsToForm(s){
     autoApproveEmailDomainsText:Array.isArray(s?.featureFlags?.autoApproveEmailDomains)?s.featureFlags.autoApproveEmailDomains.join("\n"):"",
     departmentsText:Array.isArray(s?.departments)?s.departments.join("\n"):"",
     departmentStreamsText:formatDepartmentStreamsInput(s?.departmentStreams||{}),
-    profileFields: Array.isArray(s?.profileFields) ? s.profileFields : []
+    profileFields: Array.isArray(s?.profileFields) ? s.profileFields : [],
+    leadershipMessages: Array.isArray(s?.leadershipMessages) ? s.leadershipMessages : [],
+    quickLinks: Array.isArray(s?.quickLinks) ? s.quickLinks : [],
+    socialLinks: s?.socialLinks || {facebook:"",twitter:"",linkedin:"",youtube:"",instagram:""},
+    heroImageUrl: s?.branding?.heroImageUrl || "",
+    manualUpdates: Array.isArray(s?.manualUpdates) ? s.manualUpdates : []
   };
 }
 function buildUpdatePayload(form){
   const departmentStreams = normalizeDepartmentStreamsInput(form.departmentStreamsText);
   return {
     name:form.name,website:form.website,primaryContactEmail:form.email,bio:form.bio,
-    branding:{tagline:form.tagline,primaryColor:form.primaryColor,secondaryColor:form.secondaryColor,accentColor:form.accentColor,logoUrl:form.logoUrl},
+    branding:{tagline:form.tagline,primaryColor:form.primaryColor,secondaryColor:form.secondaryColor,accentColor:form.accentColor,logoUrl:form.logoUrl,heroImageUrl:form.heroImageUrl},
+    leadershipMessages:form.leadershipMessages,
+    quickLinks:form.quickLinks,
+    socialLinks:form.socialLinks,
     featureFlags:{enableJobs:form.enableJobs,enableEvents:form.enableEvents,allowStudentRegistrations:form.allowStudentRegistrations,autoApproveAlumni:form.autoApproveAlumni,autoApproveEmailDomains:normalizeAutoApproveDomainsInput(form.autoApproveEmailDomainsText)},
     departments:normalizeDepartmentsInput(form.departmentsText),
     departmentStreams,
     streams:[...new Set(Object.values(departmentStreams).flat())],
-    profileFields: form.profileFields
+    profileFields: form.profileFields,
+    manualUpdates: form.manualUpdates
   };
 }
 
@@ -384,7 +393,7 @@ const SIDEBAR_ITEMS=[
   {key:"social",    icon:"link",           label:"Social Links"},
   {key:"contact",   icon:"call",           label:"Contact Information"},
 ];
-const TOP_TABS=["General Information","Branding","Portal Configuration","Registration & Profile Fields","Integrations","Email Templates","Security"];
+const TOP_TABS=["General Information","Branding","Portal Configuration","Home Page Configuration","Registration & Profile Fields","Integrations","Email Templates","Security"];
 
 /* ══════════════════════════════════════════════════════════
    Main Page
@@ -683,7 +692,155 @@ export default function InstitutionSettingsPage(){
             </div>
           )}
 
-          {activeTab === "Registration & Profile Fields" && (
+          
+          {activeTab === "Home Page Configuration" && (
+            <div className="st-panel">
+              <div className="st-panel-header">
+                <div>
+                  <h2 className="st-panel-title">Home Page Configuration</h2>
+                  <p className="st-panel-sub">Configure the content shown on your public institution home page.</p>
+                </div>
+              </div>
+              <div className="st-info-grid" style={{ marginTop: "1rem" }}>
+                <div className="st-info-block st-info-block--full">
+                  <label className="st-label">Hero Background Image URL</label>
+                  <input className="st-input" name="heroImageUrl" value={form.heroImageUrl} onChange={handleChange} placeholder="https://..." />
+                </div>
+              </div>
+
+              <div className="st-panel-header" style={{ marginTop: "2rem" }}>
+                <div>
+                  <h3 className="st-panel-title" style={{ fontSize: "1.1rem" }}>Social Media Links</h3>
+                </div>
+              </div>
+              <div className="st-info-grid" style={{ marginTop: "1rem" }}>
+                {["facebook", "twitter", "linkedin", "youtube", "instagram"].map(network => (
+                  <div key={network} className="st-info-block">
+                    <label className="st-label" style={{ textTransform: "capitalize" }}>{network}</label>
+                    <input 
+                      className="st-input" 
+                      value={form.socialLinks[network] || ""} 
+                      onChange={e => setForm(c => ({...c, socialLinks: {...c.socialLinks, [network]: e.target.value}}))} 
+                      placeholder={"https://"+network+".com/..."} 
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="st-panel-header" style={{ marginTop: "2rem" }}>
+                <div>
+                  <h3 className="st-panel-title" style={{ fontSize: "1.1rem" }}>Leadership Messages</h3>
+                  <p className="st-panel-sub">Add messages from the Chairman, Dean, etc.</p>
+                </div>
+                <button className="st-save-btn" style={{ width: "auto" }} onClick={() => setForm(c => ({...c, leadershipMessages: [...c.leadershipMessages, {role:"", name:"", title:"", photoUrl:"", message:"", salutation:""}]}))}>
+                  Add Message
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginTop: "1rem" }}>
+                {form.leadershipMessages.map((msg, idx) => (
+                  <div key={idx} style={{ padding: "1.25rem", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                    <div className="st-info-grid">
+                      <div className="st-info-block">
+                        <label className="st-label">Role (e.g. Chairman)</label>
+                        <input className="st-input" value={msg.role} onChange={e => { const newMsgs = [...form.leadershipMessages]; newMsgs[idx].role = e.target.value; setForm(c => ({...c, leadershipMessages: newMsgs})); }} />
+                      </div>
+                      <div className="st-info-block">
+                        <label className="st-label">Name</label>
+                        <input className="st-input" value={msg.name} onChange={e => { const newMsgs = [...form.leadershipMessages]; newMsgs[idx].name = e.target.value; setForm(c => ({...c, leadershipMessages: newMsgs})); }} />
+                      </div>
+                      <div className="st-info-block">
+                        <label className="st-label">Title</label>
+                        <input className="st-input" value={msg.title} onChange={e => { const newMsgs = [...form.leadershipMessages]; newMsgs[idx].title = e.target.value; setForm(c => ({...c, leadershipMessages: newMsgs})); }} />
+                      </div>
+                      <div className="st-info-block">
+                        <label className="st-label">Photo URL</label>
+                        <input className="st-input" value={msg.photoUrl} onChange={e => { const newMsgs = [...form.leadershipMessages]; newMsgs[idx].photoUrl = e.target.value; setForm(c => ({...c, leadershipMessages: newMsgs})); }} />
+                      </div>
+                      <div className="st-info-block st-info-block--full">
+                        <label className="st-label">Message</label>
+                        <textarea className="st-input" rows={4} value={msg.message} onChange={e => { const newMsgs = [...form.leadershipMessages]; newMsgs[idx].message = e.target.value; setForm(c => ({...c, leadershipMessages: newMsgs})); }} />
+                      </div>
+                    </div>
+                    <button className="st-discard-btn" style={{ marginTop: "1rem" }} onClick={() => setForm(c => ({...c, leadershipMessages: c.leadershipMessages.filter((_, i) => i !== idx)}))}>Remove</button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="st-panel-header" style={{ marginTop: "2rem" }}>
+                <div>
+                  <h3 className="st-panel-title" style={{ fontSize: "1.1rem" }}>Quick Links</h3>
+                  <p className="st-panel-sub">Add up to 4 quick links for the home page.</p>
+                </div>
+                <button className="st-save-btn" style={{ width: "auto" }} onClick={() => setForm(c => ({...c, quickLinks: [...c.quickLinks, {label:"", icon:"link", url:"", enabled:true}]}))}>
+                  Add Link
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+                {form.quickLinks.map((link, idx) => (
+                  <div key={idx} style={{ padding: "1.25rem", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", gap: "1rem", alignItems: "flex-end" }}>
+                    <div className="st-info-block" style={{ flex: 1 }}>
+                      <label className="st-label">Label</label>
+                      <input className="st-input" value={link.label} onChange={e => { const newLinks = [...form.quickLinks]; newLinks[idx].label = e.target.value; setForm(c => ({...c, quickLinks: newLinks})); }} />
+                    </div>
+                    <div className="st-info-block" style={{ flex: 1 }}>
+                      <label className="st-label">URL</label>
+                      <input className="st-input" value={link.url} onChange={e => { const newLinks = [...form.quickLinks]; newLinks[idx].url = e.target.value; setForm(c => ({...c, quickLinks: newLinks})); }} />
+                    </div>
+                    <div className="st-info-block" style={{ width: "100px" }}>
+                      <label className="st-label">Icon</label>
+                      <input className="st-input" value={link.icon} onChange={e => { const newLinks = [...form.quickLinks]; newLinks[idx].icon = e.target.value; setForm(c => ({...c, quickLinks: newLinks})); }} />
+                    </div>
+                    <button className="st-discard-btn" onClick={() => setForm(c => ({...c, quickLinks: c.quickLinks.filter((_, i) => i !== idx)}))}>Remove</button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="st-panel-header" style={{ marginTop: "2rem" }}>
+                <div>
+                  <h3 className="st-panel-title" style={{ fontSize: "1.1rem" }}>Latest Updates Bulletins</h3>
+                  <p className="st-panel-sub">Add administrative announcements that show in the updates timeline and news ticker.</p>
+                </div>
+                <button className="st-save-btn" style={{ width: "auto" }} onClick={() => setForm(c => ({...c, manualUpdates: [...(c.manualUpdates || []), {text:"", category:"General", date: new Date().toISOString()}]}))}>
+                  Add Update
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+                {form.manualUpdates && form.manualUpdates.map((update, idx) => (
+                  <div key={idx} style={{ padding: "1.25rem", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+                    <div className="st-info-block" style={{ flex: 2, minWidth: "250px" }}>
+                      <label className="st-label">Bulletin Text</label>
+                      <input className="st-input" value={update.text} onChange={e => { const newUpdates = [...form.manualUpdates]; newUpdates[idx].text = e.target.value; setForm(c => ({...c, manualUpdates: newUpdates})); }} placeholder="e.g. SPIT ranked #1 in state by NIRF" />
+                    </div>
+                    <div className="st-info-block" style={{ width: "150px" }}>
+                      <label className="st-label">Category</label>
+                      <select 
+                        className="st-input" 
+                        value={update.category || "General"} 
+                        onChange={e => { const newUpdates = [...form.manualUpdates]; newUpdates[idx].category = e.target.value; setForm(c => ({...c, manualUpdates: newUpdates})); }}
+                        style={{ height: "42px", padding: "4px 8px" }}
+                      >
+                        <option value="General">General</option>
+                        <option value="Campus">Campus</option>
+                        <option value="Career">Career</option>
+                        <option value="Academic">Academic</option>
+                      </select>
+                    </div>
+                    <div className="st-info-block" style={{ width: "180px" }}>
+                      <label className="st-label">Date</label>
+                      <input 
+                        type="date" 
+                        className="st-input" 
+                        value={update.date ? new Date(update.date).toISOString().split('T')[0] : ""} 
+                        onChange={e => { const newUpdates = [...form.manualUpdates]; newUpdates[idx].date = e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString(); setForm(c => ({...c, manualUpdates: newUpdates})); }} 
+                      />
+                    </div>
+                    <button className="st-discard-btn" style={{ height: "42px" }} onClick={() => setForm(c => ({...c, manualUpdates: c.manualUpdates.filter((_, i) => i !== idx)}))}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+{activeTab === "Registration & Profile Fields" && (
             <ProfileFieldsManager form={form} setForm={setForm} />
           )}
 

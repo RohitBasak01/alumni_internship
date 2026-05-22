@@ -415,6 +415,11 @@ export async function fetchCurrentTenantPublicProfile() {
   return data;
 }
 
+export async function fetchTenantHomeContent() {
+  const { data } = await api.get("/institutes/public/current/home-content");
+  return data;
+}
+
 export async function submitAlumniRegistration(payload) {
   const { data } = await api.post("/auth/alumni-registration", payload);
   return data;

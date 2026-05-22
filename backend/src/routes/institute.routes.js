@@ -6,6 +6,7 @@ import { authorize, protect, requireTenantAccess } from "../middleware/auth.midd
 import { blockDelegatedAdmins } from "../middleware/delegation.middleware.js";
 import { validateBody, validateParams } from "../middleware/validate.middleware.js";
 import Institute from "../models/Institute.js";
+import AlumniProfile from "../models/AlumniProfile.js";
 import PortalOnboardingDraft from "../models/PortalOnboardingDraft.js";
 import RoleDelegation from "../models/RoleDelegation.js";
 import User from "../models/User.js";
@@ -217,7 +218,11 @@ function buildInstituteSettingsPayload(institute) {
     profileFields: institute.profileFields || [],
     departments: institute.departments || [],
     departmentStreams: institute.departmentStreams || {},
-    streams: institute.streams || []
+    streams: institute.streams || [],
+    leadershipMessages: institute.leadershipMessages || [],
+    quickLinks: institute.quickLinks || [],
+    socialLinks: institute.socialLinks || {},
+    manualUpdates: institute.manualUpdates || []
   };
 }
 
@@ -474,7 +479,107 @@ router.get("/public/current", async (req, res, next) => {
       },
       departments: req.tenant.departments || [],
       departmentStreams: req.tenant.departmentStreams || {},
-      streams: req.tenant.streams || []
+      streams: req.tenant.streams || [],
+      leadershipMessages: req.tenant.leadershipMessages || [],
+      quickLinks: req.tenant.quickLinks || [],
+      socialLinks: req.tenant.socialLinks || {}
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/public/current/home-content", async (req, res, next) => {
+  try {
+    if (!req.tenant) {
+      const error = new Error("Institution portal not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const { Announcement, Event, GalleryItem, Job } = getTenantModels(req);
+
+    const [announcements, events, gallery, latestMembers, jobs] = await Promise.all([
+      Announcement.find({ instituteId: req.tenant._id, status: "published" })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("title category publishedAt createdAt"),
+      
+      Event.find({ instituteId: req.tenant._id, eventDate: { $gte: new Date() } })
+        .sort({ eventDate: 1 })
+        .limit(3)
+        .select("title eventDate location isVirtual"),
+
+      GalleryItem.find({ instituteId: req.tenant._id })
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .select("url caption mediaType"),
+      
+      AlumniProfile.find({ 
+        instituteId: req.tenant._id,
+        profileVisibility: { $in: ["public", "institute_only"] },
+        registrationReviewStatus: "approved"
+      })
+      .populate("userId", "name email isActive")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select("profilePhotoUrl batch department currentInstitution company designation"),
+
+      Job.find({ instituteId: req.tenant._id, status: "published" })
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .select("title company createdAt")
+    ]);
+
+    // Filter out inactive users just in case
+    const activeMembers = latestMembers.filter(profile => profile.userId && profile.userId.isActive);
+
+    // Format automatic updates from announcements, events, and jobs
+    const autoAnnouncements = announcements.map(a => ({
+      text: `New Announcement: "${a.title}" has been published.`,
+      date: a.publishedAt || a.createdAt,
+      category: "Announcement",
+      type: "auto"
+    }));
+
+    const autoEvents = events.map(e => ({
+      text: `Upcoming Event: "${e.title}" is scheduled on ${new Date(e.eventDate).toLocaleDateString()}.`,
+      date: e.eventDate,
+      category: "Event",
+      type: "auto"
+    }));
+
+    const autoJobs = jobs.map(j => ({
+      text: `New Job Opportunity: "${j.title}" listed by ${j.company}.`,
+      date: j.createdAt,
+      category: "Career",
+      type: "auto"
+    }));
+
+    // Format manual updates from the institute settings
+    const manualUpdates = (req.tenant.manualUpdates || []).map(u => ({
+      text: u.text,
+      date: u.date,
+      category: u.category || "General",
+      type: "manual",
+      _id: u._id
+    }));
+
+    // Merge manual and dynamic automatic updates and sort chronologically
+    const combinedUpdates = [
+      ...autoAnnouncements,
+      ...autoEvents,
+      ...autoJobs,
+      ...manualUpdates
+    ];
+    combinedUpdates.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.json({
+      announcements,
+      events,
+      gallery,
+      latestMembers: activeMembers,
+      latestUpdates: combinedUpdates.slice(0, 10)
     });
   } catch (error) {
     next(error);
@@ -620,7 +725,8 @@ router.patch(
         ...(incomingBranding.primaryColor !== undefined ? { primaryColor: String(incomingBranding.primaryColor).trim() } : {}),
         ...(incomingBranding.secondaryColor !== undefined ? { secondaryColor: String(incomingBranding.secondaryColor).trim() } : {}),
         ...(incomingBranding.accentColor !== undefined ? { accentColor: String(incomingBranding.accentColor).trim() } : {}),
-        ...(incomingBranding.logoUrl !== undefined ? { logoUrl: String(incomingBranding.logoUrl || "").trim() } : {})
+        ...(incomingBranding.logoUrl !== undefined ? { logoUrl: String(incomingBranding.logoUrl || "").trim() } : {}),
+        ...(incomingBranding.heroImageUrl !== undefined ? { heroImageUrl: String(incomingBranding.heroImageUrl || "").trim() } : {})
       };
 
       institute.featureFlags = {
@@ -639,6 +745,29 @@ router.patch(
 
       if (req.body.profileFields !== undefined) {
         institute.profileFields = req.body.profileFields;
+      }
+
+      if (req.body.leadershipMessages !== undefined) {
+        institute.leadershipMessages = Array.isArray(req.body.leadershipMessages) ? req.body.leadershipMessages : [];
+      }
+
+      if (req.body.quickLinks !== undefined) {
+        institute.quickLinks = Array.isArray(req.body.quickLinks) ? req.body.quickLinks : [];
+      }
+
+      if (req.body.manualUpdates !== undefined) {
+        institute.manualUpdates = Array.isArray(req.body.manualUpdates) ? req.body.manualUpdates : [];
+      }
+
+      if (req.body.socialLinks !== undefined && typeof req.body.socialLinks === "object") {
+        const incomingSocials = req.body.socialLinks;
+        institute.socialLinks = {
+          facebook: String(incomingSocials.facebook || "").trim(),
+          twitter: String(incomingSocials.twitter || "").trim(),
+          linkedin: String(incomingSocials.linkedin || "").trim(),
+          youtube: String(incomingSocials.youtube || "").trim(),
+          instagram: String(incomingSocials.instagram || "").trim()
+        };
       }
 
       await institute.save();

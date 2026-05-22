@@ -94,6 +94,10 @@ const brandingSchema = new mongoose.Schema(
     logoUrl: {
       type: String,
       trim: true
+    },
+    heroImageUrl: {
+      type: String,
+      trim: true
     }
   },
   {
@@ -282,6 +286,49 @@ const instituteSchema = new mongoose.Schema(
     primaryContactName: String,
     primaryContactEmail: String,
     primaryContactPhone: String,
+    leadershipMessages: {
+      type: [
+        new mongoose.Schema(
+          {
+            role: { type: String, trim: true, required: true },
+            name: { type: String, trim: true, required: true },
+            title: { type: String, trim: true, default: "" },
+            photoUrl: { type: String, trim: true, default: "" },
+            message: { type: String, trim: true, default: "" },
+            salutation: { type: String, trim: true, default: "" }
+          },
+          { _id: true }
+        )
+      ],
+      default: []
+    },
+    quickLinks: {
+      type: [
+        new mongoose.Schema(
+          {
+            label: { type: String, trim: true, required: true },
+            icon: { type: String, trim: true, default: "link" },
+            url: { type: String, trim: true, default: "" },
+            enabled: { type: Boolean, default: true }
+          },
+          { _id: true }
+        )
+      ],
+      default: []
+    },
+    socialLinks: {
+      type: new mongoose.Schema(
+        {
+          facebook: { type: String, trim: true, default: "" },
+          twitter: { type: String, trim: true, default: "" },
+          linkedin: { type: String, trim: true, default: "" },
+          youtube: { type: String, trim: true, default: "" },
+          instagram: { type: String, trim: true, default: "" }
+        },
+        { _id: false }
+      ),
+      default: () => ({})
+    },
     departments: {
       type: [String],
       default: []
@@ -292,6 +339,19 @@ const instituteSchema = new mongoose.Schema(
     },
     streams: {
       type: [String],
+      default: []
+    },
+    manualUpdates: {
+      type: [
+        new mongoose.Schema(
+          {
+            text: { type: String, required: true },
+            date: { type: Date, default: Date.now },
+            category: { type: String, default: "General" }
+          },
+          { _id: true }
+        )
+      ],
       default: []
     }
   },
