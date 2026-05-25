@@ -716,8 +716,14 @@ export default function FeedPage() {
       {/* ── Page header ─────────────────────────────────────── */}
       <div className="feed-page-header">
         <div>
+          <p className="feed-page-kicker">Community pulse</p>
           <h1 className="feed-page-title">Feed</h1>
           <p className="feed-page-sub">Stay updated with your alumni community</p>
+        </div>
+        <div className="feed-header-stats" aria-label="Feed summary">
+          <span><strong>{displayPosts.length}</strong> updates</span>
+          <span><strong>{displayEvents.length}</strong> events</span>
+          <span><strong>{displayPeople.length}</strong> peers</span>
         </div>
       </div>
 

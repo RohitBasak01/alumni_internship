@@ -278,3 +278,368 @@ html {
     color: black;
   }
 }
+
+/* ==========================================================================
+   Phase 8: High-Fidelity Responsiveness Overhauls
+   ========================================================================== */
+
+/* ── Task 1: Top Navbar & Mobile Drawer (dl- namespace) ── */
+@media (max-width: 1024px) {
+  .dl-navbar {
+    padding: 0 1rem !important;
+    height: 64px !important;
+  }
+  .dl-search-bar {
+    max-width: 200px !important;
+    padding: 0.4rem 0.6rem !important;
+  }
+  .dl-search-kbd {
+    display: none !important; /* Hide shortcut keyboard keys */
+  }
+}
+
+@media (max-width: 768px) {
+  .dl-navbar {
+    height: 56px !important;
+    padding: 0 0.75rem !important;
+  }
+  .dl-mobile-menu-btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  .dl-mobile-drawer {
+    width: 285px !important;
+    backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
+  }
+  .dark .dl-mobile-drawer {
+    background: rgba(15, 23, 42, 0.94) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+  .dl-mobile-nav-item {
+    min-height: 46px !important;
+    padding: 0.9rem 1.25rem !important;
+    font-size: 1.05rem !important;
+  }
+}
+
+/* ── Task 2: Alumni & Admin Dashboards (adb- and adm- namespaces) ── */
+@media (max-width: 1180px) {
+  .adb-main-layout,
+  .adm-main-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+  .adb-sidebar-col,
+  .adm-side-col {
+    position: static !important;
+    width: 100% !important;
+  }
+  .adm-stats-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .adb-quick-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .adm-stats-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .adm-card-row {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .adb-hero-greeting,
+  .adm-welcome-title {
+    font-size: clamp(1.6rem, 5vw, 2.2rem) !important;
+  }
+  .adb-completion-mini {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1.25rem !important;
+    padding: 1.25rem !important;
+  }
+  .adb-mini-stats {
+    width: 100% !important;
+    justify-content: space-between !important;
+    gap: 1rem !important;
+  }
+  .adb-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .adb-quick-metrics,
+  .adm-stats-strip {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  .adb-action-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .adm-header-section {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+    text-align: center !important;
+  }
+  .adm-header-actions {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  .adm-action-btn.primary {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── Task 3: Alumni Directory (ad- namespace) ── */
+@media (max-width: 1024px) {
+  .ad-layout {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+  .ad-sidebar {
+    position: static !important;
+    width: 100% !important;
+  }
+  .ad-course-selects-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .ad-course-selects-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+  }
+  .ad-course-select {
+    height: 48px !important;
+    font-size: 0.9rem !important;
+  }
+  .ad-search-engine-inputs {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 0.85rem !important;
+    gap: 0.65rem !important;
+  }
+  .ad-search-input-main--narrow {
+    border-top: 1px solid #f1f5f9;
+    padding-top: 0.5rem !important;
+  }
+  .dark .ad-search-input-main--narrow {
+    border-top-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  .ad-search-go-btn {
+    width: 100% !important;
+    height: 44px !important;
+    border-radius: 8px !important;
+    margin-top: 0.25rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .ad-member-list .ad-card-v2 {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.85rem !important;
+    padding: 1.25rem !important;
+  }
+  .ad-member-list .ad-card-v2-header {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+  .ad-member-list .ad-card-v2-avatar {
+    margin-bottom: 0.5rem !important;
+  }
+  .ad-member-list .ad-card-v2-body {
+    align-items: center !important;
+  }
+  .ad-member-list .ad-card-v2-tags {
+    justify-content: center !important;
+  }
+  .ad-member-list .ad-card-v2-footer {
+    width: 100% !important;
+    margin-left: 0 !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+  }
+  .ad-member-list .ad-card-v2-footer button,
+  .ad-member-list .ad-card-v2-footer a {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── Task 4: Events Portal (ev- namespace) ── */
+@media (max-width: 600px) {
+  .ev-tabs-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding-bottom: 0.5rem !important;
+    scrollbar-width: none !important; /* Firefox */
+  }
+  .ev-tabs-row::-webkit-scrollbar {
+    display: none !important; /* Chrome / Safari */
+  }
+  .ev-tab-pill {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .ev-composer-row .ev-input {
+    width: 100% !important;
+    flex: none !important;
+  }
+}
+
+/* ── Task 5: Jobs Board (jb- namespace) ── */
+@media (max-width: 960px) {
+  .jb-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .jb-sidebar {
+    position: static !important;
+    width: 100% !important;
+  }
+  .jb-stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .jb-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.8rem !important;
+    padding: 1.25rem !important;
+  }
+  .jb-row-logo {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .jb-row-actions {
+    width: 100% !important;
+    margin-top: 0.5rem !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+  }
+  .jb-row-actions button,
+  .jb-row-actions a {
+    flex: 1 !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+  .jb-time {
+    margin-left: 0 !important;
+    margin-top: 0.25rem !important;
+  }
+  .jb-tracker-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Full screen modal for jobs and applications */
+  .jb-modal-backdrop {
+    padding: 0 !important;
+  }
+  .jb-modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  .jb-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Task 6: Other pages & Settings ── */
+@media (max-width: 900px) {
+  .st-sidebar-nav {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    white-space: nowrap !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem !important;
+    border-radius: 12px !important;
+  }
+  .st-sidebar-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+  .st-side-item {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+/* Full screen group composer modal */
+@media (max-width: 640px) {
+  .group-composer-overlay {
+    padding: 0 !important;
+  }
+  .group-composer-modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  .group-composer-header {
+    padding: 1rem !important;
+  }
+  .group-composer-modal form {
+    padding: 1.25rem !important;
+  }
+}
+
+/* ── Task 9: Footer Customization & Redesign ── */
+@media (max-width: 1024px) {
+  .th-footer-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 3rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .th-footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 2.5rem !important;
+  }
+  .th-footer-brand-col,
+  .th-footer-links-col,
+  .th-footer-socials-col {
+    text-align: center !important;
+    align-items: center !important;
+  }
+  .th-footer-column-links a {
+    align-self: center !important;
+  }
+  .th-footer-social-icons {
+    justify-content: center !important;
+  }
+  .th-footer-contact {
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .th-footer {
+    padding: 4rem 1.25rem 3rem !important;
+  }
+  .th-footer-bottom {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 1rem !important;
+    padding-top: 1.5rem !important;
+  }
+}

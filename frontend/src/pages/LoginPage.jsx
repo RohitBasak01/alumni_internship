@@ -23,6 +23,7 @@ import {
   login,
   redirectToTenantPortal,
 } from "../lib/api.js";
+import "../styles/Auth.css";
 
 const signupProviders = [
   { id: "google", label: "Continue with Google", tone: "light" },
@@ -247,15 +248,15 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="auth-landing min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
       {/* Background blobs for depth */}
       <div className="absolute top-0 -left-4 w-72 h-72 bg-brand-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
       <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
       <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
 
-      <div className="w-full max-w-6xl grid lg:grid-cols-[1.1fr_450px] gap-12 xl:gap-20 items-start relative z-10 pt-12 pb-20">
+      <div className="auth-landing-grid w-full max-w-6xl grid lg:grid-cols-[1.1fr_450px] gap-12 xl:gap-20 items-start relative z-10 pt-12 pb-20">
         {/* Left Side: Brand & Value Prop */}
-        <div className="hidden lg:flex flex-col space-y-16 pr-12 border-r border-slate-200 mt-12">
+        <div className="auth-landing-aside hidden lg:flex flex-col space-y-16 pr-12 border-r border-slate-200 mt-12">
           <div className="space-y-10">
             <Link to="/" className="inline-block space-y-8 group">
               <div className="h-24 w-24 rounded-[2.5rem] bg-brand-600 text-white grid place-items-center shadow-2xl shadow-brand-500/30 group-hover:rotate-6 transition-all duration-500">
@@ -296,7 +297,7 @@ function LoginPage() {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="glass-card p-8 lg:p-12 rounded-[2.5rem] shadow-2xl w-full">
+        <div className="auth-landing-panel glass-card p-8 lg:p-12 rounded-[2.5rem] shadow-2xl w-full">
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome Back</h2>
             <p className="text-slate-500 font-medium">Please enter your details to sign in.</p>

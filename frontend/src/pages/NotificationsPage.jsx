@@ -194,8 +194,10 @@ function NotificationsPage() {
           </div>
         }
         className="notifications-header"
+        eyebrow="Activity center"
         subtitle="Actual activity from your alumni network, including conversations, jobs, events, and system updates."
         title="Notifications"
+        tone="coral"
       />
 
       <PortalSegmentedTabs

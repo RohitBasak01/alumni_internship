@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenantContext } from "../hooks/useTenantContext.js";
-import { ARIA_LABELS, ARIA_ROLES, makeFocusable } from "../utils/accessibility.js";
+import { ARIA_LABELS, ARIA_ROLES } from "../utils/accessibility.js";
 import ThemeToggle from "./ThemeToggle.jsx";
 
 const publicNavItems = [
@@ -34,9 +34,9 @@ function Header() {
   }
 
   const navLinkClassName = ({ isActive }) =>
-    `px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
+    `public-header-nav-link px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
       isActive
-        ? "bg-brand-50 text-brand-600 shadow-sm"
+        ? "public-header-nav-link--active bg-brand-50 text-brand-600 shadow-sm"
         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
     }`;
 
@@ -51,11 +51,11 @@ function Header() {
 
   return (
     <header
-      className="sticky top-6 z-50 mx-auto w-full max-w-[1280px] px-6"
+      className="public-header sticky top-6 z-50 mx-auto w-full max-w-[1280px] px-6"
       role={ARIA_ROLES.BANNER}
       aria-label={ARIA_LABELS.MAIN_NAV}
     >
-      <div className="glass-card rounded-[32px] px-6 py-4 md:px-8 shadow-[0_16px_32px_-12px_rgba(0,0,0,0.1)] border-white/40">
+      <div className="public-header-card glass-card rounded-[32px] px-6 py-4 md:px-8 shadow-[0_16px_32px_-12px_rgba(0,0,0,0.1)] border-white/40">
         <div className="flex items-center justify-between gap-8">
           {/* Logo Section */}
           <Link
@@ -64,16 +64,16 @@ function Header() {
             aria-label="AlumNet home page"
           >
             <div
-              className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-indigo-700 text-white shadow-xl shadow-brand-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300"
+              className="public-header-logo-icon grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-indigo-700 text-white shadow-xl shadow-brand-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300"
               aria-hidden="true"
             >
               <span className="material-symbols-outlined text-[28px] font-bold">school</span>
             </div>
             <div className="hidden sm:block">
-              <strong className="block text-2xl font-black tracking-tight text-slate-900 leading-none mb-1">
+              <strong className="public-header-logo-name block text-2xl font-black tracking-tight text-slate-900 leading-none mb-1">
                 AlumNet
               </strong>
-              <span className="block text-[11px] font-black uppercase tracking-[0.2em] text-brand-600/80">
+              <span className="public-header-logo-sub block text-[11px] font-black uppercase tracking-[0.2em] text-brand-600/80">
                 {tenant.isTenant ? tenant.displayName : "Global Network"}
               </span>
             </div>
@@ -81,7 +81,7 @@ function Header() {
 
           {/* Desktop Navigation */}
           <nav
-            className="hidden lg:flex items-center gap-2 p-1.5 bg-slate-100/50 rounded-[20px] border border-slate-200/50"
+            className="public-header-nav hidden lg:flex items-center gap-2 p-1.5 bg-slate-100/50 rounded-[20px] border border-slate-200/50"
             aria-label="Main navigation"
             role={ARIA_ROLES.NAVIGATION}
           >
@@ -89,14 +89,14 @@ function Header() {
               <>
                 <a
                   href="#features"
-                  className="px-5 py-2.5 text-[15px] font-bold text-slate-500 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-lg"
+                  className="public-header-link px-5 py-2.5 text-[15px] font-bold text-slate-500 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-lg"
                   aria-label="Jump to features section"
                 >
                   Features
                 </a>
                 <a
                   href="#how-it-works"
-                  className="px-5 py-2.5 text-[15px] font-bold text-slate-500 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-lg"
+                  className="public-header-link px-5 py-2.5 text-[15px] font-bold text-slate-500 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-lg"
                   aria-label="Jump to how it works section"
                 >
                   Process
@@ -146,7 +146,7 @@ function Header() {
               <>
                 <Link
                   to={tenant.getTenantAwarePath("/login")}
-                  className="hidden md:block px-6 py-2.5 text-[15px] font-black text-slate-600 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-lg"
+                  className="public-header-login hidden md:block px-6 py-2.5 text-[15px] font-black text-slate-600 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-lg"
                   aria-label="Log in to your account"
                 >
                   Login
@@ -164,7 +164,7 @@ function Header() {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+              className="public-header-menu-btn lg:hidden grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
               aria-label={isMobileMenuOpen ? "Close mobile menu" : "Open mobile menu"}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu"
@@ -181,7 +181,7 @@ function Header() {
         {isMobileMenuOpen && (
           <div
             id="mobile-menu"
-            className="mt-4 py-4 border-t border-slate-100 dark:border-surface-700 lg:hidden flex flex-col gap-2"
+            className="public-header-mobile-menu mt-4 py-4 border-t border-slate-100 dark:border-surface-700 lg:hidden flex flex-col gap-2"
             role="menu"
             aria-label="Mobile navigation menu"
             onKeyDown={handleMobileMenuKeyDown}

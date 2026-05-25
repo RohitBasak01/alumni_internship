@@ -9463,3 +9463,175 @@ input {
   }
 }
 
+/* Step 7 super-admin and remaining legacy portal polish */
+.super-admin-shell {
+  --sa-accent: #2554d8;
+  --sa-accent-strong: #163795;
+  --sa-teal: #14b8a6;
+  --sa-surface: #eef3ff;
+  --sa-border: #c7d2fe;
+  --sa-shadow: rgba(37, 84, 216, 0.22);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(37, 84, 216, 0.14), transparent 28rem),
+    radial-gradient(circle at 88% 8%, rgba(20, 184, 166, 0.12), transparent 30rem),
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 48%, #f7fbff 100%) !important;
+}
+
+.super-admin-rail {
+  border-right: 1px solid color-mix(in srgb, var(--sa-border) 58%, white) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(37, 84, 216, 0.12), transparent 18rem),
+    rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 18px 0 46px -42px var(--sa-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.super-admin-brand {
+  border-bottom: 1px solid color-mix(in srgb, var(--sa-border) 42%, white);
+}
+
+.super-admin-brand-mark,
+.super-admin-nav-item--active,
+.super-admin-mobile-tab--active {
+  background: linear-gradient(135deg, var(--sa-accent), var(--sa-teal)) !important;
+  color: #ffffff !important;
+}
+
+.super-admin-nav-item {
+  min-height: 46px;
+  border: 1px solid transparent;
+}
+
+.super-admin-nav-item:not(.super-admin-nav-item--active):hover {
+  border-color: color-mix(in srgb, var(--sa-border) 58%, white);
+  background: var(--sa-surface) !important;
+  color: var(--sa-accent-strong) !important;
+}
+
+.super-admin-user-card,
+.super-admin-topbar,
+.super-admin-page-title,
+.super-admin-card,
+.super-admin-settings-card,
+.super-admin-institute-item {
+  border-color: color-mix(in srgb, var(--sa-border) 58%, #e2e8f0) !important;
+  box-shadow: 0 18px 38px -32px var(--sa-shadow) !important;
+}
+
+.super-admin-user-card,
+.super-admin-card,
+.super-admin-settings-card,
+.super-admin-institute-item {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 84, 216, 0.08), transparent 10rem),
+    rgba(255, 255, 255, 0.94) !important;
+}
+
+.super-admin-topbar {
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
+.super-admin-topbar input {
+  border: 1px solid color-mix(in srgb, var(--sa-border) 58%, white) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+}
+
+.super-admin-topbar input:focus {
+  box-shadow: 0 0 0 4px rgba(37, 84, 216, 0.12) !important;
+}
+
+.super-admin-content {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.super-admin-page-title {
+  position: relative;
+  padding: 1.2rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--sa-border) 66%, white);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(20, 184, 166, 0.16), transparent 14rem),
+    linear-gradient(135deg, #ffffff, color-mix(in srgb, var(--sa-surface) 58%, white)) !important;
+}
+
+.super-admin-page-title::after {
+  content: "admin_panel_settings";
+  position: absolute;
+  right: 1rem;
+  bottom: -0.45rem;
+  color: rgba(37, 84, 216, 0.1);
+  font-family: "Material Symbols Outlined";
+  font-size: 5.6rem;
+  line-height: 1;
+}
+
+.super-admin-page-title h2 {
+  color: var(--sa-accent-strong) !important;
+}
+
+.super-admin-institute-item.active,
+.super-admin-card:hover,
+.super-admin-settings-card:hover {
+  border-color: var(--sa-border) !important;
+  box-shadow: 0 22px 42px -30px var(--sa-shadow) !important;
+}
+
+.community-groups-workspace,
+.community-group-chat-panel,
+.community-group-card {
+  border-color: color-mix(in srgb, var(--module-border, #99f6e4) 58%, #e2e8f0) !important;
+  box-shadow: 0 18px 38px -32px var(--module-shadow, rgba(20, 184, 166, 0.2));
+}
+
+.community-group-card,
+.community-group-chat-panel {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--module-accent, #14b8a6) 10%, transparent), transparent 10rem),
+    rgba(255, 255, 255, 0.94);
+}
+
+.community-group-message-row.own .community-group-message-bubble {
+  background: linear-gradient(135deg, var(--module-accent, #14b8a6), var(--module-accent-strong, #0f766e));
+}
+
+.community-group-member-chip,
+.community-group-type {
+  background: var(--module-surface, #f0fdfa) !important;
+  color: var(--module-accent-strong, #0f766e) !important;
+}
+
+@media (max-width: 760px) {
+  .super-admin-page-title {
+    padding: 1rem;
+    border-radius: 20px;
+  }
+}
+
+.dark .super-admin-shell {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(37, 84, 216, 0.18), transparent 28rem),
+    linear-gradient(180deg, #0f172a 0%, #111827 58%, #0b1120 100%) !important;
+}
+
+.dark .super-admin-rail,
+.dark .super-admin-topbar,
+.dark .super-admin-page-title,
+.dark .super-admin-user-card,
+.dark .super-admin-card,
+.dark .super-admin-settings-card,
+.dark .super-admin-institute-item,
+.dark .community-group-card,
+.dark .community-group-chat-panel {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(37, 84, 216, 0.12), transparent 12rem),
+    rgba(15, 23, 42, 0.86) !important;
+}
+
+.dark .super-admin-page-title h2,
+.dark .super-admin-brand h1 {
+  color: #f8fafc !important;
+}
+

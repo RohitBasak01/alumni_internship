@@ -794,8 +794,13 @@ export default function EventsPage() {
       {/* Header */}
       <div className="ev-page-header">
         <div>
+          <p className="ev-page-kicker">Calendar hub</p>
           <h1 className="ev-page-title">Events</h1>
           <p className="ev-page-sub">Upcoming and past alumni events &amp; conferences.</p>
+        </div>
+        <div className="ev-header-stats" aria-label="Events summary">
+          <span><strong>{upcomingEvents.length}</strong> upcoming</span>
+          <span><strong>{pastEvents.length}</strong> past</span>
         </div>
         <div className="ev-header-actions">
           <div className="ev-view-toggle">

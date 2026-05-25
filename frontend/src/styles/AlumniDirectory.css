@@ -1479,3 +1479,122 @@ input:checked + .ad-custom-check {
   letter-spacing: 0.02em;
 }
 
+/* Step 5 module page polish */
+.ad-root.module-alumni {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(0.85rem, 2vw, 1.5rem);
+}
+
+.ad-root.module-alumni .ad-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ad-root.module-alumni .ad-page-kicker {
+  width: max-content;
+  margin: 0 0 0.5rem;
+  padding: 0.34rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--ad-border) 64%, white);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ad-surface) 76%, white);
+  color: var(--ad-accent-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.ad-root.module-alumni .ad-header-stats {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.ad-root.module-alumni .ad-header-stats span {
+  min-width: 8rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ad-border) 62%, white);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-align: center;
+  box-shadow: 0 16px 28px -24px var(--ad-shadow);
+}
+
+.ad-root.module-alumni .ad-header-stats strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.2rem;
+  line-height: 1.1;
+}
+
+.ad-root.module-alumni .ad-search-engine-card-shell,
+.ad-root.module-alumni .ad-card-v2,
+.ad-root.module-alumni .ad-sidebar-card-v2,
+.ad-root.module-alumni .ad-map-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.9)),
+    var(--ad-surface);
+}
+
+.ad-root.module-alumni .ad-card-v2:hover,
+.ad-root.module-alumni .ad-sidebar-card-v2:hover {
+  border-color: var(--ad-border);
+  box-shadow: 0 22px 42px -30px var(--ad-shadow);
+  transform: translateY(-2px);
+}
+
+.ad-root.module-alumni .ad-status-btn.active,
+.ad-root.module-alumni .ad-alpha-btn.active,
+.ad-root.module-alumni .ad-view-btn-v2--active {
+  background: var(--ad-surface);
+  color: var(--ad-accent-strong);
+  border-color: var(--ad-border);
+}
+
+@media (max-width: 760px) {
+  .ad-root.module-alumni .ad-page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .ad-root.module-alumni .ad-header-stats {
+    justify-content: flex-start;
+  }
+
+  .ad-root.module-alumni .ad-header-stats span {
+    flex: 1;
+    min-width: 7rem;
+  }
+}
+
+.dark .ad-root.module-alumni .ad-page-header,
+.dark .ad-root.module-alumni .ad-filter-card,
+.dark .ad-root.module-alumni .ad-search-engine-card-shell,
+.dark .ad-root.module-alumni .ad-card-v2,
+.dark .ad-root.module-alumni .ad-sidebar-card-v2,
+.dark .ad-root.module-alumni .ad-map-panel {
+  border-color: rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--ad-accent) 13%, transparent), transparent 12rem),
+    rgba(15, 23, 42, 0.82);
+}
+
+.dark .ad-root.module-alumni .ad-header-stats span,
+.dark .ad-root.module-alumni .ad-page-kicker {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: color-mix(in srgb, var(--ad-accent) 16%, #111827);
+}
+
+.dark .ad-root.module-alumni .ad-header-stats strong,
+.dark .ad-root.module-alumni .ad-page-title {
+  color: #f8fafc;
+}
+

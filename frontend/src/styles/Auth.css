@@ -562,3 +562,138 @@
   }
 }
 
+/* Step 6 public auth polish */
+.auth-landing {
+  --auth-accent: var(--ui-brand, #2554d8);
+  --auth-accent-strong: var(--ui-brand-strong, #163795);
+  --auth-teal: var(--ui-teal, #14b8a6);
+  --auth-coral: var(--ui-coral, #f43f5e);
+  background:
+    radial-gradient(circle at 9% 5%, color-mix(in srgb, var(--auth-accent) 18%, transparent), transparent 24rem),
+    radial-gradient(circle at 91% 8%, rgba(20, 184, 166, 0.16), transparent 24rem),
+    radial-gradient(circle at 70% 96%, rgba(244, 63, 94, 0.1), transparent 24rem),
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 52%, #f6fbff 100%) !important;
+}
+
+.auth-landing-grid {
+  width: min(1180px, 100%);
+}
+
+.auth-landing-aside {
+  position: relative;
+  overflow: hidden;
+  padding: 2rem !important;
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 14%, #e2e8f0) !important;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(20, 184, 166, 0.18), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(239, 246, 255, 0.74));
+  box-shadow: 0 24px 58px -38px rgba(37, 84, 216, 0.32);
+}
+
+.auth-landing-aside::after {
+  content: "hub";
+  position: absolute;
+  right: 1rem;
+  bottom: -0.6rem;
+  color: color-mix(in srgb, var(--auth-accent) 10%, transparent);
+  font-family: "Material Symbols Outlined";
+  font-size: 8rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.auth-landing-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 13%, #e2e8f0);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.12), transparent 12rem),
+    rgba(255, 255, 255, 0.88) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 28px 70px -44px rgba(37, 84, 216, 0.42) !important;
+  backdrop-filter: blur(22px);
+}
+
+.auth-landing-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--auth-accent), var(--auth-teal), var(--auth-coral));
+}
+
+.auth-landing input,
+.auth-landing select,
+.auth-landing textarea {
+  border-color: color-mix(in srgb, var(--auth-accent) 13%, #e2e8f0) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+}
+
+.auth-landing input:focus,
+.auth-landing select:focus,
+.auth-landing textarea:focus {
+  border-color: color-mix(in srgb, var(--auth-accent) 45%, #ffffff) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--auth-accent) 12%, transparent) !important;
+}
+
+.auth-landing .btn-primary,
+.auth-landing button[type="submit"].btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong)) !important;
+  box-shadow: 0 18px 34px -22px rgba(37, 84, 216, 0.62);
+}
+
+.auth-landing .btn-secondary {
+  border-color: color-mix(in srgb, var(--auth-accent) 16%, #e2e8f0);
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--auth-accent-strong);
+}
+
+.auth-landing-register .auth-landing-aside {
+  background:
+    radial-gradient(circle at 86% 0%, rgba(245, 158, 11, 0.17), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(240, 253, 244, 0.74));
+}
+
+.auth-landing-success .auth-landing-panel {
+  border-color: rgba(16, 185, 129, 0.22);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.16), transparent 12rem),
+    rgba(255, 255, 255, 0.9) !important;
+}
+
+@media (max-width: 760px) {
+  .auth-landing {
+    padding: 1rem !important;
+  }
+
+  .auth-landing-panel {
+    border-radius: 28px !important;
+    padding: 1.35rem !important;
+  }
+}
+
+.dark .auth-landing {
+  background:
+    radial-gradient(circle at 9% 5%, color-mix(in srgb, var(--auth-accent) 20%, transparent), transparent 24rem),
+    radial-gradient(circle at 91% 8%, rgba(20, 184, 166, 0.16), transparent 24rem),
+    linear-gradient(180deg, #0f172a 0%, #111827 58%, #0b1120 100%) !important;
+}
+
+.dark .auth-landing-aside,
+.dark .auth-landing-panel {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--auth-accent) 13%, transparent), transparent 12rem),
+    rgba(15, 23, 42, 0.82) !important;
+}
+
+.dark .auth-landing input,
+.dark .auth-landing select,
+.dark .auth-landing textarea {
+  background: rgba(15, 23, 42, 0.72) !important;
+  color: #f8fafc !important;
+}
+

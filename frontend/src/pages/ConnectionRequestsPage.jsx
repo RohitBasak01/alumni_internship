@@ -158,14 +158,16 @@ function ConnectionRequestsPage() {
   return (
     <div className="member-connections-page">
       <PortalPageHeader
+        eyebrow="Network inbox"
         title="Connection requests"
         subtitle={`Discover ${tenantDisplay.memberPlural.toLowerCase()}, review incoming requests, and track the people you have already reached out to.`}
+        tone="teal"
       />
 
       <PortalMetricGrid>
-        <PortalMetricCard title="Pending" value={pendingRequests.length} icon="PN" />
-        <PortalMetricCard title="Sent" value={sentRequests.length} icon="ST" />
-        <PortalMetricCard title="Discoverable" value={discoverAlumni.length} icon="NW" />
+        <PortalMetricCard title="Pending" value={pendingRequests.length} icon="PN" tone="teal" />
+        <PortalMetricCard title="Sent" value={sentRequests.length} icon="ST" tone="cyan" />
+        <PortalMetricCard title="Discoverable" value={discoverAlumni.length} icon="NW" tone="violet" />
       </PortalMetricGrid>
 
       <PortalSegmentedTabs

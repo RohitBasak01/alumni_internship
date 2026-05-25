@@ -382,6 +382,72 @@ export const shadows = {
   none: 'none',
 };
 
+export const ui = {
+  fontSans: typography.fontFamily.sans,
+  bg: '#f2f6fd',
+  bgSoft: '#eaf1fb',
+  surface: 'rgba(255, 255, 255, 0.94)',
+  surfaceStrong: '#ffffff',
+  surfaceMuted: '#f5f9ff',
+  border: 'rgba(37, 84, 216, 0.1)',
+  borderStrong: 'rgba(37, 84, 216, 0.18)',
+  ink: colors.ink[900],
+  inkSoft: '#425472',
+  inkMuted: '#61748f',
+  brand: colors.brand[500],
+  brandStrong: '#1a3da8',
+  brandSoft: '#e8f0ff',
+  accent: '#0f8aa6',
+  accentSoft: 'rgba(15, 138, 166, 0.14)',
+  violet: colors.accent.violet[500],
+  coral: colors.accent.coral[500],
+  teal: colors.accent.teal[500],
+  cyan: colors.accent.cyan[500],
+  highlight: '#b7791f',
+  highlightSoft: 'rgba(183, 121, 31, 0.16)',
+  success: colors.success[700],
+  successSoft: 'rgba(21, 128, 61, 0.12)',
+  warning: colors.warning[700],
+  warningSoft: 'rgba(180, 83, 9, 0.14)',
+  danger: colors.error[700],
+  dangerSoft: 'rgba(185, 28, 28, 0.12)',
+  radiusSm: '14px',
+  radiusMd: '20px',
+  radiusLg: '28px',
+  shadowSm: '0 12px 24px rgba(15, 23, 42, 0.05)',
+  shadowMd: '0 20px 44px rgba(15, 23, 42, 0.08)',
+  shadowLg: '0 26px 60px rgba(15, 23, 42, 0.1)',
+};
+
+export const darkUi = {
+  bg: '#0f172a',
+  bgSoft: '#111827',
+  surface: 'rgba(15, 23, 42, 0.9)',
+  surfaceStrong: '#111827',
+  surfaceMuted: '#1e293b',
+  border: 'rgba(148, 163, 184, 0.18)',
+  borderStrong: 'rgba(148, 163, 184, 0.28)',
+  ink: colors.ink[50],
+  inkSoft: colors.ink[200],
+  inkMuted: colors.ink[400],
+  brand: colors.brand[300],
+  brandStrong: colors.brand[200],
+  brandSoft: 'rgba(37, 84, 216, 0.2)',
+  accent: colors.accent.teal[300],
+  accentSoft: 'rgba(45, 212, 191, 0.16)',
+  highlight: colors.warning[300],
+  highlightSoft: 'rgba(251, 191, 36, 0.16)',
+  success: colors.success[300],
+  successSoft: 'rgba(34, 197, 94, 0.16)',
+  warning: colors.warning[300],
+  warningSoft: 'rgba(251, 191, 36, 0.16)',
+  danger: colors.error[300],
+  dangerSoft: 'rgba(248, 113, 113, 0.16)',
+  shadowSm: '0 12px 24px rgba(0, 0, 0, 0.18)',
+  shadowMd: '0 20px 44px rgba(0, 0, 0, 0.24)',
+  shadowLg: '0 26px 60px rgba(0, 0, 0, 0.3)',
+};
+
 export const transitions = {
   duration: {
     75: '75ms',
@@ -420,6 +486,8 @@ export const zIndex = {
 // Export a complete theme object for convenience
 export const theme = {
   colors,
+  ui,
+  darkUi,
   typography,
   spacing,
   borderRadius,
@@ -450,6 +518,11 @@ export function generateCSSVariables(prefix = 'al') {
       variables[`--${prefix}-module-${moduleName}-${roleName}`] = value;
     });
   });
+
+  Object.entries(ui).forEach(([key, value]) => {
+    const cssKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+    variables[`--ui-${cssKey}`] = value;
+  });
   
   // Dark mode color variables
   Object.entries(colors.dark.surface).forEach(([key, value]) => {
@@ -468,6 +541,10 @@ export function generateCSSVariables(prefix = 'al') {
   // Border radius variables
   Object.entries(borderRadius).forEach(([key, value]) => {
     variables[`--${prefix}-radius-${key}`] = value;
+  });
+
+  Object.entries(shadows).forEach(([key, value]) => {
+    variables[`--${prefix}-shadow-${key}`] = value;
   });
   
   return variables;
@@ -493,6 +570,13 @@ export function getThemeColor(colorType, shade, isDarkMode = false) {
  * @returns {string} CSS string for dark mode
  */
 export function generateDarkModeCSS() {
+  const darkUiVariables = Object.entries(darkUi)
+    .map(([key, value]) => {
+      const cssKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      return `      --ui-${cssKey}: ${value};`;
+    })
+    .join('\n');
+
   return `
     .dark {
       --color-surface-50: var(--al-color-surface-dark-50);
@@ -516,6 +600,8 @@ export function generateDarkModeCSS() {
       --color-ink-700: var(--al-color-ink-dark-700);
       --color-ink-800: var(--al-color-ink-dark-800);
       --color-ink-900: var(--al-color-ink-dark-900);
+
+${darkUiVariables}
       
       color-scheme: dark;
     }
@@ -543,6 +629,8 @@ export function generateDarkModeCSS() {
         --color-ink-700: var(--al-color-ink-dark-700);
         --color-ink-800: var(--al-color-ink-dark-800);
         --color-ink-900: var(--al-color-ink-dark-900);
+
+${darkUiVariables}
         
         color-scheme: dark;
       }

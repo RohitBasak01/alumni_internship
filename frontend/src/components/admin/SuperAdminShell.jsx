@@ -18,10 +18,10 @@ function SuperAdminShell({
   const auth = useAuth();
 
   return (
-    <section className="flex min-h-screen bg-[#f6f6f8] text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-72 flex-col border-r border-slate-200 bg-white lg:flex">
-        <div className="flex items-center gap-3 p-6">
-          <div className="rounded-lg bg-[#1152d4] p-2 text-white">
+    <section className="super-admin-shell flex min-h-screen bg-[#f6f6f8] text-slate-900">
+      <aside className="super-admin-rail fixed inset-y-0 left-0 z-20 hidden w-72 flex-col border-r border-slate-200 bg-white lg:flex">
+        <div className="super-admin-brand flex items-center gap-3 p-6">
+          <div className="super-admin-brand-mark rounded-lg bg-[#1152d4] p-2 text-white">
             <span className="material-symbols-outlined">hub</span>
           </div>
           <div>
@@ -37,9 +37,9 @@ function SuperAdminShell({
           <nav className="space-y-1 px-4" aria-label="Super admin sections">
             {sections.map((section) => (
               <button
-                className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                className={`super-admin-nav-item flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold transition-colors ${
                   activeSection === section.id
-                    ? "bg-[#1152d4]/10 text-[#1152d4]"
+                    ? "super-admin-nav-item--active bg-[#1152d4]/10 text-[#1152d4]"
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
                 key={`${section.label}-${section.id}`}
@@ -55,7 +55,7 @@ function SuperAdminShell({
           </nav>
 
           <div className="p-4">
-            <div className="rounded-xl bg-slate-50 p-4">
+            <div className="super-admin-user-card rounded-xl bg-slate-50 p-4">
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1152d4]/15 font-bold text-[#1152d4]">
                   {auth.user?.name
@@ -84,8 +84,8 @@ function SuperAdminShell({
         </div>
       </aside>
 
-      <div className="flex-1 lg:ml-72">
-        <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md sm:px-8">
+      <div className="super-admin-main flex-1 lg:ml-72">
+        <header className="super-admin-topbar sticky top-0 z-10 flex h-20 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md sm:px-8">
           <div className="flex flex-1 items-center gap-4">
             <div className="relative w-full max-w-xl">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -109,13 +109,13 @@ function SuperAdminShell({
           </div>
         </header>
 
-        <div className="space-y-6 p-4 sm:p-8">
+        <div className="super-admin-content space-y-6 p-4 sm:p-8">
           <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {sections.map((section) => (
               <button
-                className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${
+                className={`super-admin-mobile-tab shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${
                   activeSection === section.id
-                    ? "bg-[#1152d4] text-white"
+                    ? "super-admin-mobile-tab--active bg-[#1152d4] text-white"
                     : "bg-white text-slate-600"
                 }`}
                 key={`mobile-${section.label}-${section.id}`}
@@ -127,7 +127,7 @@ function SuperAdminShell({
             ))}
           </div>
 
-          <div className="space-y-1">
+          <div className="super-admin-page-title space-y-1">
             <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{title}</h2>
             <p className="text-sm text-slate-500 sm:text-base">{subtitle}</p>
           </div>

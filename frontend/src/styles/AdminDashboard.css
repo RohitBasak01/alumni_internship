@@ -447,3 +447,200 @@
     padding: 1.1rem;
   }
 }
+
+/* Step 4 admin dashboard polish */
+.adm-root.module-admin.adm-root--modern {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(1rem, 2vw, 1.75rem);
+  border-radius: 28px;
+}
+
+.adm-root.module-admin .adm-header-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.adm-root.module-admin .adm-title-box {
+  position: relative;
+  z-index: 1;
+}
+
+.adm-root.module-admin .adm-hero-kicker {
+  width: max-content;
+  margin: 0 0 0.6rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--adm-border) 62%, white);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--adm-surface) 74%, white);
+  color: var(--adm-accent-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.adm-root.module-admin .adm-welcome-title {
+  font-size: clamp(1.85rem, 3vw, 3rem);
+  line-height: 1.04;
+}
+
+.adm-root.module-admin .adm-welcome-sub {
+  color: #475569;
+}
+
+.adm-root.module-admin .adm-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: max-content;
+  margin-top: 0.85rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.adm-root.module-admin .adm-status-chip .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.adm-root.module-admin .adm-header-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.adm-root.module-admin .adm-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.adm-root.module-admin .adm-stat-pill {
+  --stat-color: var(--adm-accent);
+  --stat-surface: color-mix(in srgb, var(--stat-color) 10%, white);
+  min-height: 8.5rem;
+  border: 1px solid color-mix(in srgb, var(--stat-color) 18%, #e2e8f0);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--stat-color) 18%, transparent), transparent 6rem),
+    linear-gradient(135deg, #ffffff, var(--stat-surface));
+}
+
+.adm-root.module-admin .adm-stat-pill .pill-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--stat-color) 12%, white);
+  color: var(--stat-color);
+}
+
+.adm-root.module-admin .adm-stat-pill .pill-value {
+  color: #0f172a;
+}
+
+.adm-root.module-admin .adm-stat-pill .pill-trend.up {
+  background: rgba(16, 185, 129, 0.11);
+  color: #047857;
+}
+
+.adm-root.module-admin .adm-main-grid {
+  align-items: start;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+.adm-root.module-admin .adm-card {
+  border: 1px solid color-mix(in srgb, var(--adm-border) 48%, #e2e8f0);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0.9)),
+    var(--adm-surface);
+  backdrop-filter: blur(18px);
+}
+
+.adm-root.module-admin .chart-toggles,
+.adm-root.module-admin .mini-date,
+.adm-root.module-admin .reg-tag {
+  border: 1px solid color-mix(in srgb, var(--adm-border) 58%, white);
+}
+
+.adm-root.module-admin .dept-item .dept-bar div {
+  background: linear-gradient(90deg, var(--adm-accent), #10b981);
+}
+
+.adm-root.module-admin .adm-action-btn {
+  border: 1px solid color-mix(in srgb, var(--adm-border) 58%, white);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.adm-root.module-admin .adm-action-btn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--adm-accent) 42%, white);
+  color: var(--adm-accent-strong);
+}
+
+@media (max-width: 1180px) {
+  .adm-root.module-admin .adm-stats-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adm-root.module-admin .adm-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .adm-root.module-admin.adm-root--modern {
+    padding: 0.85rem;
+    border-radius: 20px;
+  }
+
+  .adm-root.module-admin .adm-header-section,
+  .adm-root.module-admin .adm-stats-strip,
+  .adm-root.module-admin .adm-card-row {
+    grid-template-columns: 1fr;
+  }
+
+  .adm-root.module-admin .adm-header-actions {
+    width: 100%;
+  }
+
+  .adm-root.module-admin .adm-action-btn.primary {
+    flex: 1;
+  }
+}
+
+.dark .adm-root.module-admin.adm-root--modern {
+  background:
+    radial-gradient(circle at 7% 0%, color-mix(in srgb, var(--adm-accent) 18%, transparent), transparent 22rem),
+    linear-gradient(180deg, #0f172a, #111827 72%);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.dark .adm-root.module-admin .adm-header-section,
+.dark .adm-root.module-admin .adm-card,
+.dark .adm-root.module-admin .adm-stat-pill,
+.dark .adm-root.module-admin .adm-action-btn {
+  border-color: rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--adm-accent) 13%, transparent), transparent 12rem),
+    rgba(15, 23, 42, 0.82);
+}
+
+.dark .adm-root.module-admin .adm-welcome-sub,
+.dark .adm-root.module-admin .reg-info p,
+.dark .adm-root.module-admin .mini-info p {
+  color: #cbd5e1;
+}
+
+.dark .adm-root.module-admin .adm-stat-pill .pill-value,
+.dark .adm-root.module-admin .adm-card h3,
+.dark .adm-root.module-admin .reg-info strong,
+.dark .adm-root.module-admin .mini-info strong {
+  color: #f8fafc;
+}

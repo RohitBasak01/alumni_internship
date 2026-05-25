@@ -282,6 +282,18 @@ function RegisterPage() {
     };
   }
 
+  const dobConfig = getFieldConfig("dateOfBirth");
+  const mobileConfig = getFieldConfig("mobileNumber");
+  const genderConfig = getFieldConfig("gender");
+  const countryConfig = getFieldConfig("currentCountry");
+  const cityConfig = getFieldConfig("currentCity");
+  const batchConfig = getFieldConfig("batch");
+  const deptConfig = getFieldConfig("department");
+  const sectionConfig = getFieldConfig("section");
+  const occupationConfig = getFieldConfig("occupation");
+  const companyConfig = getFieldConfig("company");
+  const designationConfig = getFieldConfig("designation");
+
   function goToStepTwo(event) {
     event.preventDefault();
     setStep(2);

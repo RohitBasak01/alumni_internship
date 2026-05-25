@@ -1,8 +1,17 @@
-function PortalPageHeader({ title, subtitle, actions = null, className = "" }) {
+import PropTypes from "prop-types";
+
+function PortalPageHeader({
+  title,
+  subtitle,
+  actions = null,
+  eyebrow = "Workspace",
+  tone = "brand",
+  className = "",
+}) {
   return (
-    <header className={`portal-page-header ${className}`.trim()}>
+    <header className={`portal-page-header portal-page-header--${tone} ${className}`.trim()}>
       <div className="portal-page-header-copy">
-        <p className="portal-page-header-eyebrow">Workspace</p>
+        {eyebrow ? <p className="portal-page-header-eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
         {subtitle ? <p>{subtitle}</p> : null}
       </div>
@@ -72,12 +81,13 @@ function PortalMetricCard({
   value,
   trend = null,
   icon = null,
+  tone = "brand",
   className = "",
   valueSuffix = "",
   titleTag: TitleTag = "p"
 }) {
   return (
-    <article className={`portal-metric-card ${className}`.trim()}>
+    <article className={`portal-metric-card portal-metric-card--${tone} ${className}`.trim()}>
       {icon || trend ? (
         <div className="portal-metric-card-top">
           {icon ? <span className="portal-metric-card-icon">{icon}</span> : <span />}
@@ -94,5 +104,53 @@ function PortalMetricCard({
     </article>
   );
 }
+
+PortalPageHeader.propTypes = {
+  title: PropTypes.node.isRequired,
+  subtitle: PropTypes.node,
+  actions: PropTypes.node,
+  eyebrow: PropTypes.node,
+  tone: PropTypes.oneOf(["brand", "violet", "teal", "coral", "amber", "cyan", "emerald", "rose"]),
+  className: PropTypes.string,
+};
+
+PortalSegmentedTabs.propTypes = {
+  items: PropTypes.arrayOf(PropTypes.shape({
+    value: PropTypes.string.isRequired,
+    label: PropTypes.node.isRequired,
+    badge: PropTypes.node,
+  })).isRequired,
+  activeValue: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  className: PropTypes.string,
+  ariaLabel: PropTypes.string,
+};
+
+PortalSearchField.propTypes = {
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  onChange: PropTypes.func.isRequired,
+  placeholder: PropTypes.string,
+  className: PropTypes.string,
+  icon: PropTypes.node,
+  ariaLabel: PropTypes.string,
+  name: PropTypes.string,
+  type: PropTypes.string,
+};
+
+PortalMetricGrid.propTypes = {
+  children: PropTypes.node.isRequired,
+  className: PropTypes.string,
+};
+
+PortalMetricCard.propTypes = {
+  title: PropTypes.node.isRequired,
+  value: PropTypes.node.isRequired,
+  trend: PropTypes.node,
+  icon: PropTypes.node,
+  tone: PropTypes.oneOf(["brand", "violet", "teal", "coral", "amber", "cyan", "emerald", "rose"]),
+  className: PropTypes.string,
+  valueSuffix: PropTypes.node,
+  titleTag: PropTypes.elementType,
+};
 
 export { PortalMetricCard, PortalMetricGrid, PortalPageHeader, PortalSearchField, PortalSegmentedTabs };

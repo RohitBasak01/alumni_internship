@@ -353,6 +353,46 @@ const instituteSchema = new mongoose.Schema(
         )
       ],
       default: []
+    },
+    integrations: {
+      type: new mongoose.Schema({
+        ssoEnabled: { type: Boolean, default: false },
+        ssoProvider: { type: String, default: "google" },
+        googleAnalyticsId: { type: String, default: "" },
+        stripePublicKey: { type: String, default: "" }
+      }, { _id: false }),
+      default: () => ({
+        ssoEnabled: false,
+        ssoProvider: "google",
+        googleAnalyticsId: "",
+        stripePublicKey: ""
+      })
+    },
+    emailTemplates: {
+      type: new mongoose.Schema({
+        welcomeSubject: { type: String, default: "Welcome to {{institute}} Alumni Portal!" },
+        welcomeBody: { type: String, default: "Hello {{name}},\n\nWelcome to the official alumni community of {{institute}}!" },
+        approvalSubject: { type: String, default: "Your alumni account has been approved!" },
+        approvalBody: { type: String, default: "Hello {{name}},\n\nYour registration has been approved. You can now log in." }
+      }, { _id: false }),
+      default: () => ({
+        welcomeSubject: "Welcome to {{institute}} Alumni Portal!",
+        welcomeBody: "Hello {{name}},\n\nWelcome to the official alumni community of {{institute}}!",
+        approvalSubject: "Your alumni account has been approved!",
+        approvalBody: "Hello {{name}},\n\nYour registration has been approved. You can now log in."
+      })
+    },
+    security: {
+      type: new mongoose.Schema({
+        sessionTimeout: { type: Number, default: 60 },
+        passwordMinLength: { type: Number, default: 8 },
+        require2FA: { type: Boolean, default: false }
+      }, { _id: false }),
+      default: () => ({
+        sessionTimeout: 60,
+        passwordMinLength: 8,
+        require2FA: false
+      })
     }
   },
   {

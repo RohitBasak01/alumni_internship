@@ -12,6 +12,19 @@ import "../styles/LegacyWorkspace.css";
 import "../styles/PortalRefresh.css";
 import "../styles/Dashboard.css";
 
+function getPortalModuleClass(pathname) {
+  if (pathname.includes("/portal/alumni") || pathname.includes("/portal/connections")) return "module-alumni";
+  if (pathname.includes("/portal/feed") || pathname.includes("/portal/forums")) return "module-feed";
+  if (pathname.includes("/portal/events") || pathname.includes("/portal/reunions")) return "module-events";
+  if (pathname.includes("/portal/jobs") || pathname.includes("/portal/resume-builder") || pathname.includes("/portal/mentors")) return "module-careers";
+  if (pathname.includes("/portal/groups") || pathname.includes("/portal/messages")) return "module-groups";
+  if (pathname.includes("/portal/gallery")) return "module-gallery";
+  if (pathname.includes("/portal/newsroom") || pathname.includes("/portal/notifications")) return "module-newsroom";
+  if (pathname.includes("/portal/business-directory")) return "module-directory";
+  if (pathname.includes("/portal/admin") || pathname.includes("/portal/insights") || pathname.includes("/portal/moderation") || pathname.includes("/portal/institution-settings") || pathname.includes("/portal/admins")) return "module-admin";
+  return "module-platform";
+}
+
 /* ── Categorised nav sections for alumni ────────────────── */
 function buildMemberSections(tenant) {
   const sections = [];
@@ -154,6 +167,7 @@ function DashboardLayout() {
   const userName = auth.user?.name || "User";
   const userInitial = userName[0]?.toUpperCase() || "U";
   const profileLink = isAlumni ? "/portal/profile" : "/portal/settings";
+  const moduleClass = getPortalModuleClass(location.pathname);
 
   const handleOverlayKeyDown = (e) => {
     if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
@@ -173,7 +187,7 @@ function DashboardLayout() {
   }, []);
 
   return (
-    <div className="dl-shell">
+    <div className={`dl-shell ${moduleClass}`}>
       {/* Mobile overlay */}
       {isMobileOpen && (
         <div
@@ -291,7 +305,7 @@ function DashboardLayout() {
               aria-label="Search alumni, events, jobs, and more"
               onFocus={() => setIsCommandPaletteOpen(true)}
             />
-            <span className="dl-search-kbd" aria-hidden="true">⌘ K</span>
+            <span className="dl-search-kbd" aria-hidden="true">Ctrl K</span>
           </div>
 
           <div className="dl-navbar-actions">

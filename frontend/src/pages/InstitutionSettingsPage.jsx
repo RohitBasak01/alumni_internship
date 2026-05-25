@@ -10,7 +10,24 @@ const initialFormState = {
   primaryColor:"#4F46E5",secondaryColor:"#10B981",accentColor:"#F59E0B",
   logoUrl:"",enableJobs:true,enableEvents:true,allowStudentRegistrations:false,
   autoApproveAlumni:false,autoApproveEmailDomainsText:"",departmentsText:"",departmentStreamsText:"",
-  profileFields: [], leadershipMessages: [], quickLinks: [], socialLinks: {facebook:"",twitter:"",linkedin:"",youtube:"",instagram:""}, heroImageUrl: "", manualUpdates: []
+  profileFields: [], leadershipMessages: [], quickLinks: [], socialLinks: {facebook:"",twitter:"",linkedin:"",youtube:"",instagram:""}, heroImageUrl: "", manualUpdates: [],
+  integrations: {
+    ssoEnabled: false,
+    ssoProvider: "google",
+    googleAnalyticsId: "",
+    stripePublicKey: ""
+  },
+  emailTemplates: {
+    welcomeSubject: "Welcome to {{institute}} Alumni Portal!",
+    welcomeBody: "Hello {{name}},\n\nWelcome to the official alumni community of {{institute}}!",
+    approvalSubject: "Your alumni account has been approved!",
+    approvalBody: "Hello {{name}},\n\nYour registration has been approved. You can now log in."
+  },
+  security: {
+    sessionTimeout: 60,
+    passwordMinLength: 8,
+    require2FA: false
+  }
 };
 function normalizeAutoApproveDomainsInput(value){
   return [...new Set(String(value||"").split(/[,\n]/).map(i=>i.trim().toLowerCase().replace(/^@/,"")).filter(Boolean))];
@@ -57,7 +74,24 @@ function mapSettingsToForm(s){
     quickLinks: Array.isArray(s?.quickLinks) ? s.quickLinks : [],
     socialLinks: s?.socialLinks || {facebook:"",twitter:"",linkedin:"",youtube:"",instagram:""},
     heroImageUrl: s?.branding?.heroImageUrl || "",
-    manualUpdates: Array.isArray(s?.manualUpdates) ? s.manualUpdates : []
+    manualUpdates: Array.isArray(s?.manualUpdates) ? s.manualUpdates : [],
+    integrations: s?.integrations || {
+      ssoEnabled: false,
+      ssoProvider: "google",
+      googleAnalyticsId: "",
+      stripePublicKey: ""
+    },
+    emailTemplates: s?.emailTemplates || {
+      welcomeSubject: "Welcome to {{institute}} Alumni Portal!",
+      welcomeBody: "Hello {{name}},\n\nWelcome to the official alumni community of {{institute}}!",
+      approvalSubject: "Your alumni account has been approved!",
+      approvalBody: "Hello {{name}},\n\nYour registration has been approved. You can now log in."
+    },
+    security: s?.security || {
+      sessionTimeout: 60,
+      passwordMinLength: 8,
+      require2FA: false
+    }
   };
 }
 function buildUpdatePayload(form){
@@ -73,7 +107,10 @@ function buildUpdatePayload(form){
     departmentStreams,
     streams:[...new Set(Object.values(departmentStreams).flat())],
     profileFields: form.profileFields,
-    manualUpdates: form.manualUpdates
+    manualUpdates: form.manualUpdates,
+    integrations: form.integrations,
+    emailTemplates: form.emailTemplates,
+    security: form.security
   };
 }
 
@@ -844,17 +881,201 @@ export default function InstitutionSettingsPage(){
             <ProfileFieldsManager form={form} setForm={setForm} />
           )}
 
-          {["Integrations", "Email Templates", "Security"].includes(activeTab) && (
+          {activeTab === "Integrations" && (
             <div className="st-panel">
               <div className="st-panel-header">
                 <div>
-                  <h2 className="st-panel-title">{activeTab}</h2>
-                  <p className="st-panel-sub">Settings under {activeTab} tab.</p>
+                  <h2 className="st-panel-title">Integrations</h2>
+                  <p className="st-panel-sub">Configure external connections and services for your portal.</p>
                 </div>
               </div>
-              <p style={{ color: "#94a3b8", fontSize: "0.85rem", padding: "1rem 0" }}>
-                Configure {activeTab.toLowerCase()} settings for your institution portal. This panel is currently a placeholder.
-              </p>
+              <div className="st-info-grid" style={{ marginTop: "1.5rem" }}>
+                <Field label="Google Analytics Tracking ID" hint="e.g. G-XXXXXXX to track page views and traffic">
+                  <input
+                    className="st-input"
+                    value={form.integrations?.googleAnalyticsId || ""}
+                    onChange={e => setForm(c => ({
+                      ...c,
+                      integrations: { ...c.integrations, googleAnalyticsId: e.target.value }
+                    }))}
+                    placeholder="G-XXXXXXXXXX"
+                  />
+                </Field>
+                <Field label="Stripe Publishable Key" hint="Used to collect alumni donation payments on-platform">
+                  <input
+                    className="st-input"
+                    value={form.integrations?.stripePublicKey || ""}
+                    onChange={e => setForm(c => ({
+                      ...c,
+                      integrations: { ...c.integrations, stripePublicKey: e.target.value }
+                    }))}
+                    placeholder="pk_test_..."
+                  />
+                </Field>
+                <div className="st-field st-field--full" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1.5rem", marginTop: "1rem" }}>
+                  <div className="st-toggle-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span className="st-label" style={{ margin: 0 }}>Enable Single Sign-On (SSO)</span>
+                      <p className="st-hint" style={{ marginTop: "0.25rem" }}>Allow alumni to register and sign in using third-party accounts.</p>
+                    </div>
+                    <Toggle
+                      checked={Boolean(form.integrations?.ssoEnabled)}
+                      onChange={val => setForm(c => ({
+                        ...c,
+                        integrations: { ...c.integrations, ssoEnabled: val }
+                      }))}
+                    />
+                  </div>
+                </div>
+                {form.integrations?.ssoEnabled && (
+                  <Field label="SSO Provider" hint="Select the primary identity provider to configure">
+                    <select
+                      className="st-input"
+                      value={form.integrations?.ssoProvider || "google"}
+                      onChange={e => setForm(c => ({
+                        ...c,
+                        integrations: { ...c.integrations, ssoProvider: e.target.value }
+                      }))}
+                      style={{ height: "42px", padding: "4px 8px" }}
+                    >
+                      <option value="google">Google Workspace</option>
+                      <option value="linkedin">LinkedIn Authentication</option>
+                      <option value="saml">SAML Custom Provider</option>
+                    </select>
+                  </Field>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "Email Templates" && (
+            <div className="st-panel">
+              <div className="st-panel-header">
+                <div>
+                  <h2 className="st-panel-title">Email Templates</h2>
+                  <p className="st-panel-sub">Customize automated system email messages sent to alumni.</p>
+                </div>
+              </div>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "2rem", marginTop: "1.5rem" }}>
+                {/* Welcome Template */}
+                <div style={{ paddingBottom: "2rem", borderBottom: "1px solid #e2e8f0" }}>
+                  <h3 className="st-label" style={{ fontSize: "1rem", color: "var(--th-primary)", marginBottom: "1rem" }}>Welcome Email (Alumni Join)</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <Field label="Subject Line">
+                      <input
+                        className="st-input"
+                        value={form.emailTemplates?.welcomeSubject || ""}
+                        onChange={e => setForm(c => ({
+                          ...c,
+                          emailTemplates: { ...c.emailTemplates, welcomeSubject: e.target.value }
+                        }))}
+                        placeholder="Welcome to {{institute}}!"
+                      />
+                    </Field>
+                    <Field label="Email Body Text" hint="Supported placeholders: {{name}}, {{institute}}">
+                      <textarea
+                        className="st-input"
+                        value={form.emailTemplates?.welcomeBody || ""}
+                        onChange={e => setForm(c => ({
+                          ...c,
+                          emailTemplates: { ...c.emailTemplates, welcomeBody: e.target.value }
+                        }))}
+                        rows={5}
+                        placeholder="Hello {{name}}, welcome to our portal!"
+                        style={{ fontFamily: "monospace", fontSize: "0.85rem" }}
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                {/* Approval Template */}
+                <div>
+                  <h3 className="st-label" style={{ fontSize: "1rem", color: "var(--th-primary)", marginBottom: "1rem" }}>Account Approved Email</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <Field label="Subject Line">
+                      <input
+                        className="st-input"
+                        value={form.emailTemplates?.approvalSubject || ""}
+                        onChange={e => setForm(c => ({
+                          ...c,
+                          emailTemplates: { ...c.emailTemplates, approvalSubject: e.target.value }
+                        }))}
+                        placeholder="Your alumni account has been approved!"
+                      />
+                    </Field>
+                    <Field label="Email Body Text" hint="Supported placeholders: {{name}}, {{institute}}">
+                      <textarea
+                        className="st-input"
+                        value={form.emailTemplates?.approvalBody || ""}
+                        onChange={e => setForm(c => ({
+                          ...c,
+                          emailTemplates: { ...c.emailTemplates, approvalBody: e.target.value }
+                        }))}
+                        rows={5}
+                        placeholder="Hello {{name}}, your account has been approved!"
+                        style={{ fontFamily: "monospace", fontSize: "0.85rem" }}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "Security" && (
+            <div className="st-panel">
+              <div className="st-panel-header">
+                <div>
+                  <h2 className="st-panel-title">Security Settings</h2>
+                  <p className="st-panel-sub">Manage portal access guidelines, authentication complexity, and timeout controls.</p>
+                </div>
+              </div>
+              
+              <div className="st-info-grid" style={{ marginTop: "1.5rem" }}>
+                <Field label="Minimum Password Length" hint="Enforces minimum password characters during registration">
+                  <input
+                    type="number"
+                    min={6}
+                    max={32}
+                    className="st-input"
+                    value={form.security?.passwordMinLength || 8}
+                    onChange={e => setForm(c => ({
+                      ...c,
+                      security: { ...c.security, passwordMinLength: parseInt(e.target.value) || 8 }
+                    }))}
+                  />
+                </Field>
+                <Field label="Session Inactivity Timeout (minutes)" hint="Automatically sign out users after inactivity">
+                  <input
+                    type="number"
+                    min={5}
+                    max={1440}
+                    className="st-input"
+                    value={form.security?.sessionTimeout || 60}
+                    onChange={e => setForm(c => ({
+                      ...c,
+                      security: { ...c.security, sessionTimeout: parseInt(e.target.value) || 60 }
+                    }))}
+                  />
+                </Field>
+                
+                <div className="st-field st-field--full" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1.5rem", marginTop: "1rem" }}>
+                  <div className="st-toggle-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span className="st-label" style={{ margin: 0 }}>Require Multi-Factor Authentication (MFA / 2FA)</span>
+                      <p className="st-hint" style={{ marginTop: "0.25rem" }}>Mandates alumni and administrators to setup TOTP-based authentication for increased safety.</p>
+                    </div>
+                    <Toggle
+                      checked={Boolean(form.security?.require2FA)}
+                      onChange={val => setForm(c => ({
+                        ...c,
+                        security: { ...c.security, require2FA: val }
+                      }))}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

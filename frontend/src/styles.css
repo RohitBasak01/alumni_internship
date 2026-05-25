@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap");
+@import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -346,7 +346,7 @@
 /* Design system foundation */
 
 :root {
-  --ui-font-sans: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --ui-font-sans: "Outfit", "Segoe UI", system-ui, -apple-system, sans-serif;
   --ui-bg: #f2f6fd;
   --ui-bg-soft: #eaf1fb;
   --ui-surface: rgba(255, 255, 255, 0.94);
@@ -354,10 +354,10 @@
   --ui-surface-muted: #f5f9ff;
   --ui-border: rgba(37, 84, 216, 0.1);
   --ui-border-strong: rgba(37, 84, 216, 0.18);
-  --ui-ink: #0f172a;
+  --ui-ink: var(--al-color-ink-900, #0f172a);
   --ui-ink-soft: #425472;
   --ui-ink-muted: #61748f;
-  --ui-brand: #2554d8;
+  --ui-brand: var(--al-color-brand-500, #2554d8);
   --ui-brand-strong: #1a3da8;
   --ui-brand-soft: #e8f0ff;
   --ui-accent: #0f8aa6;
@@ -368,11 +368,11 @@
   --ui-cyan: var(--al-color-accent-cyan-500, #06b6d4);
   --ui-highlight: #b7791f;
   --ui-highlight-soft: rgba(183, 121, 31, 0.16);
-  --ui-success: #15803d;
+  --ui-success: var(--al-color-success-700, #15803d);
   --ui-success-soft: rgba(21, 128, 61, 0.12);
-  --ui-warning: #b45309;
+  --ui-warning: var(--al-color-warning-700, #b45309);
   --ui-warning-soft: rgba(180, 83, 9, 0.14);
-  --ui-danger: #b91c1c;
+  --ui-danger: var(--al-color-error-700, #b91c1c);
   --ui-danger-soft: rgba(185, 28, 28, 0.12);
   --ui-radius-sm: 14px;
   --ui-radius-md: 20px;
@@ -396,6 +396,95 @@ body {
   color: var(--ui-ink);
   min-height: 100vh;
   background-attachment: fixed;
+}
+
+.public-header {
+  --public-nav-accent: var(--ui-brand);
+  --public-nav-strong: var(--ui-brand-strong);
+  --public-nav-soft: var(--ui-brand-soft);
+  --public-nav-border: var(--al-color-brand-200, #c7d2fe);
+}
+
+.public-header-card {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--public-nav-border) 62%, white) !important;
+  background:
+    radial-gradient(circle at 4% 0%, color-mix(in srgb, var(--ui-teal) 13%, transparent), transparent 18rem),
+    radial-gradient(circle at 94% 0%, color-mix(in srgb, var(--ui-violet) 12%, transparent), transparent 18rem),
+    rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 42px -28px rgba(37, 84, 216, 0.28);
+}
+
+.public-header-logo-icon {
+  background: linear-gradient(135deg, var(--public-nav-accent), var(--ui-violet), var(--ui-teal)) !important;
+  box-shadow: 0 16px 28px -18px var(--public-nav-accent);
+}
+
+.public-header-logo-name {
+  color: var(--ui-ink) !important;
+}
+
+.public-header-logo-sub {
+  color: var(--public-nav-strong) !important;
+}
+
+.public-header-nav {
+  border-color: color-mix(in srgb, var(--public-nav-border) 64%, white) !important;
+  background: color-mix(in srgb, var(--public-nav-soft) 42%, white) !important;
+}
+
+.public-header-link,
+.public-header-nav-link,
+.public-header-login {
+  color: var(--ui-ink-soft) !important;
+}
+
+.public-header-link:hover,
+.public-header-nav-link:hover,
+.public-header-login:hover {
+  color: var(--public-nav-strong) !important;
+  background: color-mix(in srgb, var(--public-nav-soft) 76%, white) !important;
+}
+
+.public-header-nav-link--active {
+  color: var(--public-nav-strong) !important;
+  background: var(--public-nav-soft) !important;
+  box-shadow: 0 10px 22px -18px var(--public-nav-accent);
+}
+
+.public-header-menu-btn {
+  border: 1px solid color-mix(in srgb, var(--public-nav-border) 66%, white);
+  background: var(--public-nav-soft) !important;
+  color: var(--public-nav-strong) !important;
+}
+
+.public-header-mobile-menu {
+  border-color: color-mix(in srgb, var(--public-nav-border) 52%, white) !important;
+}
+
+.public-header-mobile-menu .mobile-menu-item {
+  border-radius: 14px;
+}
+
+.dark .public-header-card {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  background:
+    radial-gradient(circle at 4% 0%, rgba(20, 184, 166, 0.16), transparent 18rem),
+    radial-gradient(circle at 94% 0%, rgba(139, 92, 246, 0.16), transparent 18rem),
+    rgba(15, 23, 42, 0.86);
+}
+
+.dark .public-header-logo-name,
+.dark .public-header-link,
+.dark .public-header-nav-link,
+.dark .public-header-login {
+  color: var(--ui-ink-soft) !important;
+}
+
+.dark .public-header-nav {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: rgba(15, 23, 42, 0.62) !important;
 }
 
 .textarea,
@@ -544,10 +633,121 @@ textarea:focus {
   color: var(--ui-ink-soft);
 }
 
+.section-card,
+.portal-page-header,
+.portal-metric-card {
+  --primitive-accent: var(--ui-brand);
+  --primitive-strong: var(--ui-brand-strong);
+  --primitive-soft: var(--ui-brand-soft);
+  --primitive-border: var(--al-color-brand-200, #c7d2fe);
+  --primitive-shadow: rgba(37, 84, 216, 0.18);
+}
+
+.section-card--violet,
+.portal-page-header--violet,
+.portal-metric-card--violet {
+  --primitive-accent: var(--ui-violet);
+  --primitive-strong: var(--al-color-accent-violet-700, #6d28d9);
+  --primitive-soft: var(--al-color-accent-violet-50, #f5f3ff);
+  --primitive-border: var(--al-color-accent-violet-200, #ddd6fe);
+  --primitive-shadow: rgba(139, 92, 246, 0.18);
+}
+
+.section-card--teal,
+.portal-page-header--teal,
+.portal-metric-card--teal {
+  --primitive-accent: var(--ui-teal);
+  --primitive-strong: var(--al-color-accent-teal-700, #0f766e);
+  --primitive-soft: var(--al-color-accent-teal-50, #f0fdfa);
+  --primitive-border: var(--al-color-accent-teal-200, #99f6e4);
+  --primitive-shadow: rgba(20, 184, 166, 0.18);
+}
+
+.section-card--coral,
+.portal-page-header--coral,
+.portal-metric-card--coral {
+  --primitive-accent: var(--ui-coral);
+  --primitive-strong: var(--al-color-accent-coral-700, #be123c);
+  --primitive-soft: var(--al-color-accent-coral-50, #fff1f2);
+  --primitive-border: var(--al-color-accent-coral-200, #fecdd3);
+  --primitive-shadow: rgba(244, 63, 94, 0.18);
+}
+
+.section-card--amber,
+.portal-page-header--amber,
+.portal-metric-card--amber {
+  --primitive-accent: var(--al-color-accent-amber-500, #f59e0b);
+  --primitive-strong: var(--al-color-accent-amber-700, #b45309);
+  --primitive-soft: var(--al-color-accent-amber-50, #fffbeb);
+  --primitive-border: var(--al-color-accent-amber-200, #fde68a);
+  --primitive-shadow: rgba(245, 158, 11, 0.18);
+}
+
+.section-card--cyan,
+.portal-page-header--cyan,
+.portal-metric-card--cyan {
+  --primitive-accent: var(--ui-cyan);
+  --primitive-strong: var(--al-color-accent-cyan-700, #0e7490);
+  --primitive-soft: var(--al-color-accent-cyan-50, #ecfeff);
+  --primitive-border: var(--al-color-accent-cyan-200, #a5f3fc);
+  --primitive-shadow: rgba(6, 182, 212, 0.18);
+}
+
+.section-card--emerald,
+.portal-page-header--emerald,
+.portal-metric-card--emerald {
+  --primitive-accent: var(--al-color-accent-emerald-500, #10b981);
+  --primitive-strong: var(--al-color-accent-emerald-700, #047857);
+  --primitive-soft: var(--al-color-accent-emerald-50, #ecfdf5);
+  --primitive-border: var(--al-color-accent-emerald-200, #a7f3d0);
+  --primitive-shadow: rgba(16, 185, 129, 0.18);
+}
+
+.section-card--rose,
+.portal-page-header--rose,
+.portal-metric-card--rose {
+  --primitive-accent: var(--al-color-accent-rose-500, #e11d48);
+  --primitive-strong: var(--al-color-accent-rose-700, #9f1239);
+  --primitive-soft: var(--al-color-accent-rose-50, #fff1f2);
+  --primitive-border: var(--al-color-accent-rose-200, #fecdd3);
+  --primitive-shadow: rgba(225, 29, 72, 0.18);
+}
+
+.section-card--vibrant {
+  border-color: color-mix(in srgb, var(--primitive-border) 72%, white);
+  background:
+    radial-gradient(circle at 96% 8%, color-mix(in srgb, var(--primitive-accent) 11%, transparent), transparent 32%),
+    linear-gradient(180deg, color-mix(in srgb, var(--primitive-soft) 46%, white), rgba(255, 255, 255, 0.97));
+  box-shadow: 0 22px 48px -34px var(--primitive-shadow);
+}
+
+.section-card--flat {
+  background: var(--ui-surface-muted);
+  box-shadow: none;
+}
+
+.section-card--vibrant .section-card-eyebrow,
+.section-card--flat .section-card-eyebrow {
+  color: var(--primitive-strong);
+}
+
+.section-card--vibrant .section-card-title {
+  color: var(--primitive-strong);
+}
+
 .portal-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: flex-end;
   gap: 1.2rem;
-  padding: 0.35rem 0 0.15rem;
+  padding: 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--primitive-border) 68%, white);
+  border-radius: var(--ui-radius-lg);
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--primitive-accent) 13%, transparent), transparent 18rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--primitive-soft) 54%, white), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 22px 48px -34px var(--primitive-shadow);
 }
 
 .portal-page-header-copy {
@@ -560,14 +760,14 @@ textarea:focus {
   letter-spacing: 0.16em;
   font-size: 0.72rem;
   font-weight: 800;
-  color: var(--ui-accent);
+  color: var(--primitive-strong);
 }
 
 .portal-page-header-copy h1 {
   font-size: clamp(2rem, 3vw, 2.85rem);
   line-height: 0.98;
   letter-spacing: -0.06em;
-  color: var(--ui-ink);
+  color: var(--primitive-strong);
 }
 
 .portal-page-header-copy p:last-child {
@@ -606,12 +806,12 @@ textarea:focus {
 .portal-segmented-tabs button.active {
   background: linear-gradient(
     135deg,
-    var(--ui-brand) 0%,
-    #445fd4 50%,
-    var(--ui-accent) 100%
+    var(--primitive-accent, var(--ui-brand)) 0%,
+    var(--ui-violet) 50%,
+    var(--primitive-strong, var(--ui-accent)) 100%
   );
   color: #ffffff;
-  box-shadow: 0 12px 24px rgba(37, 84, 216, 0.24);
+  box-shadow: 0 12px 24px var(--primitive-shadow, rgba(37, 84, 216, 0.24));
 }
 
 .portal-segmented-tabs button span {
@@ -630,10 +830,10 @@ textarea:focus {
 }
 
 .portal-search-field:focus-within {
-  border-color: rgba(37, 84, 216, 0.34);
+  border-color: color-mix(in srgb, var(--primitive-accent, var(--ui-brand)) 42%, white);
   box-shadow:
     var(--ui-shadow-sm),
-    0 0 0 4px rgba(37, 84, 216, 0.09);
+    0 0 0 4px color-mix(in srgb, var(--primitive-accent, var(--ui-brand)) 12%, transparent);
 }
 
 .portal-search-field-icon {
@@ -658,11 +858,7 @@ textarea:focus {
   border: 1px solid var(--ui-border);
   border-radius: 18px;
   background:
-    radial-gradient(
-      circle at top right,
-      rgba(37, 84, 216, 0.08),
-      transparent 32%
-    ),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primitive-accent) 10%, transparent), transparent 32%),
     radial-gradient(
       circle at 12% 90%,
       rgba(15, 138, 166, 0.07),
@@ -681,7 +877,7 @@ textarea:focus {
 }
 
 .portal-metric-card:hover {
-  border-color: rgba(37, 84, 216, 0.18);
+  border-color: color-mix(in srgb, var(--primitive-border) 74%, white);
   box-shadow: var(--ui-shadow-lg);
   transform: translateY(-2px);
 }
@@ -709,8 +905,8 @@ textarea:focus {
   min-width: 3rem;
   min-height: 2.5rem;
   border-radius: 14px;
-  background: var(--ui-brand-soft);
-  color: var(--ui-brand);
+  background: var(--primitive-soft);
+  color: var(--primitive-strong);
   font-weight: 800;
 }
 
@@ -736,10 +932,152 @@ textarea:focus {
   font-size: clamp(2.15rem, 3vw, 3rem);
   line-height: 0.95;
   letter-spacing: -0.07em;
-  color: var(--ui-ink);
+  color: var(--primitive-strong);
 }
 
 .alumni-messages-thread-section {
   margin-top: 1rem;
+}
+
+/* Step 7 remaining portal surface polish */
+.portal-page-content,
+.member-connections-page,
+.notifications-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+.portal-page-content {
+  border-radius: 28px;
+}
+
+.member-connections-page,
+.notifications-page {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.section-card,
+.portal-page-header,
+.portal-metric-card,
+.portal-segmented-tabs,
+.portal-search-field {
+  border-color: color-mix(in srgb, var(--primitive-border, var(--ui-border)) 58%, #e2e8f0);
+}
+
+.section-card:hover {
+  border-color: color-mix(in srgb, var(--primitive-border, var(--ui-border)) 80%, white);
+  box-shadow: 0 22px 48px -34px var(--primitive-shadow, rgba(37, 84, 216, 0.22));
+}
+
+.section-card-body :is(input, select, textarea),
+.portal-page-content :is(input, select, textarea):not(.dl-search-input) {
+  border-color: color-mix(in srgb, var(--primitive-border, var(--ui-border)) 48%, #e2e8f0);
+}
+
+.section-card-body :is(input, select, textarea):focus,
+.portal-page-content :is(input, select, textarea):not(.dl-search-input):focus {
+  border-color: color-mix(in srgb, var(--primitive-accent, var(--ui-brand)) 46%, white);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primitive-accent, var(--ui-brand)) 12%, transparent);
+}
+
+.member-connection-card,
+.notifications-card,
+.notifications-empty,
+.notifications-skeleton {
+  border: 1px solid color-mix(in srgb, var(--module-border, var(--ui-border)) 58%, #e2e8f0);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--module-accent, var(--ui-brand)) 9%, transparent), transparent 10rem),
+    rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 38px -32px var(--module-shadow, rgba(37, 84, 216, 0.22));
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.member-connection-card:hover,
+.notifications-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--module-border, var(--ui-border));
+  box-shadow: 0 22px 42px -30px var(--module-shadow, rgba(37, 84, 216, 0.22));
+}
+
+.member-person-avatar,
+.notifications-icon {
+  background: var(--module-surface, var(--ui-brand-soft));
+  color: var(--module-accent-strong, var(--ui-brand-strong));
+}
+
+.notifications-card.is-unread {
+  border-left: 4px solid var(--module-accent, var(--ui-brand));
+}
+
+.notifications-group h2,
+.notifications-empty .material-symbols-outlined {
+  color: var(--module-accent-strong, var(--ui-brand-strong));
+}
+
+.messages-portal-page {
+  --chat-accent: var(--module-accent, #14b8a6);
+  --chat-accent-deep: var(--module-accent-strong, #0f766e);
+  --chat-border: color-mix(in srgb, var(--module-border, #99f6e4) 58%, #e2e8f0);
+  --chat-shadow: var(--module-shadow, rgba(20, 184, 166, 0.2));
+}
+
+.messages-portal-page .member-messages-sidebar,
+.messages-portal-page .member-messages-panel,
+.messages-portal-page .member-contact-panel {
+  border-color: var(--chat-border);
+  box-shadow: 0 22px 52px -34px var(--chat-shadow);
+}
+
+.messages-portal-page .member-messages-sidebar,
+.messages-portal-page .member-contact-panel {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--chat-accent) 10%, transparent), transparent 12rem),
+    rgba(255, 255, 255, 0.94);
+}
+
+.messages-portal-page .member-messages-panel {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--chat-accent) 10%, transparent), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--module-surface, #f0fdfa) 38%, #f8fbff) 100%);
+}
+
+.messages-portal-page .member-chat-status-pill.accent,
+.messages-portal-page .member-thread-item.active {
+  background: var(--module-surface, #f0fdfa);
+  color: var(--module-accent-strong, #0f766e);
+}
+
+@media (max-width: 760px) {
+  .portal-page-content,
+  .member-connections-page,
+  .notifications-page {
+    padding: 0.85rem;
+  }
+}
+
+.dark .section-card,
+.dark .portal-page-header,
+.dark .portal-metric-card,
+.dark .portal-segmented-tabs,
+.dark .portal-search-field,
+.dark .member-connection-card,
+.dark .notifications-card,
+.dark .notifications-empty,
+.dark .messages-portal-page .member-messages-sidebar,
+.dark .messages-portal-page .member-messages-panel,
+.dark .messages-portal-page .member-contact-panel {
+  border-color: rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--module-accent, var(--ui-brand)) 13%, transparent), transparent 12rem),
+    rgba(15, 23, 42, 0.82);
+}
+
+.dark .portal-page-header-copy p:last-child,
+.dark .section-card-body,
+.dark .notifications-copy p,
+.dark .notifications-card time {
+  color: #cbd5e1;
 }
 

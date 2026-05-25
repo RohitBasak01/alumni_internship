@@ -1625,3 +1625,125 @@
     padding: 1.1rem;
   }
 }
+
+/* Step 5 module page polish */
+.ev-root.module-events {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(0.85rem, 2vw, 1.5rem);
+}
+
+.ev-root.module-events .ev-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1rem;
+}
+
+.ev-root.module-events .ev-page-kicker {
+  width: max-content;
+  margin: 0 0 0.5rem;
+  padding: 0.34rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--ev-border) 64%, white);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ev-surface) 76%, white);
+  color: var(--ev-accent-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.ev-root.module-events .ev-header-stats {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.ev-root.module-events .ev-header-stats span {
+  min-width: 7rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ev-border) 62%, white);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-align: center;
+  box-shadow: 0 16px 28px -24px var(--ev-shadow);
+}
+
+.ev-root.module-events .ev-header-stats strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.2rem;
+  line-height: 1.1;
+}
+
+.ev-root.module-events .ev-header-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.ev-root.module-events .ev-card,
+.ev-root.module-events .ev-list-item,
+.ev-root.module-events .ev-toolbar,
+.ev-root.module-events .ev-composer-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.9)),
+    var(--ev-surface);
+}
+
+.ev-root.module-events .ev-card:hover,
+.ev-root.module-events .ev-list-item:hover {
+  transform: translateY(-2px);
+}
+
+.ev-root.module-events .ev-section-count,
+.ev-root.module-events .ev-tab-pill-badge,
+.ev-root.module-events .ev-list-reg {
+  color: var(--ev-accent-strong);
+  background: var(--ev-surface);
+}
+
+@media (max-width: 980px) {
+  .ev-root.module-events .ev-page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .ev-root.module-events .ev-header-stats,
+  .ev-root.module-events .ev-header-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .ev-root.module-events .ev-header-stats span {
+    flex: 1;
+    min-width: 6rem;
+  }
+}
+
+.dark .ev-root.module-events .ev-page-header,
+.dark .ev-root.module-events .ev-card,
+.dark .ev-root.module-events .ev-list-item,
+.dark .ev-root.module-events .ev-toolbar,
+.dark .ev-root.module-events .ev-composer-card {
+  border-color: rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--ev-accent) 13%, transparent), transparent 12rem),
+    rgba(15, 23, 42, 0.82);
+}
+
+.dark .ev-root.module-events .ev-header-stats span,
+.dark .ev-root.module-events .ev-page-kicker {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: color-mix(in srgb, var(--ev-accent) 16%, #111827);
+}
+
+.dark .ev-root.module-events .ev-header-stats strong,
+.dark .ev-root.module-events .ev-page-title {
+  color: #f8fafc;
+}

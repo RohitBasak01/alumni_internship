@@ -745,8 +745,13 @@ export default function TenantAlumniPage() {
       {/* ── Page header ─────────────────────────────────── */}
       <div className="ad-page-header">
         <div>
+          <p className="ad-page-kicker">People network</p>
           <h1 className="ad-page-title">Alumni Directory</h1>
           <p className="ad-page-sub">Connect with {totalFound > 100 ? `${totalFound.toLocaleString()}+` : totalFound} alumni from around the world.</p>
+        </div>
+        <div className="ad-header-stats" aria-label="Directory summary">
+          <span><strong>{totalFound.toLocaleString()}</strong> members</span>
+          <span><strong>{browseCategories.length}</strong> ways to browse</span>
         </div>
       </div>
 

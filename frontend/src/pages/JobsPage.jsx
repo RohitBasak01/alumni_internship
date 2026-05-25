@@ -322,8 +322,13 @@ export default function JobsPage(){
     <div className="jb-root module-careers">
       <div className="jb-page-header">
         <div>
+          <p className="jb-page-kicker">Career board</p>
           <h1 className="jb-page-title">Jobs</h1>
           <p className="jb-page-sub">Discover exciting opportunities and take the next step in your career.</p>
+        </div>
+        <div className="jb-header-stats" aria-label="Career summary">
+          <span><strong>{filteredJobs.length}</strong> roles</span>
+          <span><strong>{userApplications.length}</strong> applied</span>
         </div>
       </div>
 

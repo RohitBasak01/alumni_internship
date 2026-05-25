@@ -1,10 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDashboardLogic } from "../hooks/useDashboardLogic.js";
-import { PortalPageHeader } from "../components/PortalPrimitives.jsx";
-import { DashboardMetrics } from "../components/DashboardMetrics.jsx";
-import { ActivityFeed } from "../components/ActivityFeed.jsx";
-import SectionCard from "../components/SectionCard.jsx";
 import CelebrationWidget from "../components/CelebrationWidget.jsx";
 import { formatRelativeTime } from "../utils/formatters.js";
 import "../styles/Dashboard.css";
@@ -63,7 +59,7 @@ function ActivityCard({ post }) {
             <span className="adb-activity-time">{formatRelativeTime(post.createdAt)}</span>
           </div>
         </div>
-        <button className="adb-more-btn">
+        <button className="adb-more-btn" aria-label="More post actions">
           <span className="material-symbols-outlined">more_horiz</span>
         </button>
       </div>
@@ -106,13 +102,13 @@ function AlumniDashboard({ logic }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const displayPosts = posts.slice(0, 5).map(p => ({
+  const displayPosts = posts.slice(0, 5).map((p, index) => ({
     ...p,
     role: p.author?.designation || p.author?.occupation || p.author?.company || "",
     likeCount: p.likes?.length ?? 0,
     commentCount: p.comments?.length ?? 0,
     shareCount: 0,
-    accentColor: ["#6366f1","#0ea5e9","#10b981"][Math.floor(Math.random()*3)],
+    accentColor: ["#6366f1", "#0ea5e9", "#10b981"][index % 3],
   }));
 
   const QUICK_ACTIONS = [
@@ -131,20 +127,21 @@ function AlumniDashboard({ logic }) {
       {/* ── Top Section: Greeting & Stats ── */}
       <div className="adb-header-section">
         <div className="adb-greeting-box">
-          <h1 className="adb-hero-greeting">{greeting}, {firstName}! 👋</h1>
+          <p className="adb-hero-kicker">Community dashboard</p>
+          <h1 className="adb-hero-greeting">{greeting}, {firstName}!</h1>
           <p className="adb-hero-sub">Welcome back to the {tenant.displayName} community.</p>
         </div>
 
         <div className="adb-quick-metrics">
-          <div className="adb-metric-pill">
+          <div className="adb-metric-pill adb-metric-pill--alumni">
             <span className="material-symbols-outlined">groups</span>
             <strong>{alumni.length.toLocaleString()}</strong> Alumni
           </div>
-          <div className="adb-metric-pill">
+          <div className="adb-metric-pill adb-metric-pill--active">
             <span className="material-symbols-outlined">hub</span>
             <strong>{Math.max(alumni.filter(a => a.isActive).length, 1).toLocaleString()}</strong> Active
           </div>
-          <div className="adb-metric-pill">
+          <div className="adb-metric-pill adb-metric-pill--events">
             <span className="material-symbols-outlined">event</span>
             <strong>{events.length}</strong> Events
           </div>
@@ -183,7 +180,11 @@ function AlumniDashboard({ logic }) {
                   <ActivityCard key={post._id} post={post} />
                 ))
               ) : (
-                <div className="adb-empty-state">No recent activity found.</div>
+                <div className="adb-empty-state">
+                  <span className="material-symbols-outlined">dynamic_feed</span>
+                  <strong>No recent activity yet</strong>
+                  <p>New posts and announcements will appear here as your community starts moving.</p>
+                </div>
               )}
             </div>
           </div>
@@ -240,7 +241,7 @@ function AlumniDashboard({ logic }) {
                <Link to="/portal/events" className="adb-view-link">All Events</Link>
             </div>
             <div className="adb-mini-events">
-                {events.slice(0, 2).map((ev, i) => {
+                {events.length ? events.slice(0, 2).map((ev, i) => {
                   const dateObj = ev.date || ev.startDate ? new Date(ev.date || ev.startDate) : new Date();
                   const isInvalid = isNaN(dateObj.getTime());
                   const displayDate = isInvalid ? new Date() : dateObj;
@@ -257,7 +258,12 @@ function AlumniDashboard({ logic }) {
                     </div>
                    </div>
                   );
-                })}
+                }) : (
+                  <div className="adb-empty-compact">
+                    <span className="material-symbols-outlined">event_busy</span>
+                    <p>No upcoming events yet.</p>
+                  </div>
+                )}
             </div>
           </div>
 
@@ -460,8 +466,13 @@ function AdminDashboard({ logic }) {
       {/* ── Top Section: Title & Actions ── */}
       <div className="adm-header-section">
         <div className="adm-title-box">
+          <p className="adm-hero-kicker">Admin command center</p>
           <h1 className="adm-welcome-title">Institution Overview</h1>
           <p className="adm-welcome-sub">Managing {tenant.displayName} Central Hub</p>
+          <span className="adm-status-chip">
+            <span className="material-symbols-outlined">verified</span>
+            Live workspace
+          </span>
         </div>
         <div className="adm-header-actions">
            <button 
@@ -474,7 +485,7 @@ function AdminDashboard({ logic }) {
               </span>
               {isExporting ? "Exporting..." : "Export Report"}
            </button>
-           <button className="adm-action-btn">
+           <button className="adm-action-btn" aria-label="Dashboard settings">
               <span className="material-symbols-outlined">settings</span>
            </button>
         </div>
@@ -483,8 +494,8 @@ function AdminDashboard({ logic }) {
       {/* ── Stats Strip ── */}
       <div className="adm-stats-strip">
         {STATS.map(s => (
-          <div key={s.label} className="adm-stat-pill">
-            <div className="pill-icon" style={{color: s.color}}>
+          <div key={s.label} className="adm-stat-pill" style={{ "--stat-color": s.color, "--stat-surface": s.bg }}>
+            <div className="pill-icon">
               <span className="material-symbols-outlined">{s.icon}</span>
             </div>
             <div className="pill-info">

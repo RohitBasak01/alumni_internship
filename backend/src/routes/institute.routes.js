@@ -222,7 +222,24 @@ function buildInstituteSettingsPayload(institute) {
     leadershipMessages: institute.leadershipMessages || [],
     quickLinks: institute.quickLinks || [],
     socialLinks: institute.socialLinks || {},
-    manualUpdates: institute.manualUpdates || []
+    manualUpdates: institute.manualUpdates || [],
+    integrations: institute.integrations || {
+      ssoEnabled: false,
+      ssoProvider: "google",
+      googleAnalyticsId: "",
+      stripePublicKey: ""
+    },
+    emailTemplates: institute.emailTemplates || {
+      welcomeSubject: "Welcome to {{institute}} Alumni Portal!",
+      welcomeBody: "Hello {{name}},\n\nWelcome to the official alumni community of {{institute}}!",
+      approvalSubject: "Your alumni account has been approved!",
+      approvalBody: "Hello {{name}},\n\nYour registration has been approved. You can now log in."
+    },
+    security: institute.security || {
+      sessionTimeout: 60,
+      passwordMinLength: 8,
+      require2FA: false
+    }
   };
 }
 
@@ -767,6 +784,35 @@ router.patch(
           linkedin: String(incomingSocials.linkedin || "").trim(),
           youtube: String(incomingSocials.youtube || "").trim(),
           instagram: String(incomingSocials.instagram || "").trim()
+        };
+      }
+
+      if (req.body.integrations !== undefined && typeof req.body.integrations === "object") {
+        const inc = req.body.integrations;
+        institute.integrations = {
+          ssoEnabled: Boolean(inc.ssoEnabled),
+          ssoProvider: String(inc.ssoProvider || "google").trim(),
+          googleAnalyticsId: String(inc.googleAnalyticsId || "").trim(),
+          stripePublicKey: String(inc.stripePublicKey || "").trim()
+        };
+      }
+
+      if (req.body.emailTemplates !== undefined && typeof req.body.emailTemplates === "object") {
+        const inc = req.body.emailTemplates;
+        institute.emailTemplates = {
+          welcomeSubject: String(inc.welcomeSubject || "").trim(),
+          welcomeBody: String(inc.welcomeBody || "").trim(),
+          approvalSubject: String(inc.approvalSubject || "").trim(),
+          approvalBody: String(inc.approvalBody || "").trim()
+        };
+      }
+
+      if (req.body.security !== undefined && typeof req.body.security === "object") {
+        const inc = req.body.security;
+        institute.security = {
+          sessionTimeout: Number(inc.sessionTimeout || 60),
+          passwordMinLength: Number(inc.passwordMinLength || 8),
+          require2FA: Boolean(inc.require2FA)
         };
       }
 
