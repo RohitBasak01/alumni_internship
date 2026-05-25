@@ -284,29 +284,7 @@ function DashboardLayout() {
 
         {/* Right Actions */}
         <div className="dl-navbar-right">
-          <div
-            className="dl-search-bar"
-            onClick={() => setIsCommandPaletteOpen(true)}
-            role="search"
-            aria-label="Search dashboard"
-          >
-            <span
-              className="material-symbols-outlined dl-search-icon"
-              style={{ fontSize: 18 }}
-              aria-hidden="true"
-            >
-              search
-            </span>
-            <input
-              readOnly
-              type="text"
-              placeholder="Search..."
-              className="dl-search-input"
-              aria-label="Search alumni, events, jobs, and more"
-              onFocus={() => setIsCommandPaletteOpen(true)}
-            />
-            <span className="dl-search-kbd" aria-hidden="true">Ctrl K</span>
-          </div>
+
 
           <div className="dl-navbar-actions">
             <NotificationDropdown />
