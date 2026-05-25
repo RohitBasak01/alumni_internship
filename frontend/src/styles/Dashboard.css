@@ -3668,3 +3668,62 @@
 .dark .adb-root.module-platform .adb-completion-mini .circle {
   stroke: #60a5fa !important;
 }
+
+/* Premium Glassmorphic Community Donut Card Overrides */
+.adb-root.module-platform .adb-community-card {
+  background: 
+    radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.08), transparent 10rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.88)) !important;
+  border: 1px solid rgba(99, 102, 241, 0.16) !important;
+  box-shadow: 
+    0 1px 2px rgba(0,0,0,0.02),
+    0 18px 38px -32px rgba(99, 102, 241, 0.16) !important;
+}
+
+.adb-root.module-platform .adb-community-card .adb-sidebar-title {
+  color: #0f172a !important;
+}
+
+.adb-root.module-platform .adb-community-card .adb-community-sub {
+  color: #475569 !important;
+}
+
+.adb-root.module-platform .adb-community-card .adb-community-sub strong {
+  color: #0f172a !important;
+}
+
+/* Donut Chart Text Colors - Light Mode */
+.adb-root.module-platform .donut-center-text {
+  fill: #0f172a !important;
+}
+
+.adb-root.module-platform .donut-sub-text {
+  fill: #64748b !important;
+}
+
+/* Dark Mode Overrides for Community Card & Donut Chart */
+.dark .adb-root.module-platform .adb-community-card {
+  background: rgba(15, 23, 42, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .adb-root.module-platform .adb-community-card .adb-sidebar-title {
+  color: #f8fafc !important;
+}
+
+.dark .adb-root.module-platform .adb-community-card .adb-community-sub {
+  color: #94a3b8 !important;
+}
+
+.dark .adb-root.module-platform .adb-community-card .adb-community-sub strong {
+  color: #f8fafc !important;
+}
+
+.dark .adb-root.module-platform .donut-center-text {
+  fill: #f8fafc !important;
+}
+
+.dark .adb-root.module-platform .donut-sub-text {
+  fill: #94a3b8 !important;
+}

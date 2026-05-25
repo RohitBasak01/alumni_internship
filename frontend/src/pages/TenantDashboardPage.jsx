@@ -321,8 +321,8 @@ function DonutChart({ slices, total = 0 }) {
           offset += s.pct;
           return el;
         })}
-        <text x="80" y="78" textAnchor="middle" fontSize="22" fontWeight="900" fill="#fff" style={{fontFamily: 'Outfit'}}>{total.toLocaleString()}</text>
-        <text x="80" y="96" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.5)" fontWeight="600" style={{fontFamily: 'Outfit', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Total Members</text>
+        <text x="80" y="78" className="donut-center-text" textAnchor="middle" fontSize="22" fontWeight="900" style={{fontFamily: 'Outfit'}}>{total.toLocaleString()}</text>
+        <text x="80" y="96" className="donut-sub-text" textAnchor="middle" fontSize="10" fontWeight="600" style={{fontFamily: 'Outfit', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Total Members</text>
       </svg>
     </div>
   );
