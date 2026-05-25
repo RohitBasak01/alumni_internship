@@ -69,6 +69,10 @@ function TenantHomePage() {
   // Sign Up Form State
   const [signUpEmail, setSignUpEmail] = useState("");
 
+  // Scroll reveal hook (must be before any early returns)
+  const pageRef = useRef(null);
+  useScrollReveal(pageRef);
+
   // Slideshow Logic
   const galleryImages = homeContent.gallery && homeContent.gallery.length > 0
     ? homeContent.gallery.filter(item => item.mediaType !== 'video').map(item => ({
@@ -211,8 +215,6 @@ function TenantHomePage() {
     navigate(`${regPath}?provider=email&email=${encodeURIComponent(signUpEmail)}`);
   };
 
-  const pageRef = useRef(null);
-  useScrollReveal(pageRef);
 
   return (
     <div className="th-page" ref={pageRef}>
