@@ -673,6 +673,9 @@ export default function EventsPage() {
     return acc;
   }, {});
 
+  const evPageRef = useRef(null);
+  useScrollReveal(evPageRef);
+
   function handleChange(e) { setForm(c => ({ ...c, [e.target.name]: e.target.value })); }
   function handleFilterChange(e) { setFilters(c => ({ ...c, [e.target.name]: e.target.value })); }
   function handleSubmit(e) { e.preventDefault(); saveMutation.mutate({ id: editingId, payload: { ...form, registrationCap: form.registrationCap === '' ? undefined : Number(form.registrationCap) } }); }
@@ -789,8 +792,6 @@ export default function EventsPage() {
     );
   }
 
-  const evPageRef = useRef(null);
-  useScrollReveal(evPageRef);
 
   /* List view */
   return (
