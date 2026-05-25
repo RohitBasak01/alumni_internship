@@ -398,7 +398,7 @@
   height: 64px;
   background: var(--th-accent);
   border-radius: 1.25rem;
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-out-expo);
 }
 .th-feature-card:hover .th-feature-icon {
   background: var(--th-primary);
@@ -626,7 +626,7 @@
 .th-footer-contact a {
   color: #94a3b8;
   text-decoration: none;
-  transition: color 0.25s ease;
+  transition: color 0.25s var(--ease-spring);
 }
 .th-footer-contact a:hover {
   color: #fff;
@@ -899,7 +899,7 @@
   color: var(--th-text-main);
   font-weight: 600;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out-expo);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
@@ -966,7 +966,7 @@
   color: var(--th-text-main);
   text-decoration: none;
   line-height: 1.4;
-  transition: color 0.2s ease;
+  transition: color 0.2s var(--ease-spring);
 }
 
 .th-news-title:hover {
@@ -980,7 +980,7 @@
   border: 1px solid var(--th-border);
   padding: 1.25rem;
   border-radius: 1rem;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s var(--ease-out-expo);
 }
 
 .th-event-card:hover {
@@ -1025,7 +1025,7 @@
   color: var(--th-text-main);
   text-decoration: none;
   margin-bottom: 0.375rem;
-  transition: color 0.2s ease;
+  transition: color 0.2s var(--ease-spring);
 }
 
 .th-event-title:hover {
@@ -1188,7 +1188,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s var(--ease-out-expo);
 }
 
 .th-gallery-item:hover img {
@@ -1476,7 +1476,7 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-out-expo);
 }
 
 .th-slider-dot--active {
@@ -1599,7 +1599,7 @@
   font-weight: 600;
   color: var(--th-text);
   outline: none;
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-out-expo);
 }
 
 .th-form-input:focus {
@@ -1710,7 +1710,7 @@
   font-weight: 700;
   color: var(--th-text);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-out-expo);
 }
 
 .th-social-btn:hover {
@@ -1786,7 +1786,7 @@
   font-weight: 700;
   color: var(--th-text);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out-expo);
   text-align: left;
 }
 
@@ -2031,7 +2031,7 @@
   padding: 1.5rem;
   margin-bottom: 2rem;
   box-shadow: var(--th-shadow);
-  transition: all 0.3s ease;
+  transition: all 0.3s var(--ease-out-expo);
 }
 
 .th-timeline-content-card:hover {

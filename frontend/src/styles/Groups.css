@@ -52,7 +52,7 @@
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all 200ms var(--ease-out-expo);
 }
 
 .close-btn:hover {
@@ -92,7 +92,7 @@
   font-size: 0.95rem;
   color: #1e293b;
   font-family: inherit;
-  transition: all 200ms ease;
+  transition: all 200ms var(--ease-out-expo);
 }
 
 .form-group input:focus,
@@ -139,7 +139,7 @@
   background: #fff;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all 200ms var(--ease-out-expo);
   text-align: left;
   position: relative;
 }

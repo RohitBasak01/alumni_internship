@@ -1572,7 +1572,7 @@
   width: 30px;
   padding: 0;
   opacity: 0;
-  transition: opacity 160ms ease;
+  transition: opacity 160ms var(--ease-out-expo);
 }
 
 .member-message-row:hover .member-message-action.icon-only,

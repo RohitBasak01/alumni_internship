@@ -835,7 +835,7 @@
   padding: 0.7rem 0.65rem;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all 200ms var(--ease-out-expo);
   text-decoration: none;
   background: #fff;
   border: 1px solid transparent;
