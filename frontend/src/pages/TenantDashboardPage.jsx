@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDashboardLogic } from "../hooks/useDashboardLogic.js";
+import { useScrollReveal } from "../hooks/useScrollReveal.js";
 import CelebrationWidget from "../components/CelebrationWidget.jsx";
 import { formatRelativeTime } from "../utils/formatters.js";
 import "../styles/Dashboard.css";
@@ -122,8 +123,11 @@ function AlumniDashboard({ logic }) {
   const recentJoins = communityHighlights.joinedThisWeek;
   const topContributor = communityHighlights.topContributor;
 
+  const pageRef = useRef(null);
+  useScrollReveal(pageRef);
+
   return (
-    <div className="adb-root adb-root--modern module-platform">
+    <div className="adb-root adb-root--modern module-platform" ref={pageRef}>
       {/* ── Top Section: Greeting & Stats ── */}
       <div className="adb-header-section">
         <div className="adb-greeting-box">
@@ -152,7 +156,7 @@ function AlumniDashboard({ logic }) {
         {/* ── Left Column: Feed ── */}
         <div className="adb-main-col">
           {/* Profile Completion CTA (More compact) */}
-          <div className="adb-completion-mini">
+          <div className="adb-completion-mini reveal reveal-d1">
              <div className="adb-mini-info">
                 <h3>Finish your profile</h3>
                 <p>Help your peers find you better by completing your details.</p>
@@ -169,7 +173,7 @@ function AlumniDashboard({ logic }) {
              </div>
           </div>
 
-          <div className="adb-section">
+          <div className="adb-section reveal reveal-d2">
             <div className="adb-section-header">
               <h2 className="adb-section-title">Latest Updates</h2>
               <Link to="/portal/feed" className="adb-view-link">Visit Feed</Link>
@@ -193,7 +197,7 @@ function AlumniDashboard({ logic }) {
         {/* ── Right Column: Sidebar ── */}
         <aside className="adb-sidebar-col">
           {/* Quick Actions */}
-          <div className="adb-sidebar-card">
+          <div className="adb-sidebar-card reveal reveal-right reveal-d1">
             <h3 className="adb-sidebar-title">Quick Actions</h3>
             <div className="adb-action-grid">
                {QUICK_ACTIONS.map(action => (
@@ -205,8 +209,7 @@ function AlumniDashboard({ logic }) {
             </div>
           </div>
 
-          {/* Suggested Connections */}
-          <div className="adb-sidebar-card">
+          <div className="adb-sidebar-card reveal reveal-right reveal-d2">
             <div className="adb-sidebar-header">
                <h3 className="adb-sidebar-title">Suggested Peers</h3>
                <Link to="/portal/alumni" className="adb-view-link">View All</Link>
@@ -234,8 +237,7 @@ function AlumniDashboard({ logic }) {
             </div>
           </div>
 
-          {/* Upcoming Events */}
-          <div className="adb-sidebar-card">
+          <div className="adb-sidebar-card reveal reveal-right reveal-d3">
             <div className="adb-sidebar-header">
                <h3 className="adb-sidebar-title">Upcoming Events</h3>
                <Link to="/portal/events" className="adb-view-link">All Events</Link>
@@ -271,7 +273,7 @@ function AlumniDashboard({ logic }) {
           <CelebrationWidget />
 
           {/* Community Stats Donut (Visual Only) */}
-          <div className="adb-sidebar-card adb-community-card">
+          <div className="adb-sidebar-card adb-community-card reveal reveal-scale reveal-d4">
              <div className="adb-card-blob" />
              <h3 className="adb-sidebar-title">Our Growing Network</h3>
              <DonutChart 

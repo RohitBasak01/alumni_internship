@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -7,6 +7,7 @@ import SectionCard from "../components/SectionCard.jsx";
 import { QRCodeSVG } from "qrcode.react";
 import "../styles/Events.css";
 import "../styles/EventTicket.css";
+import { useScrollReveal } from "../hooks/useScrollReveal.js";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 const initialForm = { title: "", description: "", eventDate: "", location: "", registrationCap: "", isVirtual: false, meetingLink: "", meetingPassword: "", recordingLink: "" };
@@ -788,9 +789,12 @@ export default function EventsPage() {
     );
   }
 
+  const evPageRef = useRef(null);
+  useScrollReveal(evPageRef);
+
   /* List view */
   return (
-    <div className="ev-root module-events">
+    <div className="ev-root module-events" ref={evPageRef}>
       {/* Header */}
       <div className="ev-page-header">
         <div>
@@ -852,7 +856,7 @@ export default function EventsPage() {
       )}
 
       {/* Search + filters */}
-      <div className="ev-toolbar">
+      <div className="ev-toolbar reveal">
         <div className="ev-search-wrap">
           <span className="material-symbols-outlined ev-search-icon">search</span>
           <input className="ev-search-input" name="query" value={filters.query} onChange={handleFilterChange} placeholder="Search events by title or keyword..." />
@@ -880,7 +884,7 @@ export default function EventsPage() {
       {/* Upcoming */}
       {upcomingEvents.length > 0 && (
         <>
-          <div className="ev-section-header">
+          <div className="ev-section-header reveal">
             <h2 className="ev-section-label">Upcoming Events</h2>
             <span className="ev-section-count">{upcomingEvents.length} events</span>
           </div>

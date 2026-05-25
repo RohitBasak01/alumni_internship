@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -10,6 +10,7 @@ import { useCurrentTenantPublicProfile } from "../hooks/useCurrentTenantPublicPr
 import { useTenantBranding } from "../hooks/useTenantBranding.js";
 import { useTenantContext } from "../hooks/useTenantContext.js";
 import { usePublicHomeContent } from "../hooks/usePublicHomeContent.js";
+import { useScrollReveal } from "../hooks/useScrollReveal.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { login, getOAuthStartUrl, fetchPublicInstitutes, resolveApiAssetUrl } from "../lib/api.js";
 
@@ -210,8 +211,11 @@ function TenantHomePage() {
     navigate(`${regPath}?provider=email&email=${encodeURIComponent(signUpEmail)}`);
   };
 
+  const pageRef = useRef(null);
+  useScrollReveal(pageRef);
+
   return (
-    <div className="th-page">
+    <div className="th-page" ref={pageRef}>
       {/* ── Skip link ─────────────────────────────────────────────────── */}
       <a href="#th-main" className="th-skip-link">
         Skip to content
@@ -510,7 +514,7 @@ function TenantHomePage() {
 
       {/* ── About ─────────────────────────────────────────────────────── */}
       {bio && (
-        <section className="th-section th-section-muted" id="th-about" aria-labelledby="th-about-heading">
+        <section className="th-section th-section-muted reveal" id="th-about" aria-labelledby="th-about-heading">
           <div className="th-section-inner th-section-inner--narrow">
             <p className="th-kicker">About Us</p>
             <h2 id="th-about-heading">{name}</h2>
@@ -534,7 +538,7 @@ function TenantHomePage() {
 
       {/* ── Quick Links ────────────────────────────────────────────────── */}
       {profile.quickLinks && profile.quickLinks.filter(l => l.enabled).length > 0 && (
-        <section className="th-section th-section-muted" aria-labelledby="th-quick-links-heading">
+        <section className="th-section th-section-muted reveal" aria-labelledby="th-quick-links-heading">
           <div className="th-section-inner th-quick-links-container">
             {profile.quickLinks.filter(l => l.enabled).map((link, i) => (
               <a key={i} href={link.url} className="th-quick-link-card" target={link.url.startsWith("http") ? "_blank" : "_self"} rel="noreferrer">
@@ -547,7 +551,7 @@ function TenantHomePage() {
       )}
 
       {/* ── Dynamic News & Updates Section ────────────────────────────── */}
-      <section className="th-section th-news-updates-section" aria-labelledby="th-updates-heading">
+      <section className="th-section th-news-updates-section reveal" aria-labelledby="th-updates-heading">
         <div className="th-section-inner">
           <div className="th-updates-section-header">
             <div>
@@ -705,7 +709,7 @@ function TenantHomePage() {
 
       {/* ── Leadership Messages ─────────────────────────────────────── */}
       {profile.leadershipMessages && profile.leadershipMessages.map((msg, i) => (
-        <section key={i} className={`th-section ${i % 2 === 0 ? "th-section-muted" : ""}`}>
+        <section key={i} className={`th-section reveal ${i % 2 === 0 ? "th-section-muted" : ""}`}>
           <div className={`th-section-inner th-leadership-message ${i % 2 !== 0 ? "th-leadership-message-reverse" : ""}`}>
             <div className="th-leadership-photo">
               {msg.photoUrl ? (
@@ -735,7 +739,7 @@ function TenantHomePage() {
 
       {/* ── Gallery ──────────────────────────────────────────────────── */}
       {homeContent.gallery?.length > 0 && (
-        <section className="th-section" aria-labelledby="th-gallery-heading">
+        <section className="th-section reveal" aria-labelledby="th-gallery-heading">
           <div className="th-section-inner">
             <h2 id="th-gallery-heading" className="th-section-title">Gallery</h2>
             <div className="th-gallery-row">
@@ -757,7 +761,7 @@ function TenantHomePage() {
 
       {/* ── Latest Members ───────────────────────────────────────────── */}
       {homeContent.latestMembers?.length > 0 && (
-        <section className="th-section th-section-muted" aria-labelledby="th-members-heading">
+        <section className="th-section th-section-muted reveal" aria-labelledby="th-members-heading">
           <div className="th-section-inner">
             <h2 id="th-members-heading" className="th-section-title">Latest Members</h2>
             <div className="th-members-row">
@@ -780,7 +784,7 @@ function TenantHomePage() {
       )}
 
       {/* ── CTA banner ────────────────────────────────────────────────── */}
-      <section className="th-cta-section" aria-label="Join the community">
+      <section className="th-cta-section reveal reveal-scale" aria-label="Join the community">
         <div className="th-cta-inner">
           <h2>Ready to reconnect?</h2>
           <p>

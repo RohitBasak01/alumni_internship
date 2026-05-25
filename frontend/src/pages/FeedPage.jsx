@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../context/AuthContext.jsx";
 import { formatRelativeTime } from "../utils/formatters.js";
 import "../styles/Feed.css";
+import { useScrollReveal } from "../hooks/useScrollReveal.js";
 
 /* ── Avatar color palette ─────────────────────────────────── */
 const AVATAR_COLORS = [
@@ -711,8 +712,11 @@ export default function FeedPage() {
       .slice(0, 3);
   }, [alumniQuery.data, auth.user?.id]);
 
+  const feedPageRef = useRef(null);
+  useScrollReveal(feedPageRef);
+
   return (
-    <div className="feed-root module-feed">
+    <div className="feed-root module-feed" ref={feedPageRef}>
       {/* ── Page header ─────────────────────────────────────── */}
       <div className="feed-page-header">
         <div>
@@ -777,7 +781,7 @@ export default function FeedPage() {
         {/* Right sidebar */}
         <aside className="feed-sidebar-col">
           {/* ── Trending Topics ── */}
-          <div className="feed-sidebar-card">
+          <div className="feed-sidebar-card reveal reveal-right reveal-d1">
             <div className="feed-sidebar-header">
               <span className="feed-sidebar-title">Trending Topics</span>
               <Link to="/portal" className="feed-sidebar-view-all">
@@ -811,7 +815,7 @@ export default function FeedPage() {
           </div>
 
           {/* ── Upcoming Events ── */}
-          <div className="feed-sidebar-card">
+          <div className="feed-sidebar-card reveal reveal-right reveal-d2">
             <div className="feed-sidebar-header">
               <span className="feed-sidebar-title">Upcoming Events</span>
               <Link to="/portal/events" className="feed-sidebar-view-all">
@@ -855,7 +859,7 @@ export default function FeedPage() {
           </div>
 
           {/* ── People You May Know ── */}
-          <div className="feed-sidebar-card">
+          <div className="feed-sidebar-card reveal reveal-right reveal-d3">
             <div className="feed-sidebar-header">
               <span className="feed-sidebar-title">People You May Know</span>
               <Link to="/portal/alumni" className="feed-sidebar-view-all">
