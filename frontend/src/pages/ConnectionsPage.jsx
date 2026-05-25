@@ -31,7 +31,7 @@ function getConversationContact(conversation, currentUserId, getInitials) {
   const partner =
     String(conversation.requester?._id || conversation.requester?.id || "") ===
     currentId
-      ? conversation.mentor
+      ? conversation.recipient || conversation.mentor
       : conversation.requester;
 
   const partnerName = partner?.name || "Alumni Contact";
@@ -70,7 +70,7 @@ export default function AlumniMessagesPage() {
     {
       _id: conversationsState.activeConversation?._id,
       partnerId: String(conversationsState.activeConversation?.requester?._id || conversationsState.activeConversation?.requester?.id) === String(conversationsState.auth.user?.id || conversationsState.auth.user?._id)
-        ? conversationsState.activeConversation?.mentor?._id || conversationsState.activeConversation?.mentor?.id
+        ? conversationsState.activeConversation?.recipient?._id || conversationsState.activeConversation?.recipient?.id || conversationsState.activeConversation?.mentor?._id || conversationsState.activeConversation?.mentor?.id
         : conversationsState.activeConversation?.requester?._id || conversationsState.activeConversation?.requester?.id
     },
     null,

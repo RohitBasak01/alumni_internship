@@ -237,18 +237,19 @@ export function useFriendship() {
       }
 
       const currentId = String(auth.user?.id || auth.user?._id || "");
-      const isMentor =
-        currentId && String(item.mentor?._id || item.mentor?.id || "") === currentId;
-      const partner = isMentor ? item.requester : item.mentor;
+      const isRecipient =
+        currentId && String(item.recipient?._id || item.recipient?.id || "") === currentId;
+      const partner = isRecipient ? item.requester : item.recipient;
       return {
         ...common,
         type: "direct",
         name: partner?.name || "Alumni contact",
         online: item.status === "accepted",
-        incoming: isMentor,
+        incoming: isRecipient,
         requester: item.requester,
-        mentor: item.mentor,
-        members: [item.requester, item.mentor].filter(Boolean).map(p => ({
+        recipient: item.recipient,
+        mentor: item.recipient, // fallback for legacy views
+        members: [item.requester, item.recipient].filter(Boolean).map(p => ({
           ...p,
           id: p._id || p.id
         })),

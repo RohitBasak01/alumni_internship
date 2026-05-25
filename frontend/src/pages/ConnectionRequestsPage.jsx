@@ -64,7 +64,7 @@ function ConnectionRequestsPage() {
   const pendingRequests = useMemo(
     () =>
       data
-        .filter((item) => item.mentor?._id === auth.user?.id && item.status === "pending")
+        .filter((item) => (item.recipient?._id === auth.user?.id || item.mentor?._id === auth.user?.id) && item.status === "pending")
         .map((item) => ({
           _id: item._id,
           name: item.requester?.name || tenantDisplay.roleFallback,
@@ -84,11 +84,11 @@ function ConnectionRequestsPage() {
         .filter((item) => item.requester?._id === auth.user?.id)
         .map((item) => ({
           _id: item._id,
-          name: item.mentor?.name || tenantDisplay.roleFallback,
-          batch: item.mentor?.batch,
-          department: item.mentor?.department,
-          leavingYear: item.mentor?.leavingYear,
-          lastClassAttended: item.mentor?.lastClassAttended,
+          name: item.recipient?.name || item.mentor?.name || tenantDisplay.roleFallback,
+          batch: item.recipient?.batch || item.mentor?.batch,
+          department: item.recipient?.department || item.mentor?.department,
+          leavingYear: item.recipient?.leavingYear || item.mentor?.leavingYear,
+          lastClassAttended: item.recipient?.lastClassAttended || item.mentor?.lastClassAttended,
           status: item.status,
           message: item.message || ""
         })),
@@ -97,11 +97,11 @@ function ConnectionRequestsPage() {
 
   const discoverAlumni = useMemo(() => {
     const sentRequestIds = new Set(
-      data.filter((item) => item.requester?._id === auth.user?.id).map((item) => item.mentor?._id)
+      data.filter((item) => item.requester?._id === auth.user?.id).map((item) => item.recipient?._id || item.mentor?._id)
     );
     const pendingRequestIds = new Set(
       data
-        .filter((item) => item.mentor?._id === auth.user?.id && item.status === "pending")
+        .filter((item) => (item.recipient?._id === auth.user?.id || item.mentor?._id === auth.user?.id) && item.status === "pending")
         .map((item) => item.requester?._id)
     );
 
