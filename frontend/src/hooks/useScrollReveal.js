@@ -52,5 +52,5 @@ export function useScrollReveal(containerRef) {
     return () => {
       observerRef.current?.disconnect();
     };
-  }, [containerRef]);
+  }, [containerRef, containerRef?.current]);
 }

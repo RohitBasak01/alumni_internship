@@ -8,8 +8,8 @@
 .gl-page-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; }
 .gl-page-title  { margin:0; font-size:1.5rem; font-weight:800; color:#0f172a; letter-spacing:-0.02em; }
 .gl-page-sub    { margin:.15rem 0 0; font-size:.875rem; color:#64748b; }
-.gl-upload-header-btn { display:inline-flex; align-items:center; gap:.35rem; padding:.55rem 1.2rem; border-radius:12px; background:#6366f1; color:#fff; font-size:.82rem; font-weight:800; border:none; cursor:pointer; font-family:inherit; flex-shrink:0; transition:background 150ms; }
-.gl-upload-header-btn:hover { background:#4f46e5; }
+.gl-upload-header-btn { display:inline-flex; align-items:center; gap:.35rem; padding:.55rem 1.2rem; border-radius:12px; background:#7c3aed; color:#fff; font-size:.82rem; font-weight:800; border:none; cursor:pointer; font-family:inherit; flex-shrink:0; transition:background 150ms; }
+.gl-upload-header-btn:hover { background:#6d28d9; }
 
 /* ─ Tabs ─────────────────────────────────────────────────── */
 .gl-tabs-row {
@@ -53,13 +53,13 @@
 
 .gl-tab--active {
   background: #fff;
-  color: #6366f1;
+  color: #7c3aed;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .gl-tab-badge {
-  background: #eff0ff;
-  color: #6366f1;
+  background: #f5f3ff;
+  color: #7c3aed;
   font-size: 0.65rem;
   font-weight: 800;
   padding: 1px 6px;
@@ -75,12 +75,12 @@
 .gl-toolbar { display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap; }
 .gl-toolbar-left,.gl-toolbar-right { display:flex; align-items:center; gap:.5rem; }
 .gl-filter-btn { display:inline-flex; align-items:center; gap:.3rem; padding:.4rem .8rem; border-radius:8px; border:1px solid #e2e8f0; background:#fff; font-size:.78rem; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; transition:border-color 150ms; }
-.gl-filter-btn:hover { border-color:#6366f1; color:#6366f1; }
+.gl-filter-btn:hover { border-color:#7c3aed; color:#7c3aed; }
 .gl-sort-wrap { display:flex; align-items:center; gap:.4rem; }
 .gl-sort-select { border:1px solid #e2e8f0; border-radius:8px; padding:.3rem .6rem; font-size:.78rem; font-weight:700; color:#374151; background:#fff; font-family:inherit; cursor:pointer; outline:none; }
 .gl-view-toggle { display:flex; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
 .gl-view-btn { padding:.32rem .55rem; border:none; background:#fff; cursor:pointer; color:#94a3b8; transition:background 150ms,color 150ms; display:grid; place-items:center; }
-.gl-view-btn--active { background:#eff0ff; color:#6366f1; }
+.gl-view-btn--active { background:#f5f3ff; color:#7c3aed; }
 
 /* ─ Masonry grid ────────────────────────────────────────── */
 .gl-masonry {
@@ -129,7 +129,7 @@
 /* ─ Load more ───────────────────────────────────────────── */
 .gl-load-more-wrap { display:flex; justify-content:center; padding:.5rem 0; }
 .gl-load-more-btn  { display:inline-flex; align-items:center; gap:.35rem; padding:.55rem 1.4rem; border-radius:10px; border:1px solid #e2e8f0; background:#fff; font-size:.82rem; font-weight:700; color:#374151; cursor:pointer; font-family:inherit; transition:border-color 150ms,color 150ms; }
-.gl-load-more-btn:hover { border-color:#6366f1; color:#6366f1; }
+.gl-load-more-btn:hover { border-color:#7c3aed; color:#7c3aed; }
 
 /* ─ Empty ───────────────────────────────────────────────── */
 .gl-empty { text-align:center; padding:3rem 1rem; color:#94a3b8; grid-column:span 3; }
@@ -140,7 +140,7 @@
 .gl-sidebar-card { background:#fff; border-radius:16px; border:1px solid #e2e8f0; padding:1rem 1.1rem; }
 .gl-sidebar-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.85rem; }
 .gl-sidebar-title  { font-size:.875rem; font-weight:800; color:#0f172a; }
-.gl-sidebar-link   { font-size:.72rem; font-weight:700; color:#6366f1; background:none; border:none; cursor:pointer; font-family:inherit; padding:0; }
+.gl-sidebar-link   { font-size:.72rem; font-weight:700; color:#7c3aed; background:none; border:none; cursor:pointer; font-family:inherit; padding:0; }
 
 /* Albums */
 .gl-albums-list { display:flex; flex-direction:column; gap:.6rem; }
@@ -152,20 +152,20 @@
 .gl-album-count { font-size:.65rem; color:#94a3b8; font-weight:700; background:#f1f5f9; padding:2px 7px; border-radius:999px; flex-shrink:0; }
 
 /* Drop zone */
-.gl-drop-zone { border:2px dashed #c7d2fe; border-radius:12px; padding:1.25rem; text-align:center; transition:border-color 150ms,background 150ms; cursor:pointer; }
-.gl-drop-zone--active { border-color:#6366f1; background:#eff0ff; }
+.gl-drop-zone { border:2px dashed #ddd6fe; border-radius:12px; padding:1.25rem; text-align:center; transition:border-color 150ms,background 150ms; cursor:pointer; }
+.gl-drop-zone--active { border-color:#7c3aed; background:#f5f3ff; }
 .gl-drop-text  { margin:.35rem 0 0; font-size:.78rem; font-weight:600; color:#374151; }
 .gl-drop-or    { margin:.2rem 0; font-size:.68rem; color:#94a3b8; }
-.gl-browse-btn { padding:.35rem .9rem; border-radius:8px; border:1px solid #e2e8f0; background:#fff; font-size:.75rem; font-weight:700; color:#6366f1; cursor:pointer; font-family:inherit; }
+.gl-browse-btn { padding:.35rem .9rem; border-radius:8px; border:1px solid #e2e8f0; background:#fff; font-size:.75rem; font-weight:700; color:#7c3aed; cursor:pointer; font-family:inherit; }
 .gl-drop-hint  { margin:.5rem 0 0; font-size:.62rem; color:#94a3b8; }
 .gl-drop-error  { margin:.45rem 0 0; font-size:.68rem; color:#dc2626; font-weight:600; }
 
 /* URL upload */
 .gl-url-upload { display:flex; flex-direction:column; gap:.45rem; margin-top:.75rem; padding-top:.75rem; border-top:1px solid #f1f5f9; }
 .gl-input { padding:.45rem .7rem; border-radius:8px; border:1px solid #e2e8f0; font-size:.8rem; color:#374151; font-family:inherit; background:#f8fafc; outline:none; transition:border-color 150ms; width:100%; box-sizing:border-box; }
-.gl-input:focus { border-color:#6366f1; background:#fff; }
-.gl-upload-submit-btn { padding:.45rem; border-radius:8px; background:#6366f1; color:#fff; font-size:.8rem; font-weight:700; border:none; cursor:pointer; font-family:inherit; transition:background 150ms; }
-.gl-upload-submit-btn:hover:not(:disabled) { background:#4f46e5; }
+.gl-input:focus { border-color:#7c3aed; background:#fff; }
+.gl-upload-submit-btn { padding:.45rem; border-radius:8px; background:#7c3aed; color:#fff; font-size:.8rem; font-weight:700; border:none; cursor:pointer; font-family:inherit; transition:background 150ms; }
+.gl-upload-submit-btn:hover:not(:disabled) { background:#6d28d9; }
 .gl-upload-submit-btn:disabled { opacity:.6; cursor:not-allowed; }
 
 /* Highlights */
@@ -197,7 +197,7 @@
 .gl-lightbox-comment-form { display:grid; grid-template-columns:1fr auto; gap:.5rem; }
 .gl-lightbox-comment-form input { min-width:0; border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:.6rem .7rem; font-size:.82rem; outline:none; background:rgba(255,255,255,.1); color:#fff; }
 .gl-lightbox-comment-form input::placeholder { color:rgba(255,255,255,.58); }
-.gl-lightbox-comment-form button { border:0; border-radius:10px; padding:0 .85rem; background:#6366f1; color:#fff; font-size:.78rem; font-weight:800; cursor:pointer; }
+.gl-lightbox-comment-form button { border:0; border-radius:10px; padding:0 .85rem; background:#7c3aed; color:#fff; font-size:.78rem; font-weight:800; cursor:pointer; }
 .gl-lightbox-comment-form button:disabled { opacity:.5; cursor:not-allowed; }
 
 /* ─ Responsive ──────────────────────────────────────────── */

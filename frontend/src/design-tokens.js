@@ -9,16 +9,16 @@
 export const colors = {
   // Brand colors (primary)
   brand: {
-    50: '#eef3ff',
-    100: '#e0e7ff',
-    200: '#c7d2fe',
-    300: '#a5b4fc',
-    400: '#818cf8',
-    500: '#2554d8', // primary brand
-    600: '#1d46bc',
-    700: '#163795',
-    800: '#1e3a8a',
-    900: '#1e3a8a',
+    50: '#f5f3ff',
+    100: '#ede9fe',
+    200: '#ddd6fe',
+    300: '#c4b5fd',
+    400: '#a78bfa',
+    500: '#7c3aed', // primary brand
+    600: '#6d28d9',
+    700: '#5b21b6',
+    800: '#4c1d95',
+    900: '#2e1065',
   },
 
   // Semantic colors
@@ -165,11 +165,11 @@ export const colors = {
   // Module role aliases keep page refreshes consistent across the app
   modules: {
     platform: {
-      accent: '#2554d8',
-      accentStrong: '#163795',
-      surface: '#eef3ff',
-      border: '#c7d2fe',
-      shadow: 'rgba(37, 84, 216, 0.22)',
+      accent: '#7c3aed',
+      accentStrong: '#5b21b6',
+      surface: '#f5f3ff',
+      border: '#ddd6fe',
+      shadow: 'rgba(124, 58, 237, 0.22)',
     },
     alumni: {
       accent: '#8b5cf6',
@@ -384,20 +384,20 @@ export const shadows = {
 
 export const ui = {
   fontSans: typography.fontFamily.sans,
-  bg: '#f2f6fd',
-  bgSoft: '#eaf1fb',
+  bg: '#fdfcff',
+  bgSoft: '#f5f2fd',
   surface: 'rgba(255, 255, 255, 0.94)',
   surfaceStrong: '#ffffff',
-  surfaceMuted: '#f5f9ff',
-  border: 'rgba(37, 84, 216, 0.1)',
-  borderStrong: 'rgba(37, 84, 216, 0.18)',
+  surfaceMuted: '#faf9ff',
+  border: 'rgba(124, 58, 237, 0.08)',
+  borderStrong: 'rgba(124, 58, 237, 0.15)',
   ink: colors.ink[900],
-  inkSoft: '#425472',
-  inkMuted: '#61748f',
+  inkSoft: '#4c4272',
+  inkMuted: '#6b618f',
   brand: colors.brand[500],
-  brandStrong: '#1a3da8',
-  brandSoft: '#e8f0ff',
-  accent: '#0f8aa6',
+  brandStrong: '#5b21b6',
+  brandSoft: '#f5f3ff',
+  accent: '#06b6d4',
   accentSoft: 'rgba(15, 138, 166, 0.14)',
   violet: colors.accent.violet[500],
   coral: colors.accent.coral[500],
@@ -420,21 +420,21 @@ export const ui = {
 };
 
 export const darkUi = {
-  bg: '#0f172a',
-  bgSoft: '#111827',
-  surface: 'rgba(15, 23, 42, 0.9)',
-  surfaceStrong: '#111827',
-  surfaceMuted: '#1e293b',
-  border: 'rgba(148, 163, 184, 0.18)',
-  borderStrong: 'rgba(148, 163, 184, 0.28)',
+  bg: '#08020e',
+  bgSoft: '#0d0718',
+  surface: 'rgba(18, 11, 32, 0.85)',
+  surfaceStrong: '#0d0718',
+  surfaceMuted: '#171026',
+  border: 'rgba(167, 139, 250, 0.15)',
+  borderStrong: 'rgba(167, 139, 250, 0.25)',
   ink: colors.ink[50],
   inkSoft: colors.ink[200],
   inkMuted: colors.ink[400],
   brand: colors.brand[300],
   brandStrong: colors.brand[200],
-  brandSoft: 'rgba(37, 84, 216, 0.2)',
-  accent: colors.accent.teal[300],
-  accentSoft: 'rgba(45, 212, 191, 0.16)',
+  brandSoft: 'rgba(124, 58, 237, 0.16)',
+  accent: colors.accent.cyan[300],
+  accentSoft: 'rgba(34, 211, 238, 0.16)',
   highlight: colors.warning[300],
   highlightSoft: 'rgba(251, 191, 36, 0.16)',
   success: colors.success[300],
@@ -443,9 +443,9 @@ export const darkUi = {
   warningSoft: 'rgba(251, 191, 36, 0.16)',
   danger: colors.error[300],
   dangerSoft: 'rgba(248, 113, 113, 0.16)',
-  shadowSm: '0 12px 24px rgba(0, 0, 0, 0.18)',
-  shadowMd: '0 20px 44px rgba(0, 0, 0, 0.24)',
-  shadowLg: '0 26px 60px rgba(0, 0, 0, 0.3)',
+  shadowSm: '0 12px 24px rgba(0, 0, 0, 0.25)',
+  shadowMd: '0 20px 44px rgba(0, 0, 0, 0.35)',
+  shadowLg: '0 26px 60px rgba(0, 0, 0, 0.45)',
 };
 
 export const transitions = {

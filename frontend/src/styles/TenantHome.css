@@ -6,17 +6,17 @@
 
 /* ── Defaults (in case vars aren't set yet) ─────────────────── */
 :root {
-  --th-primary: var(--tenant-primary, #2554d8);
-  --th-secondary: var(--tenant-secondary, #163795);
-  --th-accent: var(--tenant-accent, #eef3ff);
+  --th-primary: var(--tenant-primary, #7c3aed);
+  --th-secondary: var(--tenant-secondary, #5b21b6);
+  --th-accent: var(--tenant-accent, #f5f3ff);
   --th-text: #0f172a;
   --th-muted: #64748b;
   --th-surface: #ffffff;
   --th-border: #e2e8f0;
   --th-radius: 1rem;
   --th-radius-sm: 0.5rem;
-  --th-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
-  --th-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.13);
+  --th-shadow: 0 4px 24px rgba(124, 58, 237, 0.07);
+  --th-shadow-lg: 0 12px 48px rgba(124, 58, 237, 0.13);
 }
 
 /* ── Skip link ──────────────────────────────────────────────── */

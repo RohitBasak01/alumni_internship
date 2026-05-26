@@ -347,22 +347,22 @@
 
 :root {
   --ui-font-sans: "Outfit", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --ui-bg: #f2f6fd;
-  --ui-bg-soft: #eaf1fb;
+  --ui-bg: #fdfcff;
+  --ui-bg-soft: #f5f2fd;
   --ui-surface: rgba(255, 255, 255, 0.94);
   --ui-surface-strong: #ffffff;
-  --ui-surface-muted: #f5f9ff;
-  --ui-border: rgba(37, 84, 216, 0.1);
-  --ui-border-strong: rgba(37, 84, 216, 0.18);
+  --ui-surface-muted: #faf9ff;
+  --ui-border: rgba(124, 58, 237, 0.08);
+  --ui-border-strong: rgba(124, 58, 237, 0.15);
   --ui-ink: var(--al-color-ink-900, #0f172a);
-  --ui-ink-soft: #425472;
-  --ui-ink-muted: #61748f;
-  --ui-brand: var(--al-color-brand-500, #2554d8);
-  --ui-brand-strong: #1a3da8;
-  --ui-brand-soft: #e8f0ff;
-  --ui-accent: #0f8aa6;
-  --ui-accent-soft: rgba(15, 138, 166, 0.14);
-  --ui-violet: var(--al-color-accent-violet-500, #8b5cf6);
+  --ui-ink-soft: #4c4272;
+  --ui-ink-muted: #6b618f;
+  --ui-brand: var(--al-color-brand-500, #7c3aed);
+  --ui-brand-strong: #5b21b6;
+  --ui-brand-soft: #f5f3ff;
+  --ui-accent: #06b6d4;
+  --ui-accent-soft: rgba(6, 182, 212, 0.14);
+  --ui-violet: var(--al-color-accent-violet-500, #7c3aed);
   --ui-coral: var(--al-color-accent-coral-500, #f43f5e);
   --ui-teal: var(--al-color-accent-teal-500, #14b8a6);
   --ui-cyan: var(--al-color-accent-cyan-500, #06b6d4);
@@ -388,14 +388,39 @@ html {
 
 body {
   background:
-    radial-gradient(circle at 8% 4%, rgba(37, 84, 216, 0.16), transparent 26rem),
-    radial-gradient(circle at 88% 7%, rgba(20, 184, 166, 0.15), transparent 29rem),
-    radial-gradient(circle at 78% 92%, rgba(244, 63, 94, 0.09), transparent 24rem),
-    radial-gradient(circle at 16% 82%, rgba(139, 92, 246, 0.1), transparent 22rem),
-    linear-gradient(180deg, #fbfdff 0%, #f6f9ff 45%, #eef7ff 100%);
+    radial-gradient(circle at 10% 8%, rgba(124, 58, 237, 0.11), transparent 28rem),
+    radial-gradient(circle at 90% 12%, rgba(6, 182, 212, 0.08), transparent 32rem),
+    radial-gradient(circle at 80% 88%, rgba(236, 72, 153, 0.07), transparent 26rem),
+    radial-gradient(circle at 20% 82%, rgba(139, 92, 246, 0.08), transparent 24rem),
+    linear-gradient(180deg, #fefeff 0%, #faf8ff 45%, #f6f2ff 100%);
   color: var(--ui-ink);
   min-height: 100vh;
   background-attachment: fixed;
+}
+
+/* Awwwards modern utilities */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--ui-brand, #7c3aed) 0%, var(--ui-brand-strong, #5b21b6) 50%, var(--ui-accent, #06b6d4) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.card-hover-glow {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-hover-glow:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px -15px rgba(124, 58, 237, 0.15), 0 0 30px -5px rgba(6, 182, 212, 0.1);
+  border-color: rgba(124, 58, 237, 0.2) !important;
 }
 
 .public-header {

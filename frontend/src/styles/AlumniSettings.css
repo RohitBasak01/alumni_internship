@@ -25,7 +25,7 @@
 .as-edit-profile-btn {
   background: #eef2ff;
   color: #3730a3;
-  border: 1px solid #c7d2fe;
+  border: 1px solid #ddd6fe;
   border-radius: 10px;
   padding: 9px 14px;
   font-weight: 600;
@@ -149,7 +149,7 @@
 }
 
 .as-btn-solid {
-  background: #4f46e5;
+  background: #6d28d9;
   color: #fff;
 }
 

@@ -1,8 +1,8 @@
 /* ── Manage Admins Page ─────────────────────────────────── ma-* namespace ── */
 
 :root {
-  --ma-accent: #6366f1;
-  --ma-accent-dark: #4f46e5;
+  --ma-accent: #7c3aed;
+  --ma-accent-dark: #6d28d9;
   --ma-accent-pale: #eef2ff;
   --ma-danger: #ef4444;
   --ma-danger-pale: #fef2f2;
@@ -158,7 +158,7 @@
 .ma-admin-email { font-size: 0.8rem; color: var(--ma-muted); margin-bottom: 0.35rem; }
 .ma-admin-since { font-size: 0.8rem; color: var(--ma-muted); margin-bottom: 0.6rem; }
 
-.ma-expiry { color: #6366f1; font-weight: 600; }
+.ma-expiry { color: #7c3aed; font-weight: 600; }
 .ma-expiry-warn { color: #b45309; font-weight: 700; }
 
 .ma-admin-actions { flex-shrink: 0; }

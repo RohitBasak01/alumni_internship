@@ -314,7 +314,7 @@ function HomePage() {
             {/* Stats */}
             <div className="hp-hero-stats">
               <div className="hp-stat-pill">
-                <span className="material-symbols-outlined hp-stat-pill-icon" style={{ color: "#6366f1" }}>diversity_3</span>
+                <span className="material-symbols-outlined hp-stat-pill-icon" style={{ color: "#7c3aed" }}>diversity_3</span>
                 <div>
                   <div className="hp-stat-pill-value">120K+</div>
                   <div className="hp-stat-pill-label">Alumni</div>
@@ -347,7 +347,7 @@ function HomePage() {
             <div className="hp-floating-notif">
               <div className="hp-floating-notif-avatars">
                 {["A", "B", "C"].map((l, i) => (
-                  <div key={i} className="hp-floating-avatar" style={{ zIndex: 3 - i, background: i === 0 ? "#6366f1" : i === 1 ? "#0ea5e9" : "#10b981" }}>{l}</div>
+                  <div key={i} className="hp-floating-avatar" style={{ zIndex: 3 - i, background: i === 0 ? "#7c3aed" : i === 1 ? "#0ea5e9" : "#10b981" }}>{l}</div>
                 ))}
               </div>
               <div className="hp-floating-notif-text">

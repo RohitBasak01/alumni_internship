@@ -399,7 +399,7 @@
 
 .admin-events-metric-card:nth-child(4) .portal-metric-card-icon {
   background: #e8ecff;
-  color: #4f46e5;
+  color: #6d28d9;
 }
 
 @layer base {
@@ -4979,8 +4979,8 @@ input {
 }
 
 .admin-events-metric-icon.indigo {
-  background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
 }
 
 .admin-events-filters {
@@ -9469,7 +9469,7 @@ input {
   --sa-accent-strong: #163795;
   --sa-teal: #14b8a6;
   --sa-surface: #eef3ff;
-  --sa-border: #c7d2fe;
+  --sa-border: #ddd6fe;
   --sa-shadow: rgba(37, 84, 216, 0.22);
   background:
     radial-gradient(circle at 12% 0%, rgba(37, 84, 216, 0.14), transparent 28rem),

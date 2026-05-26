@@ -28,7 +28,7 @@
 .adm-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:1rem 1.1rem;}
 .adm-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;}
 .adm-card-title{font-size:.88rem;font-weight:800;color:#0f172a;}
-.adm-view-all{font-size:.72rem;font-weight:700;color:#6366f1;text-decoration:none;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
+.adm-view-all{font-size:.72rem;font-weight:700;color:#7c3aed;text-decoration:none;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
 .adm-period-btn{display:inline-flex;align-items:center;gap:.25rem;padding:.3rem .65rem;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;font-size:.72rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;}
 
 /* Chart legend */
@@ -58,7 +58,7 @@
 .adm-city-row{display:flex;align-items:center;gap:.5rem;}
 .adm-city-name{font-size:.78rem;font-weight:600;color:#374151;min-width:72px;}
 .adm-city-bar-bg{flex:1;height:6px;background:#f1f5f9;border-radius:999px;overflow:hidden;}
-.adm-city-bar-fill{height:100%;background:linear-gradient(to right,#6366f1,#818cf8);border-radius:999px;}
+.adm-city-bar-fill{height:100%;background:linear-gradient(to right,#7c3aed,#818cf8);border-radius:999px;}
 .adm-city-count{font-size:.72rem;font-weight:700;color:#374151;min-width:38px;text-align:right;}
 
 /* Registrations */
@@ -69,7 +69,7 @@
 .adm-reg-name{font-size:.78rem;font-weight:800;color:#0f172a;}
 .adm-reg-dept{font-size:.65rem;color:#94a3b8;}
 .adm-reg-time{font-size:.65rem;color:#94a3b8;white-space:nowrap;flex-shrink:0;}
-.adm-view-all-link{font-size:.72rem;font-weight:700;color:#6366f1;text-decoration:none;display:block;margin-top:.35rem;}
+.adm-view-all-link{font-size:.72rem;font-weight:700;color:#7c3aed;text-decoration:none;display:block;margin-top:.35rem;}
 .adm-view-all-link:hover{text-decoration:underline;}
 
 /* Events */
@@ -85,7 +85,7 @@
 /* Quick actions */
 .adm-quick-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;}
 .adm-quick-item{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.6rem .4rem;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;text-decoration:none;font-size:.72rem;font-weight:700;color:#374151;transition:border-color 150ms,background 150ms;text-align:center;}
-.adm-quick-item:hover{border-color:#6366f1;background:#eff0ff;color:#4f46e5;}
+.adm-quick-item:hover{border-color:#7c3aed;background:#f5f3ff;color:#6d28d9;}
 
 /* System status */
 .adm-status-row{display:flex;align-items:center;gap:.65rem;}
@@ -96,7 +96,7 @@
 /* Footer strip */
 .adm-footer-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:1rem 1.25rem;}
 .adm-footer-item{display:flex;align-items:center;gap:.75rem;}
-.adm-footer-icon{width:44px;height:44px;border-radius:12px;background:#eff0ff;display:grid;place-items:center;flex-shrink:0;}
+.adm-footer-icon{width:44px;height:44px;border-radius:12px;background:#f5f3ff;display:grid;place-items:center;flex-shrink:0;}
 .adm-footer-value{font-size:1.1rem;font-weight:900;color:#0f172a;}
 .adm-footer-label{font-size:.65rem;color:#94a3b8;font-weight:600;}
 .adm-footer-sub{font-size:.65rem;color:#94a3b8;}
@@ -140,9 +140,9 @@
 }
 
 .adm-action-btn.primary {
-  background: #6366f1;
+  background: #7c3aed;
   color: #fff;
-  border-color: #4f46e5;
+  border-color: #6d28d9;
 }
 
 .adm-stats-strip {
@@ -291,7 +291,7 @@
 
 .dept-item .dept-bar div {
   height: 100%;
-  background: #6366f1;
+  background: #7c3aed;
 }
 
 .adm-reg-row {
@@ -328,8 +328,8 @@
   margin-left: auto;
   font-size: 0.65rem;
   font-weight: 800;
-  color: #6366f1;
-  background: #eff0ff;
+  color: #7c3aed;
+  background: #f5f3ff;
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
 }
@@ -345,7 +345,7 @@
   width: 50px;
   font-size: 0.75rem;
   font-weight: 800;
-  color: #6366f1;
+  color: #7c3aed;
   text-align: center;
   padding: 0.5rem;
   background: #f8fafc;
@@ -369,7 +369,7 @@
 .view-link {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #6366f1;
+  color: #7c3aed;
   text-decoration: none;
 }
 

@@ -99,8 +99,8 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
   background: #fff;
 }
 
@@ -151,14 +151,14 @@
 
 .member-picker-item.selected {
   background: #f5f3ff;
-  border-color: #c7d2fe;
+  border-color: #ddd6fe;
 }
 
 .member-picker-avatar {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6);
   color: white;
   display: grid;
   place-items: center;
@@ -180,7 +180,7 @@
   position: absolute;
   top: -6px;
   right: -6px;
-  color: #6366f1;
+  color: #7c3aed;
   background: white;
   border-radius: 50%;
   font-size: 18px;
@@ -399,8 +399,8 @@
 .invite-action-btn {
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background: #eff0ff;
-  color: #6366f1;
+  background: #f5f3ff;
+  color: #7c3aed;
   border: none;
   font-size: 0.8rem;
   font-weight: 700;
@@ -409,6 +409,6 @@
 }
 
 .invite-action-btn:hover {
-  background: #6366f1;
+  background: #7c3aed;
   color: #fff;
 }

@@ -32,7 +32,7 @@
 }
 
 .ticket-modal-header {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
   padding: 24px 28px 20px;
   color: #fff;
   position: relative;
@@ -109,7 +109,7 @@
 
 .ticket-qr-wrapper {
   background: #fff;
-  border: 3px solid #6366f1;
+  border: 3px solid #7c3aed;
   border-radius: 16px;
   padding: 16px;
   display: flex;
@@ -224,7 +224,7 @@
   height: 100%;
   border-radius: 4px;
   transition: width 0.5s ease;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  background: linear-gradient(90deg, #7c3aed, #8b5cf6);
 }
 
 .ev-capacity-fill--full {
@@ -267,9 +267,9 @@
   gap: 5px;
   padding: 6px 14px;
   border-radius: 8px;
-  border: 1.5px solid #6366f1;
+  border: 1.5px solid #7c3aed;
   background: #eef2ff;
-  color: #6366f1;
+  color: #7c3aed;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -277,7 +277,7 @@
 }
 
 .ev-ticket-btn:hover {
-  background: #6366f1;
+  background: #7c3aed;
   color: #fff;
 }
 
@@ -343,8 +343,8 @@
 
 .checkin-input:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .checkin-submit-btn {
@@ -352,7 +352,7 @@
   padding: 0 20px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6);
   color: #fff;
   font-size: 0.82rem;
   font-weight: 600;

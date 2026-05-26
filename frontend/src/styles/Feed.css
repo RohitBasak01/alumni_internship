@@ -55,11 +55,13 @@
 
 /* ─── Composer card ───────────────────────────────────────── */
 .feed-composer-card {
-  background: #ffffff;
-  border-radius: 16px;
-  border: 1px solid #e8edf3;
-  padding: 1.1rem 1.2rem 0.9rem;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  background: var(--ui-surface, #ffffff);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 20px;
+  border: 1px solid var(--ui-border, rgba(124, 58, 237, 0.08));
+  padding: 1.25rem 1.4rem 1.05rem;
+  box-shadow: var(--ui-shadow-sm);
   animation: anim-fadeInScale 400ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
@@ -74,7 +76,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, var(--ui-brand, #7c3aed), var(--ui-accent, #06b6d4));
   color: #fff;
   font-size: 0.9rem;
   font-weight: 700;
@@ -82,22 +84,23 @@
   place-items: center;
   flex-shrink: 0;
   letter-spacing: 0;
+  box-shadow: 0 4px 10px rgba(124, 58, 237, 0.15);
 }
 
 .feed-composer-input-wrap {
   flex: 1;
-  border: 1.5px solid #e8edf3;
+  border: 1.5px solid var(--ui-border, #e8edf3);
   border-radius: 50px;
   padding: 0.6rem 1.1rem;
   cursor: text;
-  transition: border-color 200ms, box-shadow 200ms;
-  background: #f7f9fc;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--ui-bg-soft, #f7f9fc);
 }
 
 .feed-composer-input-wrap--focused {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-  background: #fff;
+  border-color: var(--ui-brand, #7c3aed);
+  box-shadow: 0 0 0 3px var(--ui-brand-soft, rgba(124, 58, 237, 0.1));
+  background: var(--ui-surface-strong, #fff);
   border-radius: 12px;
 }
 
@@ -108,19 +111,19 @@
   outline: none;
   padding: 0 !important;
   font-size: 0.875rem;
-  color: #374151;
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: var(--ui-ink, #374151);
+  font-family: inherit;
   resize: none;
   line-height: 1.5;
 }
 
-.feed-composer-input::placeholder { color: #94a3b8; }
+.feed-composer-input::placeholder { color: var(--ui-ink-muted, #94a3b8); }
 
 .feed-composer-divider {
   height: 1px;
-  background: #f1f5f9;
-  margin: 0 -1.2rem;
-  margin-bottom: 0.85rem;
+  background: var(--ui-border, #f1f5f9);
+  margin: 0 -1.4rem;
+  margin-bottom: 0.95rem;
 }
 
 .feed-composer-actions {
@@ -158,9 +161,9 @@
   transform: translateY(-1px);
 }
 .feed-composer-type-btn--active {
-  background: #eff0ff;
-  border-color: #c7d2fe;
-  color: #4f46e5;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #6d28d9;
 }
 .feed-composer-type-btn .material-symbols-outlined {
   font-size: 17px !important;
@@ -172,7 +175,7 @@
   gap: 0.45rem;
   padding: 0.5rem 1.3rem;
   border-radius: 50px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6);
   color: #fff;
   font-size: 0.85rem;
   font-weight: 700;
@@ -181,13 +184,13 @@
   font-family: inherit;
   transition: opacity 150ms, transform 150ms, box-shadow 150ms;
   letter-spacing: 0.01em;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 .feed-composer-post-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 .feed-composer-post-btn:hover:not(:disabled) {
   opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
 }
 
 .feed-composer-extras {
@@ -228,7 +231,7 @@
 
 .feed-composer-attachment .material-symbols-outlined {
   font-size: 17px !important;
-  color: #6366f1;
+  color: #7c3aed;
   flex-shrink: 0;
 }
 
@@ -272,8 +275,8 @@
 }
 
 .feed-poll-input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.09);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.09);
 }
 
 .feed-poll-add {
@@ -283,7 +286,7 @@
   gap: 0.35rem;
   border: none;
   background: transparent;
-  color: #4f46e5;
+  color: #6d28d9;
   font-family: inherit;
   font-size: 0.78rem;
   font-weight: 800;
@@ -304,12 +307,14 @@
 
 /* ─── Post card ───────────────────────────────────────────── */
 .feed-post-card {
-  background: #ffffff;
-  border-radius: 16px;
-  border: 1px solid #e8edf3;
-  padding: 1.2rem;
-  transition: box-shadow 250ms, transform 250ms cubic-bezier(0.22,0.61,0.36,1);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  background: var(--ui-surface, #ffffff);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 20px;
+  border: 1px solid var(--ui-border, rgba(124, 58, 237, 0.08));
+  padding: 1.35rem 1.4rem;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--ui-shadow-sm);
   animation: anim-fadeInUp 400ms cubic-bezier(0.22,0.61,0.36,1) both;
 }
 
@@ -321,8 +326,11 @@
 .feed-posts-list .feed-post-card:nth-child(5) { animation-delay: 380ms; }
 
 .feed-post-card:hover {
-  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 
+    0 24px 50px -15px rgba(124, 58, 237, 0.12),
+    0 0 35px -5px rgba(6, 182, 212, 0.08);
+  transform: translateY(-4px) scale(1.005);
+  border-color: rgba(124, 58, 237, 0.22);
 }
 
 .feed-post-header {
@@ -364,8 +372,8 @@
 .feed-post-badge {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eff0ff;
-  color: #6366f1;
+  background: #f5f3ff;
+  color: #7c3aed;
   font-size: 0.63rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -491,9 +499,9 @@
 }
 
 .feed-post-video-link:hover {
-  border-color: #c7d2fe;
-  background: #eff0ff;
-  color: #4f46e5;
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 .feed-post-video-link span:nth-child(2) {
@@ -520,8 +528,8 @@
 .feed-post-tag {
   padding: 3px 10px;
   border-radius: 999px;
-  background: #eff0ff;
-  color: #6366f1;
+  background: #f5f3ff;
+  color: #7c3aed;
   font-size: 0.71rem;
   font-weight: 700;
 }
@@ -552,7 +560,7 @@
 }
 .feed-action-btn .material-symbols-outlined { font-size: 18px !important; }
 .feed-action-btn:hover { background: #f7f9fc; color: #374151; }
-.feed-action-btn--active { background: #eff0ff; color: #4f46e5; }
+.feed-action-btn--active { background: #f5f3ff; color: #6d28d9; }
 .feed-action-btn--liked { color: #ef4444; }
 .feed-action-btn--liked:hover { background: #fef2f2; }
 .feed-action-btn--bookmark { margin-left: auto; }
@@ -662,8 +670,8 @@
 }
 
 .feed-comment-input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .feed-comment-submit {
@@ -671,7 +679,7 @@
   height: 44px;
   border: none;
   border-radius: 12px;
-  background: #6366f1;
+  background: #7c3aed;
   color: #fff;
   font-family: inherit;
   font-size: 0.8rem;
@@ -681,7 +689,7 @@
 }
 
 .feed-comment-submit:hover:not(:disabled) {
-  background: #4f46e5;
+  background: #6d28d9;
 }
 
 .feed-comment-submit:disabled {
@@ -759,7 +767,7 @@
 .feed-sidebar-view-all {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6366f1;
+  color: #7c3aed;
   text-decoration: none;
   transition: opacity 150ms;
 }
@@ -860,7 +868,7 @@
   font-size: 0.58rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #6366f1;
+  color: #7c3aed;
   letter-spacing: 0.05em;
   line-height: 1;
 }
@@ -957,9 +965,9 @@
   cursor: pointer;
 }
 .feed-connect-btn:hover {
-  background: #eff0ff;
-  border-color: #6366f1;
-  color: #6366f1;
+  background: #f5f3ff;
+  border-color: #7c3aed;
+  color: #7c3aed;
 }
 
 .feed-see-more {
@@ -967,7 +975,7 @@
   text-align: center;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #6366f1;
+  color: #7c3aed;
   text-decoration: none;
   padding-top: 0.7rem;
   border-top: 1px solid #f1f5f9;
